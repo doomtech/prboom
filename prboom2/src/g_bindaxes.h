@@ -1,7 +1,7 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: g_bindaxes.h,v 1.1.2.1 2002/02/09 13:09:59 cph Exp $
+ * $Id: g_bindaxes.h,v 1.1.2.2 2002/02/10 17:56:43 cph Exp $
  *
  *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
@@ -40,6 +40,7 @@ boolean G_AxisResponder(event_t *ev);
 
 void G_EditAxisBinding(char *action);
 const char *G_BoundAxes(char *action);
+void G_WriteAxisBindings(FILE* file);
 
 // action variables
 

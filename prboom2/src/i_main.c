@@ -1,7 +1,7 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: i_main.c,v 1.17 2002/02/08 23:53:41 cph Exp $
+ * $Id: i_main.c,v 1.17.2.1 2002/02/10 17:56:43 cph Exp $
  *
  *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
@@ -34,7 +34,7 @@
  */
 
 static const char
-rcsid[] = "$Id: i_main.c,v 1.17 2002/02/08 23:53:41 cph Exp $";
+rcsid[] = "$Id: i_main.c,v 1.17.2.1 2002/02/10 17:56:43 cph Exp $";
 
 #ifdef HAVE_CONFIG_H
 #include "../config.h"
@@ -341,7 +341,7 @@ void I_Quit (void)
     if (demorecording)
       G_CheckDemoStatus();
     //M_SaveDefaults ();
-    G_SaveDefaults ();
+    //G_SaveDefaults ();
     W_DoneCache();
   }
 }

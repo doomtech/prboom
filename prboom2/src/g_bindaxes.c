@@ -260,6 +260,36 @@ boolean G_AxisResponder (event_t *ev)
   return true;
 }
 
+/*
+ * Save bindings
+ */
+
+void G_WriteAxisBindings(FILE* file)
+{
+  int i,j;
+  int num_devices, num_axes;
+
+  num_devices = I_GetNumberOfDevices();
+  for(i=0; i<num_devices; i++)
+  {
+    num_axes = I_GetAxesForDevice(i);
+    for(j=0; j<num_axes; j++)
+    {
+      if(axisbindings[i][j].binding)
+      {
+        fprintf(file, "bindaxis %s %s\n",
+                axisbindings[i][j].name,
+                axisbindings[i][j].binding->name);
+      }
+      if(axisbindings[i][j].invert)
+      {
+        fprintf(file, "invertaxis %s\n",
+                axisbindings[i][j].name);
+      }
+    }
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////
 //        MENU STUFF
 //
