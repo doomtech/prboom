@@ -1,7 +1,7 @@
 // Emacs style mode select   -*- Assembler -*- 
 //-----------------------------------------------------------------------------
 //
-// $Id: drawcol.S,v 1.1 2000/05/21 04:07:39 jessh Exp $
+// $Id: drawcol.S,v 1.1.1.1 2000/09/20 09:40:18 figgi Exp $
 //
 //  LxDoom, a Doom port for Linux/Unix
 //  based on BOOM, a modified and improved DOOM engine
@@ -675,10 +675,14 @@ R_DrawTLColumn_HighRes:
  ret
 
 //----------------------------------------------------------------------------
-// $Id: drawcol.S,v 1.1 2000/05/21 04:07:39 jessh Exp $
+// $Id: drawcol.S,v 1.1.1.1 2000/09/20 09:40:18 figgi Exp $
 //----------------------------------------------------------------------------
 //
 // $Log: drawcol.S,v $
+// Revision 1.1.1.1  2000/09/20 09:40:18  figgi
+//
+// added glBsp support
+//
 // Revision 1.1  2000/05/21 04:07:39  jessh
 // Fixed assembly linking _ problem (i could have sworn i already commited this)
 //

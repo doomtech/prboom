@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: st_lib.c,v 1.1 2000/05/04 08:17:13 proff_fs Exp $
+ * $Id: st_lib.c,v 1.1.1.2 2000/09/20 09:45:51 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: st_lib.c,v 1.1 2000/05/04 08:17:13 proff_fs Exp $";
+rcsid[] = "$Id: st_lib.c,v 1.1.1.2 2000/09/20 09:45:51 figgi Exp $";
 
 #include "doomdef.h"
 #include "doomstat.h"
@@ -65,7 +66,7 @@ void STlib_initNum
 ( st_number_t* n,
   int x,
   int y,
-  const patch_t** pl,
+  const patchnum_t* pl,
   int* num,
   boolean* on,
   int     width )
@@ -94,15 +95,15 @@ void STlib_initNum
  */
 static void STlib_drawNum
 ( st_number_t*  n,
-  const byte *outrng,
+  int cm,
   boolean refresh )
 {
 
   int   numdigits = n->width;
   int   num = *n->num;
 
-  int   w = SHORT(n->p[0]->width);
-  int   h = SHORT(n->p[0]->height);
+  int   w = SHORT(n->p[0].width);
+  int   h = SHORT(n->p[0].height);
   int   x = n->x;
 
   int   neg;
@@ -134,7 +135,7 @@ static void STlib_drawNum
     I_Error("drawNum: n->y - ST_Y < 0");
 #endif
 
-  V_CopyRect(x, n->y - ST_Y, BG, w*numdigits, h, x, n->y, FG);
+  V_CopyRect(x, n->y - ST_Y, BG, w*numdigits, h, x, n->y, FG, VPT_STRETCH);
 
   // if non-number, do not draw it
   if (num == 1994)
@@ -146,16 +147,16 @@ static void STlib_drawNum
   // in the special case of 0, you draw 0
   if (!num)
     // CPhipps - patch drawing updated, reformatted
-    V_DrawMemPatch(x - w, n->y, FG, n->p[0], outrng, 
-		   (outrng && !sts_always_red) ? VPT_TRANS : VPT_NONE);
+    V_DrawNumPatch(x - w, n->y, FG, n->p[0].lumpnum, cm, 
+		   (((cm!=CR_DEFAULT) && !sts_always_red) ? VPT_TRANS : VPT_NONE) | VPT_STRETCH);
 
   // draw the new number
   //jff 2/16/98 add color translation to digit output
   while (num && numdigits--) {
     // CPhipps - patch drawing updated, reformatted
     x -= w;
-    V_DrawMemPatch(x, n->y, FG, n->p[num % 10], outrng, 
-		   (outrng && !sts_always_red) ? VPT_TRANS : VPT_NONE);
+    V_DrawNumPatch(x, n->y, FG, n->p[num % 10].lumpnum, cm, 
+		   (((cm!=CR_DEFAULT) && !sts_always_red) ? VPT_TRANS : VPT_NONE) | VPT_STRETCH);
     num /= 10;
   }
 
@@ -163,8 +164,8 @@ static void STlib_drawNum
   //jff 2/16/98 add color translation to digit output
   // cph - patch drawing updated, load by name instead of acquiring pointer earlier
   if (neg)
-    V_DrawNamePatch(x - w, n->y, FG, "STTMINUS", outrng, 
-		   (outrng && !sts_always_red) ? VPT_TRANS : VPT_NONE);
+    V_DrawNamePatch(x - w, n->y, FG, "STTMINUS", cm, 
+		   (((cm!=CR_DEFAULT) && !sts_always_red) ? VPT_TRANS : VPT_NONE) | VPT_STRETCH);
 }
 
 /*
@@ -180,10 +181,10 @@ static void STlib_drawNum
  */
 void STlib_updateNum
 ( st_number_t*    n,
-  const byte *outrng,
+  int cm,
   boolean   refresh )
 {
-  if (*n->on) STlib_drawNum(n, outrng, refresh);
+  if (*n->on) STlib_drawNum(n, cm, refresh);
 }
 
 //
@@ -200,10 +201,10 @@ void STlib_initPercent
 ( st_percent_t* p,
   int x,
   int y,
-  const patch_t** pl,
+  const patchnum_t* pl,
   int* num,
   boolean* on,
-  const patch_t* percent )
+  const patchnum_t* percent )
 {
   STlib_initNum(&p->n, x, y, pl, num, on, 3);
   p->p = percent;
@@ -223,19 +224,19 @@ void STlib_initPercent
 
 void STlib_updatePercent
 ( st_percent_t*   per,
-  const byte *outrng,
+  int cm,
   int refresh )
 {
   if (*per->n.on && (refresh || (per->n.oldnum != *per->n.num))) { 
     // killough 2/21/98: fix percents not updated;
     /* CPhipps - make %'s only be updated if number changed */
     // CPhipps - patch drawing updated
-    V_DrawMemPatch(per->n.x, per->n.y, FG, per->p, 
-		   sts_pct_always_gray ? cr_gray : outrng, 
-		   sts_always_red ? VPT_NONE : VPT_TRANS);
+    V_DrawNumPatch(per->n.x, per->n.y, FG, per->p->lumpnum, 
+		   sts_pct_always_gray ? CR_GRAY : cm, 
+		   (sts_always_red ? VPT_NONE : VPT_TRANS) | VPT_STRETCH);
   }
 
-  STlib_updateNum(&per->n, outrng, refresh);
+  STlib_updateNum(&per->n, cm, refresh);
 }
 
 //
@@ -252,7 +253,7 @@ void STlib_initMultIcon
 ( st_multicon_t* i,
   int x,
   int y,
-  const patch_t** il,
+  const patchnum_t* il,
   int* inum,
   boolean* on )
 {
@@ -287,20 +288,20 @@ void STlib_updateMultIcon
   {
     if (mi->oldinum != -1)
     {
-      x = mi->x - SHORT(mi->p[mi->oldinum]->leftoffset);
-      y = mi->y - SHORT(mi->p[mi->oldinum]->topoffset);
-      w = SHORT(mi->p[mi->oldinum]->width);
-      h = SHORT(mi->p[mi->oldinum]->height);
+      x = mi->x - SHORT(mi->p[mi->oldinum].leftoffset);
+      y = mi->y - SHORT(mi->p[mi->oldinum].topoffset);
+      w = SHORT(mi->p[mi->oldinum].width);
+      h = SHORT(mi->p[mi->oldinum].height);
 
 #ifdef RANGECHECK
       if (y - ST_Y < 0)
         I_Error("updateMultIcon: y - ST_Y < 0");
 #endif
 
-      V_CopyRect(x, y-ST_Y, BG, w, h, x, y, FG);
+      V_CopyRect(x, y-ST_Y, BG, w, h, x, y, FG, VPT_STRETCH);
     }
     if (*mi->inum != -1)  // killough 2/16/98: redraw only if != -1
-      V_DrawMemPatch(mi->x, mi->y, FG, mi->p[*mi->inum], NULL, VPT_NONE);
+      V_DrawNumPatch(mi->x, mi->y, FG, mi->p[*mi->inum].lumpnum, CR_DEFAULT, VPT_STRETCH);
     mi->oldinum = *mi->inum;
   }
 }
@@ -319,7 +320,7 @@ void STlib_initBinIcon
 ( st_binicon_t* b,
   int x,
   int y,
-  const patch_t* i,
+  const patchnum_t* i,
   boolean* val,
   boolean* on )
 {
@@ -366,76 +367,10 @@ void STlib_updateBinIcon
 #endif
 
     if (*bi->val)
-      V_DrawMemPatch(bi->x, bi->y, FG, bi->p, NULL, VPT_NONE);
+      V_DrawNumPatch(bi->x, bi->y, FG, bi->p->lumpnum, CR_DEFAULT, VPT_STRETCH);
     else
-      V_CopyRect(x, y-ST_Y, BG, w, h, x, y, FG);
+      V_CopyRect(x, y-ST_Y, BG, w, h, x, y, FG, VPT_STRETCH);
 
     bi->oldval = *bi->val;
   }
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: st_lib.c,v $
-// Revision 1.1  2000/05/04 08:17:13  proff_fs
-// Initial revision
-//
-// Revision 1.9  1999/10/31 12:02:30  cphipps
-// Make various sanity checks only be included by RANGECHECK
-// Include lprintf.h for I_Error
-//
-// Revision 1.8  1999/10/27 18:38:03  cphipps
-// Updated for W_Cache'd lumps being properly const
-// Made colour translation tables be referenced by const byte*'s
-// Updated various V_* functions for this change
-//
-// Revision 1.7  1999/10/12 13:01:14  cphipps
-// Changed header to GPL
-//
-// Revision 1.6  1999/10/06 07:54:40  cphipps
-// Improved percent sign redraw logic (should redraw only if displayed, and
-// either refresh is forced or the number changed)
-//
-// Revision 1.5  1999/01/29 20:26:58  cphipps
-// Optimised STlib_drawNum as suggested by leban
-//
-// Revision 1.4  1999/01/01 09:55:11  cphipps
-// No longer acquire pointer to STTMINUS, use by lump name instead
-//
-// Revision 1.3  1998/12/31 13:59:01  cphipps
-// Updated patch drawing
-// Made all patch_t*'s into const patch_t*'s
-//
-// Revision 1.2  1998/10/16 21:51:02  cphipps
-// Hanging else's
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.8  1998/05/11  10:44:42  jim
-// formatted/documented st_lib
-//
-// Revision 1.7  1998/05/03  22:58:17  killough
-// Fix header #includes at top, nothing else
-//
-// Revision 1.6  1998/02/23  04:56:34  killough
-// Fix percent sign problems
-//
-// Revision 1.5  1998/02/19  16:55:09  jim
-// Optimized HUD and made more configurable
-//
-// Revision 1.4  1998/02/18  00:59:13  jim
-// Addition of HUD
-//
-// Revision 1.3  1998/02/17  06:17:03  killough
-// Add support for erasing keys in status bar
-//
-// Revision 1.2  1998/01/26  19:24:56  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:03  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------
-

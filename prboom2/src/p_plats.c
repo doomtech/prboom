@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_plats.c,v 1.1 2000/05/04 08:12:56 proff_fs Exp $
+ * $Id: p_plats.c,v 1.1.1.2 2000/09/20 09:44:11 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_plats.c,v 1.1 2000/05/04 08:12:56 proff_fs Exp $";
+rcsid[] = "$Id: p_plats.c,v 1.1.1.2 2000/09/20 09:44:11 figgi Exp $";
 
 #include "doomstat.h"
 #include "m_random.h"
@@ -136,7 +137,7 @@ void T_PlatRaise(plat_t* plat)
         //killough 1/31/98: relax compatibility to demo_compatibility
 
         // remove the plat if its a pure raise type
-        if (!demo_compatibility)
+        if (!comp[comp_floors])
         {
           switch(plat->type)
           {
@@ -225,7 +226,7 @@ int EV_DoPlat
     plat->type = type;
     plat->sector = sec;
     plat->sector->floordata = plat; //jff 2/23/98 multiple thinkers
-    plat->thinker.function.acp1 = (actionf_p1) T_PlatRaise;
+    plat->thinker.function = T_PlatRaise;
     plat->crush = false;
     plat->tag = line->tag;
 
@@ -351,7 +352,7 @@ void P_ActivateInStasis(int tag)
         plat->status = plat->oldstatus==up? down : up;
       else
         plat->status = plat->oldstatus;
-      plat->thinker.function.acp1 = (actionf_p1) T_PlatRaise;
+      plat->thinker.function = T_PlatRaise;
     }
   }
 }
@@ -376,7 +377,7 @@ int EV_StopPlat(line_t* line)
     {
       plat->oldstatus = plat->status;    // put it in stasis
       plat->status = in_stasis;
-      plat->thinker.function.acv = (actionf_v)NULL;
+      plat->thinker.function = NULL;
     }
   }
   return 1;
@@ -435,57 +436,3 @@ void P_RemoveAllActivePlats(void)
     activeplats = next;
   }
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_plats.c,v $
-// Revision 1.1  2000/05/04 08:12:56  proff_fs
-// Initial revision
-//
-// Revision 1.2  1999/10/12 13:01:13  cphipps
-// Changed header to GPL
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.16  1998/05/08  17:44:18  jim
-// formatted/documented p_plats
-//
-// Revision 1.15  1998/05/03  23:11:15  killough
-// Fix #includes at the top, nothing else
-//
-// Revision 1.14  1998/03/29  21:45:45  jim
-// Fixed lack of switch action on second instant toggle activation
-//
-// Revision 1.13  1998/03/15  14:40:06  jim
-// added pure texture change linedefs & generalized sector types
-//
-// Revision 1.12  1998/03/14  17:19:22  jim
-// Added instant toggle floor type
-//
-// Revision 1.11  1998/02/23  23:46:59  jim
-// Compatibility flagged multiple thinker support
-//
-// Revision 1.9  1998/02/17  06:06:01  killough
-// Make activeplats global for savegame, change RNG calls
-//
-// Revision 1.8  1998/02/13  03:28:45  jim
-// Fixed W1,G1 linedefs clearing untriggered special, cosmetic changes
-//
-// Revision 1.6  1998/02/02  13:39:58  killough
-// Progam beautification
-//
-// Revision 1.5  1998/01/30  14:44:08  jim
-// Added gun exits, right scrolling walls and ceiling mover specials
-//
-// Revision 1.3  1998/01/27  16:20:42  jim
-// Fixed failure to set plat->low when a raise reversed direction
-//
-// Revision 1.2  1998/01/26  19:24:17  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:00  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

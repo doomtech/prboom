@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: m_bbox.h,v 1.1 2000/05/04 08:08:47 proff_fs Exp $
+ * $Id: m_bbox.h,v 1.1.1.2 2000/09/20 09:43:10 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -33,8 +34,6 @@
 #ifndef __M_BBOX__
 #define __M_BBOX__
 
-#include "z_zone.h"         /* killough 1/18/98 */
-
 #include <limits.h>
 #include "m_fixed.h"
 
@@ -54,30 +53,3 @@ void M_ClearBox(fixed_t* box);
 void M_AddToBox(fixed_t* box,fixed_t x,fixed_t y);
 
 #endif
-
-/*----------------------------------------------------------------------------
- *
- * $Log: m_bbox.h,v $
- * Revision 1.1  2000/05/04 08:08:47  proff_fs
- * Initial revision
- *
- * Revision 1.3  1999/10/12 13:00:57  cphipps
- * Changed header to GPL, converted C++ comments to C
- *
- * Revision 1.2  1999/01/27 16:03:48  cphipps
- * Use newer limits.h instead of depreciated values.h
- *
- * Revision 1.1  1998/09/13 16:49:50  cphipps
- * Initial revision
- *
- * Revision 1.3  1998/05/05  19:55:58  phares
- * Formatting and Doc changes
- *
- * Revision 1.2  1998/01/26  19:27:06  phares
- * First rev with no ^Ms
- *
- * Revision 1.1.1.1  1998/01/19  14:02:58  rand
- * Lee's Jan 19 sources
- *
- *
- *----------------------------------------------------------------------------*/

@@ -1,10 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: z_bmalloc.c,v 1.1 2000/05/04 08:19:19 proff_fs Exp $
+ * $Id: z_bmalloc.c,v 1.1.1.2 2000/09/20 09:46:14 figgi Exp $
  *
- *  Block memory allocator for LxDoom, 
- *  Copyright (C) 1999 by Colin Phipps
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
+ *  based on BOOM, a modified and improved DOOM engine
+ *  Copyright (C) 1999 by
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -26,6 +30,10 @@
  *-----------------------------------------------------------------------------
  */
 
+#ifdef HAVE_CONFIG_H
+#include "../config.h"
+#endif
+
 #include <memory.h>
 
 #include "doomtype.h"
@@ -38,8 +46,6 @@ typedef struct bmalpool_s {
   size_t             blocks;
   byte               used[0];
 } bmalpool_t;
-
-#define SIMPLECHECKS
 
 // Proff - added __inline for VisualC
 #ifdef _MSC_VER
@@ -67,7 +73,7 @@ static const int iselem(const bmalpool_t *pool, size_t size, const void* p)
   dif -= pool->blocks;
   if (dif<0) return -1;
   dif /= size;
-  return ((dif >= pool->blocks) ? -1 : dif);
+  return (((size_t)dif >= pool->blocks) ? -1 : dif);
 }
 
 enum { unused_block = 0, used_block = 1};
@@ -80,7 +86,7 @@ void* Z_BMalloc(struct block_memory_alloc_s *pzone)
     if (p) {
       int n = p - (*pool)->used;
 #ifdef SIMPLECHECKS
-      if ((n<0) || (n>=(*pool)->blocks)) 
+      if ((n<0) || ((size_t)n>=(*pool)->blocks)) 
 	I_Error("Z_BMalloc: memchr returned pointer outside of array!");
 #endif
       (*pool)->used[n] = used_block;
@@ -128,31 +134,3 @@ void Z_BFree(struct block_memory_alloc_s *pzone, void* p)
   }
   I_Error("Z_BFree: free not in zone %s\n", pzone->desc);
 }
-
-/*
- * $Log: z_bmalloc.c,v $
- * Revision 1.1  2000/05/04 08:19:19  proff_fs
- * Initial revision
- *
- * Revision 1.7  2000/05/01 15:16:48  Proff
- * added __inline for VisualC
- *
- * Revision 1.6  2000/05/01 14:09:41  Proff
- * fixed #ifdef SIMPECHECKS to SIMPLECHECKS
- *
- * Revision 1.5  1999/10/31 16:25:22  cphipps
- * Change i_system.h include to lprintf.h, where I_Error is now
- *
- * Revision 1.4  1999/10/12 13:01:15  cphipps
- * Changed header to GPL
- *
- * Revision 1.3  1999/01/13 08:03:34  cphipps
- * Fix iselem() pointer casts
- *
- * Revision 1.2  1999/01/02 17:53:56  cphipps
- * Remove temporary debugging stuff
- *
- * Revision 1.1  1999/01/02 17:53:16  cphipps
- * Initial revision
- *
- */

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: am_map.h,v 1.1 2000/05/04 07:58:43 proff_fs Exp $
+ * $Id: am_map.h,v 1.1.1.2 2000/09/20 09:39:34 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -93,6 +94,7 @@ extern int mapcolor_exit;     // exit line
 extern int mapcolor_unsn;     // computer map unseen line color
 extern int mapcolor_flat;     // line with no floor/ceiling changes
 extern int mapcolor_sprt;     // general sprite color
+extern int mapcolor_frnd;     // friendly sprite color
 extern int mapcolor_hair;     // crosshair color
 extern int mapcolor_sngl;     // single player arrow color
 extern int mapcolor_plyr[4];  // colors for players in multiplayer
@@ -101,42 +103,3 @@ extern int mapcolor_me;       // consoleplayer's chosen colour
 extern int map_secret_after;  // secrets do not appear til after bagged
 
 #endif
-
-//----------------------------------------------------------------------------
-//
-// $Log: am_map.h,v $
-// Revision 1.1  2000/05/04 07:58:43  proff_fs
-// Initial revision
-//
-// Revision 1.3  1999/10/12 13:01:15  cphipps
-// Changed header to GPL
-//
-// Revision 1.2  1999/03/26 11:10:51  cphipps
-// Removed some depreciated automap mode variables
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.7  1998/05/10  12:05:18  jim
-// formatted/documented am_map
-//
-// Revision 1.6  1998/05/03  22:12:58  killough
-// Add most external automap variable declarations
-//
-// Revision 1.5  1998/04/16  16:17:05  jim
-// Fixed disappearing marks after new level
-//
-// Revision 1.4  1998/03/02  11:23:10  killough
-// Add automap_grid decl for savegames
-//
-// Revision 1.3  1998/02/23  04:10:11  killough
-// Remove limit on automap marks, save them in savegame
-//
-// Revision 1.2  1998/01/26  19:26:19  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:50  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

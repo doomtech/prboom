@@ -1,7 +1,7 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: i_video.c,v 1.1 2000/05/07 22:27:15 cph Exp $
+ * $Id: i_video.c,v 1.1.1.1 2000/09/20 09:46:45 figgi Exp $
  *
  *  X11 display code for LxDoom. Based on the original linuxdoom i_video.c
  *  Copyright (C) 1993-1996 by id Software
@@ -29,7 +29,7 @@
  */
 
 static const char
-rcsid[] = "$Id: i_video.c,v 1.1 2000/05/07 22:27:15 cph Exp $";
+rcsid[] = "$Id: i_video.c,v 1.1.1.1 2000/09/20 09:46:45 figgi Exp $";
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -55,7 +55,7 @@ rcsid[] = "$Id: i_video.c,v 1.1 2000/05/07 22:27:15 cph Exp $";
 #include "r_draw.h"
 #include "d_main.h"
 #include "d_event.h"
-#include "l_video_trans.h"
+#include "v_video_trans.h"
 #include "i_joy.h"
 #include "i_video.h"
 #include "z_zone.h"
@@ -155,6 +155,7 @@ int             X_bpp; // bpp that we tell X
 
 // Mouse handling
 extern int     usemouse;        // config file var
+int            use_fullscreen;  /* cph - config file dummy */
 static boolean grabMouse;       // internal var
 static boolean grabbed = false; // Is the mouse currently grabbed
 
@@ -1311,16 +1312,3 @@ void I_InitGraphics(void)
 
   I_XInitInputs();
 }
-
-/*
- * $Log: i_video.c,v $
- * Revision 1.1  2000/05/07 22:27:15  cph
- * X11 target files renamed and moved to own dir
- *
- * Revision 1.2  2000/05/04 11:23:01  proff_fs
- * added an textwindow for Win32 and
- * changed some printfs to lprintfs
- *
- * Revision 1.1.1.1  2000/05/04 08:08:40  proff_fs
- * initial login on sourceforge as prboom2
- */

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: d_server.c,v 1.1 2000/05/04 08:00:53 proff_fs Exp $
+ * $Id: d_server.c,v 1.1.1.2 2000/09/20 09:40:10 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *  Copyright (C) 1999-2000 by Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -34,21 +35,154 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <limits.h>
 #include <string.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #include <stdarg.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+//#include <sys/socket.h>
+//#include <netinet/in.h>
 
 #include "doomtype.h"
 #include "protocol.h"
 #include "i_network.h"
 #include "i_system.h"
+
+#ifndef HAVE_GETOPT
+/* The following code for getopt is from the libc-source of FreeBSD,
+ * it might be changed a little bit.
+ * Florian Schulze (florian.proff.schulze@gmx.net)
+ */
+
+/*
+ * Copyright (c) 1987, 1993, 1994
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *	This product includes software developed by the University of
+ *	California, Berkeley and its contributors.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#if defined(LIBC_SCCS) && !defined(lint)
+#if 0
+static char sccsid[] = "@(#)getopt.c	8.3 (Berkeley) 4/27/95";
+#endif
+static const char rcsid[] = "$FreeBSD$";
+#endif /* LIBC_SCCS and not lint */
+
+int	opterr = 1,		/* if error message should be printed */
+	optind = 1,		/* index into parent argv vector */
+	optopt,			/* character checked for validity */
+	optreset;		/* reset getopt */
+char	*optarg;		/* argument associated with option */
+
+#define	BADCH	(int)'?'
+#define	BADARG	(int)':'
+#define	EMSG	""
+
+char *__progname="prboom_server";
+
+/*
+ * getopt --
+ *	Parse argc/argv argument vector.
+ */
+int
+getopt(nargc, nargv, ostr)
+	int nargc;
+	char * const *nargv;
+	const char *ostr;
+{
+	extern char *__progname;
+	static char *place = EMSG;		/* option letter processing */
+	char *oli;				/* option letter list index */
+	int ret;
+
+	if (optreset || !*place) {		/* update scanning pointer */
+		optreset = 0;
+		if (optind >= nargc || *(place = nargv[optind]) != '-') {
+			place = EMSG;
+			return (-1);
+		}
+		if (place[1] && *++place == '-') {	/* found "--" */
+			++optind;
+			place = EMSG;
+			return (-1);
+		}
+	}					/* option letter okay? */
+	if ((optopt = (int)*place++) == (int)':' ||
+	    !(oli = strchr(ostr, optopt))) {
+		/*
+		 * if the user didn't specify '-' as an option,
+		 * assume it means -1.
+		 */
+		if (optopt == (int)'-')
+			return (-1);
+		if (!*place)
+			++optind;
+		if (opterr && *ostr != ':')
+			(void)fprintf(stderr,
+			    "%s: illegal option -- %c\n", __progname, optopt);
+		return (BADCH);
+	}
+	if (*++oli != ':') {			/* don't need argument */
+		optarg = NULL;
+		if (!*place)
+			++optind;
+	}
+	else {					/* need an argument */
+		if (*place)			/* no white space */
+			optarg = place;
+		else if (nargc <= ++optind) {	/* no arg */
+			place = EMSG;
+			if (*ostr == ':')
+				ret = BADARG;
+			else
+				ret = BADCH;
+			if (opterr)
+				(void)fprintf(stderr,
+				    "%s: option requires an argument -- %c\n",
+				    __progname, optopt);
+			return (ret);
+		}
+	 	else				/* white space */
+			optarg = nargv[optind];
+		place = EMSG;
+		++optind;
+	}
+	return (optopt);			/* dump back option letter */
+}
+#else
+#include <unistd.h>
+#endif
 
 #define MAXPLAYERS 4
 #define BACKUPTICS 12
@@ -70,7 +204,7 @@ void I_Error(const char *error, ...) // killough 3/20/98: add const
 
 int playerjoingame[MAXPLAYERS], playerleftgame[MAXPLAYERS];
 #define playeringame(i) ((playerjoingame[i] < INT_MAX) && (playerleftgame[i] == INT_MAX))
-struct sockaddr remoteaddr[MAXPLAYERS];
+UDP_CHANNEL remoteaddr[MAXPLAYERS];
 
 void BroadcastPacket(packet_header_t *packet, size_t len)
 {
@@ -90,8 +224,12 @@ byte def_game_options[GAME_OPTIONS_SIZE] = \
   1, // player bobbing
   0, 0, 0, // respawn, fast, nomonsters
   1, // demo insurance
-  // 4 bytes of random number seed
-}; // Zeroes to the end
+  0, 0, 0, 0, // 4 bytes of random number seed
+  1, 0, 0, 0, 
+  0, 128, /* distfriend */
+  1, 1, 1, 1, 1, 1,
+  /* Zeroes for all compatibility stuff */
+};
 
 int verbose;
 
@@ -115,17 +253,25 @@ void doexit(void)
   BroadcastPacket(&packet, sizeof packet);
 }
 
+#ifndef USE_SDL_NET
 static void I_InitSockets(int v4port)
 {
   v4socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
   I_SetupSocket(v4socket, v4port, AF_INET);
 }
+#else
+static void I_InitSockets(Uint16 port)
+{
+  I_InitNetwork();
+  udp_socket = I_Socket(port);
+}
+#endif
 
 int main(int argc, char** argv)
 {
   int localport = 5030, numplayers = 2, xtratics = 0, ticdup = 1;
   int exectics = 0; // gametics completed
-  struct setup_packet_s setupinfo = { 2, 0, 1, 1, 1, 0, 3};
+  struct setup_packet_s setupinfo = { 2, 0, 1, 1, 1, 0, 7, 0, 0};
   char**wadname = NULL;
   char**wadget = NULL;
   int numwads = 0;
@@ -188,7 +334,7 @@ int main(int argc, char** argv)
 	break;
       }
   }
-
+  
   setupinfo.ticdup = ticdup; setupinfo.extratic = xtratics;
   { /* Random number seed 
      * Mirrors the corresponding code in G_ReadOptions */
@@ -219,9 +365,11 @@ int main(int argc, char** argv)
   atexit(doexit); // heh
   signal(SIGTERM, sig_handler);
   signal(SIGINT , sig_handler);
+#ifndef USE_SDL_NET
   signal(SIGQUIT, sig_handler);
   signal(SIGKILL, sig_handler);
   signal(SIGHUP , sig_handler);
+#endif
   
   {
     int remoteticfrom[MAXPLAYERS] = { 0, 0, 0, 0 };
@@ -235,7 +383,7 @@ int main(int argc, char** argv)
 	packet_header_t *packet = malloc(10000);
 	size_t len;
 	
-	usleep(10000);
+	I_WaitForPacket();
 	while ((len = I_GetPacket(packet, 10000))) {
 	  if (verbose>2) printf("Received packet:");
 	  switch (packet->type) {
@@ -256,7 +404,12 @@ int main(int argc, char** argv)
 
 		if (n == MAXPLAYERS) break; // Full game
 		playerjoingame[n] = 0;
+#ifndef USE_SDL_NET
 		remoteaddr[n] = sentfrom;
+#else
+    if (sentfrom==-1)
+      remoteaddr[n]=I_RegisterPlayer(&sentfrom_addr);
+#endif
 
 		if (!memchr(rname,0,1000)) rname = "Invalid";
 		printf("Join by %s ", rname);
@@ -277,7 +430,7 @@ int main(int argc, char** argv)
 		  }
 		  I_SendPacketTo(packet, sizeof *packet + sizeof setupinfo + extrabytes, 
 				 remoteaddr+n);
-		  usleep(10000);
+		  I_uSleep(10000);
 		  I_SendPacketTo(packet, sizeof *packet + sizeof setupinfo + extrabytes, 
 				 remoteaddr+n);
 		}
@@ -295,9 +448,9 @@ int main(int argc, char** argv)
 		printf("All players joined, beginning game.\n");
 		packet->type = PKT_GO; packet->tic = 0;
 		BroadcastPacket(packet, sizeof *packet);
-		usleep(10000);
+		I_uSleep(10000);
 		BroadcastPacket(packet, sizeof *packet);
-		usleep(100000);
+		I_uSleep(100000);
 	      }
 	    }
 	    break;
@@ -431,71 +584,3 @@ int main(int argc, char** argv)
     }
   }
 }
-
-//
-// $Log: d_server.c,v $
-// Revision 1.1  2000/05/04 08:00:53  proff_fs
-// Initial revision
-//
-// Revision 1.16  2000/04/29 16:15:01  cph
-// Revert new netgame stuff
-//
-// Revision 1.15  2000/04/03 21:47:39  cph
-// Better detection fo IPv6
-// Minor header file corrections
-//
-// Revision 1.14  2000/04/03 17:06:10  cph
-// Split client specific stuff from l_udp.c to new l_network.c
-// Move server specific stuff from l_udp.c to d_server.c
-// Update copyright notices
-// Restructure ready for IPv6 support
-// Use fcntl instead of ioctl to set socket non-blocking
-//
-// Revision 1.13  2000/03/28 10:42:29  cph
-// Send and receive using the same socket
-// Do not transmit port with init packet, server determines it
-// Client searches for a free port instead of needing -port
-// Transmit player number wanted to server and act on it
-// Remove more diagnostics
-//
-// Revision 1.12  2000/03/28 08:47:48  cph
-// New free join/parting for network games
-//
-// Revision 1.11  2000/02/26 19:21:00  cph
-// Remove server stats file; be safe with error message printing
-//
-// Revision 1.10  2000/01/26 08:51:53  cphipps
-// Fix random number seed (cures SIGBUS on Sparc, removes endianness ambiguity
-//
-// Revision 1.9  1999/10/31 16:31:37  cphipps
-// Changed signal handler to use function from l_system.c to get the signal
-// name. Added #include for that.
-//
-// Revision 1.8  1999/10/12 13:01:09  cphipps
-// Changed header to GPL
-//
-// Revision 1.7  1999/09/05 10:50:40  cphipps
-// Server deduces remote address of a new client from the packet
-// sent-from address, instead of the startup packet contents.
-//
-// Revision 1.6  1999/04/02 11:21:21  cphipps
-// Wait for a PKT_GO from each player before starting the game
-//
-// Revision 1.5  1999/04/02 10:55:44  cphipps
-// Send PKT_GO packets when the game starts
-// Extra packets sent in case of packet loss in game startup
-//
-// Revision 1.4  1999/04/01 21:57:32  cphipps
-// Add wad file specifying/listing to the server
-//
-// Revision 1.3  1999/04/01 10:11:37  cphipps
-// Added exit/signal handling
-// Fix counting of players leaving (again :/)
-//
-// Revision 1.2  1999/03/29 12:12:35  cphipps
-// Misc endian fixes
-//
-// Revision 1.1  1999/03/29 11:54:34  cphipps
-// Initial revision
-//
-//

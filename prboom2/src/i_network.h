@@ -1,12 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: i_network.h,v 1.1 2000/05/04 08:02:58 proff_fs Exp $
+ * $Id: i_network.h,v 1.1.1.2 2000/09/20 09:41:03 figgi Exp $
  *
- *  New low level networking code for LxDoom, based in part on 
- *  the original linuxdoom networking
- *  Copyright (C) 1993-1996 by id Software
- *  Copyright (C) 1999-2000 by Colin Phipps
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
+ *  based on BOOM, a modified and improved DOOM engine
+ *  Copyright (C) 1999 by
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -27,47 +29,46 @@
  *  Low level network interface. 
  *-----------------------------------------------------------------------------*/
 
-void I_InitNetwork(const char* serv, int pn);
+#ifdef HAVE_CONFIG_H 
+#include "../config.h"
+#endif
+
+#ifdef USE_SDL_NET
+ #include "SDL.h"
+ #include "SDL_net.h"
+ #define UDP_SOCKET UDPsocket
+ #define UDP_PACKET UDPpacket
+ #define AF_INET
+ #define UDP_CHANNEL int
+ extern UDP_SOCKET udp_socket;
+#else
+ #define UDP_CHANNEL struct sockaddr
+#endif
+
+#ifndef IPPORT_RESERVED
+        #define IPPORT_RESERVED 1024
+#endif
+
+void I_InitNetwork(void);
 size_t I_GetPacket(packet_header_t* buffer, size_t buflen);
 void I_SendPacket(packet_header_t* packet, size_t len);
+void I_WaitForPacket(void);
+
+#ifdef USE_SDL_NET
+UDP_SOCKET I_Socket(Uint16 port);
+int I_ConnectToServer(const char *serv);
+UDP_CHANNEL I_RegisterPlayer(IPaddress *ipaddr);
+void I_UnRegisterPlayer(UDP_CHANNEL channel);
+extern IPaddress sentfrom_addr;
+#endif
 
 #ifdef AF_INET
-void I_SendPacketTo(packet_header_t* packet, size_t len, struct sockaddr* to);
+void I_SendPacketTo(packet_header_t* packet, size_t len, UDP_CHANNEL *to);
 void I_SetupSocket(int sock, int port, int family);
-void I_PrintAddress(FILE* fp, struct sockaddr* addr);
+void I_PrintAddress(FILE* fp, UDP_CHANNEL *addr);
 
-extern struct sockaddr sentfrom;
+extern UDP_CHANNEL sentfrom;
 extern int v4socket, v6socket;
 #endif
 
 extern size_t sentbytes, recvdbytes;
-
-/*
- * $Log: i_network.h,v $
- * Revision 1.1  2000/05/04 08:02:58  proff_fs
- * Initial revision
- *
- * Revision 1.6  2000/04/03 17:06:10  cph
- * Split client specific stuff from l_udp.c to new l_network.c
- * Move server specific stuff from l_udp.c to d_server.c
- * Update copyright notices
- * Restructure ready for IPv6 support
- * Use fcntl instead of ioctl to set socket non-blocking
- *
- * Revision 1.5  2000/03/28 10:43:21  cph
- * Pass wanted player number in init packet
- *
- * Revision 1.4  1999/10/12 13:00:57  cphipps
- * Changed header to GPL, converted C++ comments to C
- *
- * Revision 1.3  1999/09/05 10:48:30  cphipps
- * Added sentfrom address so server can work out client addresses
- * when they connect.
- *
- * Revision 1.2  1999/04/01 09:38:09  cphipps
- * Add variables holding stats
- *
- * Revision 1.1  1999/03/29 11:55:09  cphipps
- * Initial revision
- *
- */

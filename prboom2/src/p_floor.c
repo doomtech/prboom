@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_floor.c,v 1.1 2000/05/04 08:11:24 proff_fs Exp $
+ * $Id: p_floor.c,v 1.1.1.2 2000/09/20 09:44:09 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_floor.c,v 1.1 2000/05/04 08:11:24 proff_fs Exp $";
+rcsid[] = "$Id: p_floor.c,v 1.1.1.2 2000/09/20 09:44:09 figgi Exp $";
 
 #include "doomstat.h"
 #include "r_main.h"
@@ -101,6 +102,14 @@ result_e T_MovePlane
             lastpos = sector->floorheight;
             sector->floorheight -= speed;
             flag = P_CheckSector(sector,crush); //jff 3/19/98 use faster chk
+	    /* cph - make more compatible with original Doom, by
+	     *  reintroducing this code. This means floors can't lower 
+	     *  if objects are stuck in the ceiling */
+	    if ((flag == true) && comp[comp_floors]) {
+	      sector->floorheight = lastpos;
+	      P_ChangeSector(sector,crush);
+	      return crushed;
+	    }
           }
           break;
                                                 
@@ -108,7 +117,7 @@ result_e T_MovePlane
           // Moving a floor up
           // jff 02/04/98 keep floor from moving thru ceilings
           // jff 2/22/98 weaken check to demo_compatibility
-          destheight = (demo_compatibility || dest<sector->ceilingheight)?
+          destheight = (comp[comp_floors] || dest<sector->ceilingheight)?
                           dest : sector->ceilingheight;
           if (sector->floorheight + speed > destheight)
           {
@@ -130,8 +139,8 @@ result_e T_MovePlane
             flag = P_CheckSector(sector,crush); //jff 3/19/98 use faster chk
             if (flag == true)
             {
-              if (demo_compatibility) //jff 1/25/98 fix floor crusher
-              {                       //killough relax to demo_compatibility
+	      /* jff 1/25/98 fix floor crusher */
+              if (comp[comp_floors]) {
                 if (crush == true)
                   return crushed;
               }
@@ -152,7 +161,7 @@ result_e T_MovePlane
           // moving a ceiling down
           // jff 02/04/98 keep ceiling from moving thru floors
           // jff 2/22/98 weaken check to demo_compatibility
-          destheight = (demo_compatibility || dest>sector->floorheight)?
+          destheight = (comp[comp_floors] || dest>sector->floorheight)?
                           dest : sector->floorheight;
           if (sector->ceilingheight - speed < destheight)
           {
@@ -440,7 +449,7 @@ int EV_DoFloor
     floor = Z_Malloc (sizeof(*floor), PU_LEVSPEC, 0);
     P_AddThinker (&floor->thinker);
     sec->floordata = floor; //jff 2/22/98
-    floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+    floor->thinker.function = T_MoveFloor;
     floor->type = floortype;
     floor->crush = false;
 
@@ -558,8 +567,9 @@ int EV_DoFloor
         {
           int minsize = INT_MAX;
           side_t*     side;
-                      
-          if (!compatibility) minsize = 32000<<FRACBITS; //jff 3/13/98 no ovf
+
+	  /* jff 3/13/98 no ovf */
+          if (!comp[comp_model]) minsize = 32000<<FRACBITS; 
           floor->direction = 1;
           floor->sector = sec;
           floor->speed = FLOORSPEED;
@@ -570,18 +580,18 @@ int EV_DoFloor
               side = getSide(secnum,i,0);
               // jff 8/14/98 don't scan texture 0, its not real
               if (side->bottomtexture > 0 ||
-                  (compatibility && !side->bottomtexture))
+                  (comp[comp_model] && !side->bottomtexture))
                 if (textureheight[side->bottomtexture] < minsize)
                   minsize = textureheight[side->bottomtexture];
               side = getSide(secnum,i,1);
               // jff 8/14/98 don't scan texture 0, its not real
               if (side->bottomtexture > 0 ||
-                  (compatibility && !side->bottomtexture))
+                  (comp[comp_model] && !side->bottomtexture))
                 if (textureheight[side->bottomtexture] < minsize)
                   minsize = textureheight[side->bottomtexture];
             }
           }
-          if (compatibility)
+          if (comp[comp_model])
             floor->floordestheight = floor->sector->floorheight + minsize;
           else
           {
@@ -726,7 +736,7 @@ int EV_BuildStairs
     floor = Z_Malloc (sizeof(*floor), PU_LEVSPEC, 0);
     P_AddThinker (&floor->thinker);
     sec->floordata = floor;
-    floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+    floor->thinker.function = T_MoveFloor;
     floor->direction = 1;
     floor->sector = sec;
     floor->type = buildStair;   //jff 3/31/98 do not leave uninited
@@ -799,7 +809,7 @@ int EV_BuildStairs
         P_AddThinker (&floor->thinker);
 
         sec->floordata = floor; //jff 2/22/98
-        floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+        floor->thinker.function = T_MoveFloor;
         floor->direction = 1;
         floor->sector = sec;
         floor->speed = speed;
@@ -812,7 +822,9 @@ int EV_BuildStairs
         break;
       }
     } while(ok);      // continue until no next step is found
-    secnum = osecnum; //jff 3/4/98 restore loop index
+
+    if (!comp[comp_stairs])      // killough 10/98: compatibility option
+      secnum = osecnum; //jff 3/4/98 restore loop index
   }
   return rtn;
 }
@@ -851,8 +863,9 @@ int EV_DoDonut(line_t*  line)
     if (!s2) continue;                    // note lowest numbered line around
                                           // pillar must be two-sided 
 
-    // do not start the donut if the pool is already moving
-    if (!compatibility && P_SectorActive(floor_special,s2)) 
+    /* do not start the donut if the pool is already moving
+     * cph - DEMOSYNC - was !compatibility */
+    if (!comp[comp_floors] && P_SectorActive(floor_special,s2)) 
       continue;                           //jff 5/7/98
                       
     // find a two sided line around the pool whose other side isn't the pillar
@@ -860,7 +873,7 @@ int EV_DoDonut(line_t*  line)
     {
       //jff 3/29/98 use true two-sidedness, not the flag
       // killough 4/5/98: changed demo_compatibility to compatibility
-      if (compatibility)
+      if (comp[comp_model])
       {
         if ((!s2->lines[i]->flags & ML_TWOSIDED) ||
             (s2->lines[i]->backsector == s1))
@@ -877,7 +890,7 @@ int EV_DoDonut(line_t*  line)
       floor = Z_Malloc (sizeof(*floor), PU_LEVSPEC, 0);
       P_AddThinker (&floor->thinker);
       s2->floordata = floor; //jff 2/22/98
-      floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+      floor->thinker.function = T_MoveFloor;
       floor->type = donutRaise;
       floor->crush = false;
       floor->direction = 1;
@@ -891,7 +904,7 @@ int EV_DoDonut(line_t*  line)
       floor = Z_Malloc (sizeof(*floor), PU_LEVSPEC, 0);
       P_AddThinker (&floor->thinker);
       s1->floordata = floor; //jff 2/22/98
-      floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+      floor->thinker.function = T_MoveFloor;
       floor->type = lowerFloor;
       floor->crush = false;
       floor->direction = -1;
@@ -939,7 +952,7 @@ int EV_DoElevator
     P_AddThinker (&elevator->thinker);
     sec->floordata = elevator; //jff 2/22/98
     sec->ceilingdata = elevator; //jff 2/22/98
-    elevator->thinker.function.acp1 = (actionf_p1) T_MoveElevator;
+    elevator->thinker.function = T_MoveElevator;
     elevator->type = elevtype;
 
     // set up the fields according to the type of elevator action
@@ -984,93 +997,3 @@ int EV_DoElevator
   }
   return rtn;
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_floor.c,v $
-// Revision 1.1  2000/05/04 08:11:24  proff_fs
-// Initial revision
-//
-// Revision 1.4  1999/10/12 13:01:12  cphipps
-// Changed header to GPL
-//
-// Revision 1.3  1999/01/25 15:51:03  cphipps
-// Use INT_MAX instead of depreciated MAXINT macro from values.h
-//
-// Revision 1.2  1998/10/27 18:26:37  cphipps
-// Boom v2.02 version imported
-//
-// Revision 1.27  1998/08/15  06:36:29  jim
-// Fixed mispelling
-//
-// Revision 1.26  1998/08/14  11:27:11  jim
-// Fixed raise shortest texture linedefs
-//
-// Revision 1.25  1998/07/14  20:07:32  jim
-// correction of minor errors
-//
-// Revision 1.24  1998/06/20  09:04:39  jim
-// Fix bug in stairs re moving steps
-//
-// Revision 1.23  1998/05/23  10:23:16  jim
-// Fix numeric changer loop corruption
-//
-// Revision 1.22  1998/05/07  17:01:25  jim
-// documented/formatted p_floor
-//
-// Revision 1.21  1998/05/04  02:21:58  jim
-// formatted p_specs, moved a coupla routines to p_floor
-//
-// Revision 1.20  1998/05/03  23:08:04  killough
-// Fix #includes at the top, nothing else
-//
-// Revision 1.19  1998/04/07  11:55:08  jim
-// fixed elevators to block properly
-//
-// Revision 1.18  1998/03/31  16:52:03  jim
-// Fixed uninited type field in stair builders
-//
-// Revision 1.17  1998/03/20  02:10:30  jim
-// Improved crusher code with new mobj data structures
-//
-// Revision 1.16  1998/03/15  14:40:20  jim
-// added pure texture change linedefs & generalized sector types
-//
-// Revision 1.15  1998/03/13  14:06:03  jim
-// Fixed arith overflow in some linedef types
-//
-// Revision 1.14  1998/03/04  11:56:25  jim
-// Fix multiple sector stair raise
-//
-// Revision 1.13  1998/02/27  11:50:54  jim
-// Fixes for stairs
-//
-// Revision 1.12  1998/02/23  23:46:45  jim
-// Compatibility flagged multiple thinker support
-//
-// Revision 1.11  1998/02/23  00:41:41  jim
-// Implemented elevators
-//
-// Revision 1.10  1998/02/13  03:28:31  jim
-// Fixed W1,G1 linedefs clearing untriggered special, cosmetic changes
-//
-// Revision 1.9  1998/02/08  05:35:28  jim
-// Added generalized linedef types
-//
-// Revision 1.6  1998/02/02  13:42:11  killough
-// Program beautification
-//
-// Revision 1.5  1998/01/30  14:44:16  jim
-// Added gun exits, right scrolling walls and ceiling mover specials
-//
-// Revision 1.3  1998/01/26  19:24:03  phares
-// First rev with no ^Ms
-//
-// Revision 1.2  1998/01/25  20:24:42  jim
-// Fixed crusher floor, lowerandChange floor types, and unknown sector special error
-//
-// Revision 1.1.1.1  1998/01/19  14:02:59  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

@@ -1,17 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: i_main.c,v 1.1 2000/05/09 20:47:07 proff_fs Exp $
+ * $Id: i_main.c,v 1.1.1.1 2000/09/20 09:41:01 figgi Exp $
  *
- *  Hybrid of the Boom i_main.c and original linuxdoom i_main.c
- *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *  Copyright (C) 1999-2000 by Colin Phipps (cph@lxdoom.linuxgames.com), 
- *                             Jess Haas (JessH@lbjhs.net),
- *                         and Florian Schulze (florian.proff.schulze@gmx.net)
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -37,7 +34,7 @@
  */
 
 static const char
-rcsid[] = "$Id: i_main.c,v 1.1 2000/05/09 20:47:07 proff_fs Exp $";
+rcsid[] = "$Id: i_main.c,v 1.1.1.1 2000/09/20 09:41:01 figgi Exp $";
 
 #ifdef HAVE_CONFIG_H
 #include "../config.h"
@@ -145,7 +142,7 @@ static void I_SignalHandler(int s)
   if (s==SIGSEGV || s==SIGILL || s==SIGFPE)
     Z_DumpHistory(buf);
 
-  I_Error(buf);
+  I_Error("%s",buf);
 }
 
 /* killough 2/22/98: Add support for ENDBOOM, which is PC-specific
@@ -219,7 +216,8 @@ static void I_EndDoom(void)
     lump = lump_ed;
   else if (lump_ed == -1) 
     lump = lump_eb;
-  else { /* Both ENDOOM and ENDBOOM are present */
+  else
+  { /* Both ENDOOM and ENDBOOM are present */
 #define LUMP_IS_NEW(num) (!((lumpinfo[num].source == source_iwad) || (lumpinfo[num].source == source_auto_load)))
     switch ((LUMP_IS_NEW(lump_ed) ? 1 : 0 ) | 
 	    (LUMP_IS_NEW(lump_eb) ? 2 : 0)) {
@@ -237,70 +235,85 @@ static void I_EndDoom(void)
   }
 
   if (lump != -1)
+  {
+    const char (*endoom)[2] = (void*)W_CacheLumpNum(lump);
+    int i, l = W_LumpLength(lump) / 2;
+
+    /* cph - colour ENDOOM by rain */
+    int oldbg = 0, oldcolor = 7, bold = 0, oldbold = 0, color = 0;
+#ifndef _WIN32
+    if (endoom_mode & endoom_nonasciichars)
+	    /* switch to secondary charset, and set to cp437 (IBM charset) */
+      printf("\e)K\016");
+#endif /* _WIN32 */
+
+    /* cph - optionally drop the last line, so everything fits on one screen */
+    if (endoom_mode & endoom_droplastline)
+      l -= 80;
+    lprintf(LO_INFO,"\n");
+    for (i=0; i<l; i++)
     {
-      const char (*endoom)[2] = (void*)W_CacheLumpNum(lump);
-      int i, l = W_LumpLength(lump) / 2;
-
-      /* cph - colour ENDOOM by rain */
-      int oldbg = 0, oldcolor = 7, bold = 0, oldbold = 0, color = 0;
-      if (endoom_mode & endoom_nonasciichars)
-	/* switch to secondary charset, and set to cp437 (IBM charset) */
-	printf("\e)K\016");
-
-      /* cph - optionally drop the last line, so everything fits on one screen */
-      if (endoom_mode & endoom_droplastline)
-	l -= 80;
-      putchar('\n');
-      for (i=0; i<l; i++)
-        {
-#ifdef DJGPP
-	  textattr(endoom[i][1]);
+#ifdef _WIN32
+      I_ConTextAttr(endoom[i][1]);
+#elif defined (DJGPP)
+      textattr(endoom[i][1]);
 #else
-	  if (endoom_mode & endoom_colours) {
-	    if (!(i % 80)) {
-	      /* reset everything when we start a new line */
-	      oldbg = 0;
-	      oldcolor = 7;
-	      printf("\e[0m\n");
-	    }
-	    /* foreground color */
-	    bold = 0;
-	    color = endoom[i][1] % 16;
-	    if (color != oldcolor) {
-	      oldcolor = color;
-	      color = convert(color, &bold);
-	      if (oldbold != bold) {
-		oldbold = bold;
-		oldbg = 0;
-	      }
-	      /* we buffer everything or output is horrendously slow */
-	      printf("\e[%d;%dm", bold, color + 30);
-	      bold = 0;
-	    }
-	    /* background color */
-	    color = endoom[i][1] / 16; 
-	    if (color != oldbg) {
-	      oldbg = color;
-	      color = convert(color, &bold);
-	      printf("\e[%dm", color + 40);
-	    }
-	  }
-	  /* cph - portable ascii printout if requested */
-	  if (isascii(endoom[i][0]) || (endoom_mode & endoom_nonasciichars))
-	    putchar(endoom[i][0]);
-	  else /* Probably a box character, so do #'s */
-	    putchar('#');
-#endif
+      if (endoom_mode & endoom_colours)
+      {
+        if (!(i % 80))
+        {
+          /* reset everything when we start a new line */
+          oldbg = 0;
+          oldcolor = 7;
+          printf("\e[0m\n");
         }
-      putchar('\b');   /* hack workaround for extra newline at bottom of screen */
-      putchar('\r');
-      if (endoom_mode & endoom_nonasciichars)
-	putchar('\017'); /* restore primary charset */
-      W_UnlockLumpNum(lump);
+        /* foreground color */
+        bold = 0;
+        color = endoom[i][1] % 16;
+        if (color != oldcolor)
+        {
+          oldcolor = color;
+          color = convert(color, &bold);
+          if (oldbold != bold)
+          {
+	          oldbold = bold;
+	          oldbg = 0;
+          }
+          /* we buffer everything or output is horrendously slow */
+          printf("\e[%d;%dm", bold, color + 30);
+          bold = 0;
+        }
+        /* background color */
+        color = endoom[i][1] / 16; 
+        if (color != oldbg)
+        {
+          oldbg = color;
+          color = convert(color, &bold);
+          printf("\e[%dm", color + 40);
+        }
+      }
+#endif
+      /* cph - portable ascii printout if requested */
+      if (isascii(endoom[i][0]) || (endoom_mode & endoom_nonasciichars))
+        lprintf(LO_INFO,"%c",endoom[i][0]);
+      else /* Probably a box character, so do #'s */
+        lprintf(LO_INFO,"#");
     }
+#ifndef _WIN32
+    lprintf(LO_INFO,"\b"); /* hack workaround for extra newline at bottom of screen */
+    lprintf(LO_INFO,"\r");
+    if (endoom_mode & endoom_nonasciichars)
+      putchar('\017'); /* restore primary charset */
+#endif /* _WIN32 */
+    W_UnlockLumpNum(lump);
+  }
+#ifndef _WIN32
   if (endoom_mode & endoom_colours)
     puts("\e[0m"); /* cph - reset colours */
   PrintVer();
+#else /* _WIN32 */
+  I_uSleep(3000000); // CPhipps - don't thrash cpu in this loop
+#endif /* _WIN32 */
 }
 
 static int has_exited;
@@ -349,13 +362,13 @@ int main(int argc, char **argv)
     else
       fprintf(stderr, "Revoked uid %d\n",stored_euid);
 #endif
-#ifdef _MSC_VER
+#ifdef _WIN32
   /* initialize the console window */
   Init_ConsoleWin();
   atexit(Done_ConsoleWin);
 #endif
   /* Version info */
-  putchar('\n');
+  lprintf(LO_INFO,"\n");
   PrintVer();
 
   myargc = argc;
@@ -380,6 +393,7 @@ int main(int argc, char **argv)
   Z_Init();                  /* 1/18/98 killough: start up memory stuff first */
 
   atexit(I_Quit);
+#ifndef _DEBUG
   signal(SIGSEGV, I_SignalHandler);
 #ifdef SIGPIPE
   signal(SIGPIPE, I_SignalHandler); /* CPhipps - add SIGPIPE, as this is fatal */
@@ -390,6 +404,7 @@ int main(int argc, char **argv)
   signal(SIGILL,  I_SignalHandler);
   signal(SIGINT,  I_SignalHandler);  /* killough 3/6/98: allow CTRL-BRK during init */
   signal(SIGABRT, I_SignalHandler);
+#endif
 
   /* cphipps - call to video specific startup code */
   I_PreInitGraphics();
@@ -401,22 +416,3 @@ int main(int argc, char **argv)
   D_DoomMain ();
   return 0;
 }
-
-//
-// $Log: i_main.c,v $
-// Revision 1.1  2000/05/09 20:47:07  proff_fs
-// renamed
-//
-// Revision 1.5  2000/05/07 20:19:33  proff_fs
-// changed use of colormaps from pointers to numbers.
-// That's needed for OpenGL.
-// The OpenGL part is slightly better now.
-// Added some typedefs to reduce warnings in VisualC.
-// Messages are also scaled now, because at 800x600 and
-// above you can't read them even on a 21" monitor.
-//
-// Revision 1.4  2000/05/05 13:02:07  proff_fs
-// Readded the CVS-Log and
-// changed the definition of main()
-//
-//

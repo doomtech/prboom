@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_doors.c,v 1.1 2000/05/04 08:10:47 proff_fs Exp $
+ * $Id: p_doors.c,v 1.1.1.2 2000/09/20 09:43:12 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_doors.c,v 1.1 2000/05/04 08:10:47 proff_fs Exp $";
+rcsid[] = "$Id: p_doors.c,v 1.1.1.2 2000/09/20 09:43:12 figgi Exp $";
 
 #include "doomstat.h"
 #include "p_spec.h"
@@ -129,6 +130,14 @@ void T_VerticalDoor (vldoor_t* door)
               door->direction
             );
 
+      /* killough 10/98: implement gradual lighting effects */
+      if (door->lighttag && door->topheight - door->sector->floorheight)
+        EV_LightTurnOnPartway(door->line,
+                              FixedDiv(door->sector->ceilingheight -
+                                       door->sector->floorheight,
+                                       door->topheight -
+                                       door->sector->floorheight));
+
       // handle door reaching bottom
       if (res == pastdest)
       {
@@ -142,7 +151,7 @@ void T_VerticalDoor (vldoor_t* door)
             door->sector->ceilingdata = NULL;  //jff 2/22/98 
             P_RemoveThinker (&door->thinker);  // unlink and free
             // killough 4/15/98: remove double-closing sound of blazing doors
-            if (compatibility)
+            if (comp[comp_blazing])
               S_StartSound((mobj_t *)&door->sector->soundorg,sfx_bdcls);
             break;
 
@@ -169,28 +178,10 @@ void T_VerticalDoor (vldoor_t* door)
           default:
             break;
         }
-
-        //jff 1/31/98 turn lighting off in tagged sectors of manual doors
-        if (!compatibility && door->line && door->line->tag)
-        {
-          if (door->line->special > GenLockedBase &&
-              (door->line->special&6)==6)       //jff 3/9/98 all manual doors
-            EV_TurnTagLightsOff(door->line);
-          else
-            switch (door->line->special)
-            {
-              case 1: case 31:
-              case 26:
-              case 27: case 28:
-              case 32: case 33:
-              case 34: case 117:
-              case 118:
-                EV_TurnTagLightsOff(door->line);
-              default:
-              break;
-            }
-        }
       }
+      /* jff 1/31/98 turn lighting off in tagged sectors of manual doors
+       * killough 10/98: replaced with gradual lighting code
+       */
       else if (res == crushed) // handle door meeting obstruction on way down
       {
         switch(door->type)
@@ -221,6 +212,14 @@ void T_VerticalDoor (vldoor_t* door)
               door->direction
             );
 
+      /* killough 10/98: implement gradual lighting effects */
+      if (door->lighttag && door->topheight - door->sector->floorheight)
+        EV_LightTurnOnPartway(door->line,
+                              FixedDiv(door->sector->ceilingheight -
+                                       door->sector->floorheight,
+                                       door->topheight -
+                                       door->sector->floorheight));
+
       // handle door reaching the top
       if (res == pastdest)
       {
@@ -249,26 +248,8 @@ void T_VerticalDoor (vldoor_t* door)
             break;
         }
 
-        //jff 1/31/98 turn lighting on in tagged sectors of manual doors
-        if (!compatibility && door->line && door->line->tag)
-        {
-          if (door->line->special > GenLockedBase &&
-              (door->line->special&6)==6)     //jff 3/9/98 all manual doors
-            EV_LightTurnOn(door->line,0);
-          else
-            switch (door->line->special)
-            {
-              case 1: case 31:
-              case 26:
-              case 27: case 28:
-              case 32: case 33:
-              case 34: case 117:
-              case 118:
-                EV_LightTurnOn(door->line,0);
-              default:
-                break;
-            }
-        }
+        /* jff 1/31/98 turn lighting on in tagged sectors of manual doors
+	 * killough 10/98: replaced with gradual lighting code */
       }
       break;
   }
@@ -373,12 +354,13 @@ int EV_DoDoor
     P_AddThinker (&door->thinker);
     sec->ceilingdata = door; //jff 2/22/98
 
-    door->thinker.function.acp1 = (actionf_p1) T_VerticalDoor;
+    door->thinker.function = T_VerticalDoor;
     door->sector = sec;
     door->type = type;
     door->topwait = VDOORWAIT;
     door->speed = VDOORSPEED;
     door->line = line; // jff 1/31/98 remember line that triggered us
+    door->lighttag = 0; /* killough 10/98: no light effects with tagged doors */
     
     // setup door parameters according to type of door
     switch(type)
@@ -552,12 +534,15 @@ int EV_VerticalDoor
   door = Z_Malloc (sizeof(*door), PU_LEVSPEC, 0);
   P_AddThinker (&door->thinker);
   sec->ceilingdata = door; //jff 2/22/98
-  door->thinker.function.acp1 = (actionf_p1) T_VerticalDoor;
+  door->thinker.function = T_VerticalDoor;
   door->sector = sec;
   door->direction = 1;
   door->speed = VDOORSPEED;
   door->topwait = VDOORWAIT;
   door->line = line; // jff 1/31/98 remember line that triggered us
+
+  /* killough 10/98: use gradual lighting changes if nonzero tag given */
+  door->lighttag = comp[comp_doorlight] ? 0 : line->tag;
 
   // set the type of door from the activating linedef type
   switch(line->special)
@@ -585,6 +570,10 @@ int EV_VerticalDoor
       door->type = blazeOpen;
       line->special = 0;
       door->speed = VDOORSPEED*4;
+      break;
+
+    default:
+      door->lighttag = 0;   // killough 10/98
       break;
   }
   
@@ -620,13 +609,14 @@ void P_SpawnDoorCloseIn30 (sector_t* sec)
   sec->ceilingdata = door; //jff 2/22/98
   sec->special = 0;
 
-  door->thinker.function.acp1 = (actionf_p1)T_VerticalDoor;
+  door->thinker.function = T_VerticalDoor;
   door->sector = sec;
   door->direction = 0;
   door->type = normal;
   door->speed = VDOORSPEED;
   door->topcountdown = 30 * 35;
   door->line = NULL; // jff 1/31/98 remember line that triggered us
+  door->lighttag = 0; /* killough 10/98: no lighting changes */
 }
 
 //
@@ -650,7 +640,7 @@ void P_SpawnDoorRaiseIn5Mins
   sec->ceilingdata = door; //jff 2/22/98
   sec->special = 0;
 
-  door->thinker.function.acp1 = (actionf_p1)T_VerticalDoor;
+  door->thinker.function = T_VerticalDoor;
   door->sector = sec;
   door->direction = 2;
   door->type = raiseIn5Mins;
@@ -660,55 +650,5 @@ void P_SpawnDoorRaiseIn5Mins
   door->topwait = VDOORWAIT;
   door->topcountdown = 5 * 60 * 35;
   door->line = NULL; // jff 1/31/98 remember line that triggered us
+  door->lighttag = 0; /* killough 10/98: no lighting changes */
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_doors.c,v $
-// Revision 1.1  2000/05/04 08:10:47  proff_fs
-// Initial revision
-//
-// Revision 1.2  1999/10/12 13:01:12  cphipps
-// Changed header to GPL
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.13  1998/05/09  12:16:29  jim
-// formatted/documented p_doors
-//
-// Revision 1.12  1998/05/03  23:07:16  killough
-// Fix #includes at the top, remove #if 0, nothing else
-//
-// Revision 1.11  1998/04/16  06:28:34  killough
-// Remove double-closing sound of blazing doors
-//
-// Revision 1.10  1998/03/28  05:32:36  jim
-// Text enabling changes for DEH
-//
-// Revision 1.9  1998/03/23  03:24:53  killough
-// Make door-opening 'oof' sound have true source
-//
-// Revision 1.8  1998/03/10  07:08:16  jim
-// Extended manual door lighting to generalized doors
-//
-// Revision 1.7  1998/02/23  23:46:40  jim
-// Compatibility flagged multiple thinker support
-//
-// Revision 1.6  1998/02/23  00:41:36  jim
-// Implemented elevators
-//
-// Revision 1.5  1998/02/13  03:28:25  jim
-// Fixed W1,G1 linedefs clearing untriggered special, cosmetic changes
-//
-// Revision 1.4  1998/02/08  05:35:23  jim
-// Added generalized linedef types
-//
-// Revision 1.2  1998/01/26  19:23:58  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:59  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

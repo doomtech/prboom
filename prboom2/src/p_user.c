@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_user.c,v 1.1 2000/05/04 08:15:05 proff_fs Exp $
+ * $Id: p_user.c,v 1.1.1.2 2000/09/20 09:45:13 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -32,7 +33,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_user.c,v 1.1 2000/05/04 08:15:05 proff_fs Exp $";
+rcsid[] = "$Id: p_user.c,v 1.1.1.2 2000/09/20 09:45:13 figgi Exp $";
 
 #include "doomstat.h"
 #include "d_event.h"
@@ -68,6 +69,23 @@ void P_Thrust(player_t* player,angle_t angle,fixed_t move)
   }
 
 
+/*
+ * P_Bob
+ * Same as P_Thrust, but only affects bobbing.
+ *
+ * killough 10/98: We apply thrust separately between the real physical player
+ * and the part which affects bobbing. This way, bobbing only comes from player
+ * motion, nothing external, avoiding many problems, e.g. bobbing should not
+ * occur on conveyors, unless the player walks on one, and bobbing should be
+ * reduced at a regular rate, even on ice (where the player coasts).
+ */
+
+void P_Bob(player_t *player, angle_t angle, fixed_t move)
+{
+  player->momx += FixedMul(move,finecosine[angle >>= ANGLETOFINESHIFT]);
+  player->momy += FixedMul(move,finesine[angle]);
+}
+
 //
 // P_CalcHeight
 // Calculate the walking / running height adjustment
@@ -85,27 +103,20 @@ void P_CalcHeight (player_t* player)
   // Note: a LUT allows for effects
   //  like a ramp with low health.
 
-  if (!demo_compatibility && !player_bobbing)               // phares 2/26/98
-    player->bob = 0;                                        //   |
-  else                                                      //   V
-    {
-    player->bob = FixedMul(player->mo->momx,player->mo->momx)
-                + FixedMul(player->mo->momy,player->mo->momy);
-    player->bob >>= 2;
 
-    // phares 9/9/98: If player is standing on ice, reduce his bobbing.
+  /* killough 10/98: Make bobbing depend only on player-applied motion.
+   *
+   * Note: don't reduce bobbing here if on ice: if you reduce bobbing here,
+   * it causes bobbing jerkiness when the player moves from ice to non-ice,
+   * and vice-versa.
+   */
+  player->bob = player_bobbing ? (FixedMul(player->momx,player->momx) + 
+				  FixedMul(player->momy,player->momy))>>2 : 0;
 
-    if (player->mo->friction > ORIG_FRICTION) // ice?
-      {
-      if (player->bob > (MAXBOB>>2))
-        player->bob = MAXBOB>>2;
-      }
-    else                                                    //   ^
-      if (player->bob > MAXBOB)                             //   |
-        player->bob = MAXBOB;                               // phares 2/26/98
-    }
+  if (player->bob > MAXBOB)                             
+    player->bob = MAXBOB;
 
-  if ((player->cheats & CF_NOMOMENTUM) || !onground)
+  if (!onground || player->cheats & CF_NOMOMENTUM)
     {
     player->viewz = player->mo->z + VIEWHEIGHT;
 
@@ -161,34 +172,53 @@ void P_CalcHeight (player_t* player)
 // P_MovePlayer
 //
 // Adds momentum if the player is not in the air
+//
+// killough 10/98: simplified
 
 void P_MovePlayer (player_t* player)
-  {
-  ticcmd_t* cmd;
-  int       movefactor;       // movement factor                    // phares
-  mobj_t*   thismo;           // local object                       // phares
-  boolean   onobject = false; // on top of an object?               // phares
+{
+  ticcmd_t *cmd = &player->cmd;
+  mobj_t *mo = player->mo;
 
-  cmd = &player->cmd;
+  mo->angle += cmd->angleturn << 16;
+  onground = mo->z <= mo->floorz;
 
-  thismo = player->mo;                                              // phares
-  thismo->angle += (cmd->angleturn<<16);                            //   |
-                                                                    //   V
-// Do not let the player control movement if not on ground.
+  // killough 10/98:
+  //
+  // We must apply thrust to the player and bobbing separately, to avoid
+  // anomalies. The thrust applied to bobbing is always the same strength on
+  // ice, because the player still "works just as hard" to move, while the
+  // thrust applied to the movement varies with 'movefactor'.
 
-  onground = (thismo->z <= thismo->floorz);
-  if (onground || onobject)
+  if (cmd->forwardmove | cmd->sidemove) // killough 10/98
     {
-    movefactor = P_GetMoveFactor(thismo);
-    if (cmd->forwardmove)
-      P_Thrust(player,thismo->angle,cmd->forwardmove*movefactor);
-    if (cmd->sidemove)
-      P_Thrust(player,thismo->angle-ANG90,cmd->sidemove*movefactor);
+      if (onground || mo->flags & MF_BOUNCES) // killough 8/9/98
+    	{
+    	  int friction, movefactor = P_GetMoveFactor(mo, &friction);
+
+	      // killough 11/98:
+	      // On sludge, make bobbing depend on efficiency.
+	      // On ice, make it depend on effort.
+
+	      int bobfactor =
+	        friction < ORIG_FRICTION ? movefactor : ORIG_FRICTION_FACTOR;
+
+	      if (cmd->forwardmove)
+	      {
+	        P_Bob(player,mo->angle,cmd->forwardmove*bobfactor);
+	        P_Thrust(player,mo->angle,cmd->forwardmove*movefactor);
+	      }
+
+	      if (cmd->sidemove)
+	      {
+	        P_Bob(player,mo->angle-ANG90,cmd->sidemove*bobfactor);
+	        P_Thrust(player,mo->angle-ANG90,cmd->sidemove*movefactor);
+	      }
+	    }
+      if (mo->state == states+S_PLAY)
+      	P_SetMobjState(mo,S_PLAY_RUN1);
     }
-  if ((cmd->forwardmove || cmd->sidemove) &&
-    (thismo->state == &states[S_PLAY]))                             //   ^
-    P_SetMobjState(thismo,S_PLAY_RUN1);                             //   |
-  }                                                                 // phares
+}
 
 #define ANG5 (ANG90/18)
 
@@ -389,66 +419,3 @@ void P_PlayerThink (player_t* player)
     player->powers[pw_invulnerability] & 8 ? INVERSECOLORMAP :
     player->powers[pw_infrared] > 4*32 || player->powers[pw_infrared] & 8;
   }
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_user.c,v $
-// Revision 1.1  2000/05/04 08:15:05  proff_fs
-// Initial revision
-//
-// Revision 1.4  2000/03/29 09:59:19  cph
-// Reorganise game special event code
-// Allow endgame in a netgame
-//
-// Revision 1.3  1999/10/12 13:01:13  cphipps
-// Changed header to GPL
-//
-// Revision 1.2  1998/10/27 18:44:38  cphipps
-// Boom v2.02 update patched in
-//
-// Revision 1.15  1998/09/10  20:13:01  phares
-// Fix DM Stuck bug and refix ice-bobbing/momentum
-//
-// Revision 1.14  1998/05/12  12:47:25  phares
-// Removed OVER_UNDER code
-//
-// Revision 1.13  1998/05/10  23:38:04  killough
-// Add #include p_user.h to ensure consistent prototypes
-//
-// Revision 1.12  1998/05/05  15:35:20  phares
-// Documentation and Reformatting changes
-//
-// Revision 1.11  1998/05/03  23:21:04  killough
-// Fix #includes and remove unnecessary decls at the top, nothing else
-//
-// Revision 1.10  1998/03/23  15:24:50  phares
-// Changed pushers to linedef control
-//
-// Revision 1.9  1998/03/23  03:35:24  killough
-// Move weapons changes to G_BuildTiccmd, fix idclip
-//
-// Revision 1.8  1998/03/12  14:28:50  phares
-// friction and IDCLIP changes
-//
-// Revision 1.7  1998/03/09  18:26:55  phares
-// Fixed bug in neighboring variable friction sectors
-//
-// Revision 1.6  1998/02/27  08:10:08  phares
-// Added optional player bobbing
-//
-// Revision 1.5  1998/02/24  08:46:42  phares
-// Pushers, recoil, new friction, and over/under work
-//
-// Revision 1.4  1998/02/15  02:47:57  phares
-// User-defined keys
-//
-// Revision 1.3  1998/02/09  03:13:20  killough
-// Improve weapon control and add preferences
-//
-// Revision 1.2  1998/01/26  19:24:34  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:01  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------

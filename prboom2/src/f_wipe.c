@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: f_wipe.c,v 1.1 2000/05/04 08:01:33 proff_fs Exp $
+ * $Id: f_wipe.c,v 1.1.1.2 2000/09/20 09:40:22 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,11 @@
  *-----------------------------------------------------------------------------
  */
 
-static const char rcsid[] = "$Id: f_wipe.c,v 1.1 2000/05/04 08:01:33 proff_fs Exp $";
+static const char rcsid[] = "$Id: f_wipe.c,v 1.1.1.2 2000/09/20 09:40:22 figgi Exp $";
+
+#ifdef HAVE_CONFIG_H
+#include "../config.h"
+#endif
 
 #include "z_zone.h"
 #include "doomdef.h"
@@ -154,15 +159,15 @@ static int wipe_exitMelt(int width, int height, int ticks)
 int wipe_StartScreen(int x, int y, int width, int height)
 {
   wipe_scr_start = screens[SRC_SCR] = malloc(SCREENWIDTH * SCREENHEIGHT);
-  V_CopyRect(x, y, 0,       width, height, x, y, SRC_SCR ); // Copy start screen to buffer
+  V_CopyRect(x, y, 0,       width, height, x, y, SRC_SCR, VPT_NONE ); // Copy start screen to buffer
   return 0;
 }
 
 int wipe_EndScreen(int x, int y, int width, int height)
 {
   wipe_scr_end = screens[DEST_SCR] = malloc(SCREENWIDTH * SCREENHEIGHT);
-  V_CopyRect(x, y, 0,       width, height, x, y, DEST_SCR); // Copy end screen to buffer
-  V_CopyRect(x, y, SRC_SCR, width, height, x, y, 0       ); // restore start screen
+  V_CopyRect(x, y, 0,       width, height, x, y, DEST_SCR, VPT_NONE); // Copy end screen to buffer
+  V_CopyRect(x, y, SRC_SCR, width, height, x, y, 0       , VPT_NONE); // restore start screen
   return 0;
 }
 
@@ -184,37 +189,3 @@ int wipe_ScreenWipe(int x, int y, int width, int height, int ticks)
     }
   return !go;
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: f_wipe.c,v $
-// Revision 1.1  2000/05/04 08:01:33  proff_fs
-// Initial revision
-//
-// Revision 1.5  1999/10/12 13:01:10  cphipps
-// Changed header to GPL
-//
-// Revision 1.4  1999/08/26 21:52:11  cphipps
-// Removed old alternate wipe types (ColorXForm stuff), unused
-// Macroise screen numbers for the stored screens
-// Use standard V_CopyRect to move screens around
-//
-// Revision 1.3  1998/12/30 22:07:48  cphipps
-// Updated for new patch drawing
-//
-// Revision 1.2  1998/12/28 21:25:20  cphipps
-// Allocate screens for wipe storage as needed
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.3  1998/05/03  22:11:24  killough
-// beautification
-//
-// Revision 1.2  1998/01/26  19:23:16  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:54  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------

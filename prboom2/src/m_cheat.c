@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: m_cheat.c,v 1.1 2000/05/04 08:08:59 proff_fs Exp $
+ * $Id: m_cheat.c,v 1.1.1.2 2000/09/20 09:43:08 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: m_cheat.c,v 1.1 2000/05/04 08:08:59 proff_fs Exp $";
+rcsid[] = "$Id: m_cheat.c,v 1.1.1.2 2000/09/20 09:43:08 figgi Exp $";
 
 #include "doomstat.h"
 #include "g_game.h"
@@ -467,9 +468,6 @@ static void cheat_rate()
 
 // compatibility cheat
 
-static const char * comp_lev_str[MAX_COMPATIBILITY_LEVEL] = 
-{ "demo compatibility", "boom compatibility", "boom", "lxdoom v1.3.2+" };
-
 static void cheat_comp()
 {
   // CPhipps - modified for new compatibility system
@@ -519,8 +517,12 @@ static void cheat_massacre()    // jff 2/01/98 kill all monsters
   thinker_t *currentthinker=&thinkercap;
   extern void A_PainDie(mobj_t *);
 
-  while ((currentthinker=currentthinker->next)!=&thinkercap)
-    if (currentthinker->function.acp1 == (actionf_p1) P_MobjThinker &&
+  // killough 7/20/98: kill friendly monsters only if no others to kill
+  uint_64_t mask = MF_FRIEND;
+  do
+    while ((currentthinker=currentthinker->next)!=&thinkercap)
+    if (currentthinker->function == P_MobjThinker &&
+	!(((mobj_t *) currentthinker)->flags & mask) && // killough 7/20/98
         (((mobj_t *) currentthinker)->flags & MF_COUNTKILL ||
          ((mobj_t *) currentthinker)->type == MT_SKULL))
       { // killough 3/6/98: kill even if PE is dead
@@ -535,6 +537,7 @@ static void cheat_massacre()    // jff 2/01/98 kill all monsters
             P_SetMobjState ((mobj_t *) currentthinker, S_PAIN_DIE6);
           }
       }
+  while (!killcount && mask ? mask=0, 1 : 0); // killough 7/20/98
   // killough 3/22/98: make more intelligent about plural
   // Ty 03/27/98 - string(s) *not* externalized
   doom_printf("%d Monster%s Killed", killcount, killcount==1 ? "" : "s");
@@ -735,61 +738,3 @@ boolean M_FindCheats(int key)
     }
   return ret;
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: m_cheat.c,v $
-// Revision 1.1  2000/05/04 08:08:59  proff_fs
-// Initial revision
-//
-// Revision 1.12  1999/10/17 09:35:58  cphipps
-// Fixed hanging else(s)
-//
-// Revision 1.11  1999/10/12 13:01:12  cphipps
-// Changed header to GPL
-//
-// Revision 1.10  1999/06/17 10:21:39  cphipps
-// Add rendering stats toggle cheat
-//
-// Revision 1.9  1999/06/08 17:27:54  cphipps
-// Change long long references to int_64_t's
-//
-// Revision 1.8  1999/03/10 15:12:22  cphipps
-// New health and armour cheat codes
-//
-// Revision 1.7  1999/03/07 22:21:44  cphipps
-// Change for new automap mode variable
-//
-// Revision 1.6  1999/01/11 16:04:18  cphipps
-// TNTCOMP cheat updated for new compatibility handling
-//
-// Revision 1.4  1998/10/27 16:04:53  cphipps
-// Boom v2.02 version
-// Changed dprintf's to doom_printf's
-//
-// Revision 1.8  1998/08/14  19:51:45  jim
-// Clamp IDCLEV to 32 Maps
-//
-// Revision 1.7  1998/05/12  12:47:00  phares
-// Removed OVER_UNDER code
-//
-// Revision 1.6  1998/05/07  01:08:11  killough
-// Make TNTAMMO ammo ordering more natural
-//
-// Revision 1.5  1998/05/03  22:10:53  killough
-// Cheat engine, moved from st_stuff
-//
-// Revision 1.4  1998/05/01  14:38:06  killough
-// beautification
-//
-// Revision 1.3  1998/02/09  03:03:05  killough
-// Rendered obsolete by st_stuff.c
-//
-// Revision 1.2  1998/01/26  19:23:44  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:58  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

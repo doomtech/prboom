@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_enemy.h,v 1.1 2000/05/04 08:11:12 proff_fs Exp $
+ * $Id: p_enemy.h,v 1.1.1.2 2000/09/20 09:44:05 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -38,27 +39,13 @@
 
 void P_NoiseAlert (mobj_t *target, mobj_t *emmiter);
 void P_SpawnBrainTargets(void); /* killough 3/26/98: spawn icon landings */
+/* proff 11/22/98: Andy Baker's stealth monsters */
+void	 P_BecomeVisible (mobj_t *actor);
+void	 P_IncreaseVisibility (mobj_t *actor);
+void	 P_DecreaseVisibility (mobj_t *actor);
 
 extern struct brain_s {         /* killough 3/26/98: global state of boss brain */
   int easy, targeton;
 } brain;
 
 #endif // __P_ENEMY__
-
-/*----------------------------------------------------------------------------
- *
- * $Log: p_enemy.h,v $
- * Revision 1.1  2000/05/04 08:11:12  proff_fs
- * Initial revision
- *
- * Revision 1.2  1999/10/12 13:01:15  cphipps
- * Changed header to GPL
- *
- * Revision 1.1  1998/09/13 16:49:50  cphipps
- * Initial revision
- *
- * Revision 1.1  1998/05/03  22:29:32  killough
- * External declarations formerly in p_local.h
- *
- *
- *----------------------------------------------------------------------------*/

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: w_wad.c,v 1.1 2000/05/04 08:18:54 proff_fs Exp $
+ * $Id: w_wad.c,v 1.1.1.2 2000/09/20 09:46:17 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,13 +32,13 @@
  */
 
 static const char
-rcsid[] = "$Id: w_wad.c,v 1.1 2000/05/04 08:18:54 proff_fs Exp $";
+rcsid[] = "$Id: w_wad.c,v 1.1.1.2 2000/09/20 09:46:17 figgi Exp $";
 
 // use config.h if autoconf made one -- josh
 #ifdef HAVE_CONFIG_H
 #include "../config.h"
 #endif
-#ifdef HAVE_UNISTD
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 #ifdef _MSC_VER
@@ -188,8 +189,14 @@ static void W_AddFile(const char *filename, wad_source_t source)
   lprintf (LO_INFO," adding %s\n",filename);
   startlump = numlumps;
 
-  // killough:
-  if (strlen(filename)<=4 || strcasecmp(filename+strlen(filename)-4, ".wad" ))
+  // figgi -- added support for glBsp .gwa files
+#ifdef GL_DOOM
+   	if( strlen(filename)<=4 || 
+	   (stricmp(filename+strlen(filename)-3,"wad") && 
+	    stricmp(filename+strlen(filename)-3,"gwa")))
+#else
+	if (strlen(filename)<=4 || strcasecmp(filename+strlen(filename)-4, ".wad" ))
+#endif
     {
       // single lump file
       fileinfo = &singleinfo;
@@ -219,7 +226,7 @@ static void W_AddFile(const char *filename, wad_source_t source)
 
     lump_p = &lumpinfo[startlump];
 
-    for (i=startlump ; i<numlumps ; i++,lump_p++, fileinfo++)
+    for (i=startlump ; (int)i<numlumps ; i++,lump_p++, fileinfo++)
       {
         lump_p->handle = handle;                    //  killough 4/25/98
         lump_p->position = LONG(fileinfo->filepos);
@@ -445,7 +452,7 @@ void W_Init(void)
   { // CPhipps - new wadfiles array used 
     // open all the files, load headers, and count lumps
     int i;
-    for (i=0; i<numwadfiles; i++)
+    for (i=0; (size_t)i<numwadfiles; i++)
       W_AddFile(wadfiles[i].name, wadfiles[i].src);
   }
 
@@ -533,7 +540,7 @@ void W_ReadLump(int lump, void *dest)
 const void * (W_CacheLumpNum)(int lump, unsigned short locks)
 {
 #ifdef RANGECHECK
-  if ((unsigned)lump >= numlumps)
+  if ((unsigned)lump >= (unsigned)numlumps)
     I_Error ("W_CacheLumpNum: %i >= numlumps",lump);
 #endif
 
@@ -559,6 +566,49 @@ const void * (W_CacheLumpNum)(int lump, unsigned short locks)
   return (locks ? lumpcache[lump] : NULL);
 }
 
+/* cph - 
+ * W_CacheLumpNumPadded
+ *
+ * Caches a lump and pads the memory following it.
+ * The thing returned is *only* guaranteed to be padded if 
+ *  the lump isn't already cached (otherwise, you get whatever is 
+ *  currently cached, which if it was cached by a previous call 
+ *  to this will also be padded)
+ */
+
+const void * W_CacheLumpNumPadded(int lump, size_t len, unsigned char pad)
+{
+  const int locks = 1;
+#ifdef RANGECHECK
+  if ((unsigned)lump >= (unsigned)numlumps)
+    I_Error ("W_CacheLumpNum: %i >= numlumps",lump);
+#endif
+
+  if (!lumpcache[lump]) {     /* read the lump in */
+    size_t lumplen = W_LumpLength(lump);
+    unsigned char* p;
+    W_ReadLump(lump, p = Z_Malloc(len, PU_CACHE, &lumpcache[lump]));
+    memset(p+lumplen, pad, len-lumplen);
+  }
+
+  /* cph - if wasn't locked but now is, tell z_zone to hold it */
+  if (!lumpinfo[lump].locks && locks) {
+    Z_ChangeTag(lumpcache[lump],PU_STATIC);
+#ifdef TIMEDIAG
+    locktic[lump] = gametic;
+#endif
+  }
+  lumpinfo[lump].locks += locks;
+
+#ifdef SIMPLECHECKS
+  if (!((lumpinfo[lump].locks+1) & 0xf))
+    lprintf(LO_DEBUG, "W_CacheLumpNum: High lock on %8s (%d)\n", 
+	    lumpinfo[lump].name, lumpinfo[lump].locks);
+#endif
+
+  return lumpcache[lump];
+}
+
 //
 // W_UnlockLumpNum
 //
@@ -567,7 +617,7 @@ const void * (W_CacheLumpNum)(int lump, unsigned short locks)
 void (W_UnlockLumpNum)(int lump, signed short unlocks)
 {
 #ifdef SIMPLECHECKS
-  if (lumpinfo[lump].locks < unlocks)
+  if ((signed short)lumpinfo[lump].locks < unlocks)
     lprintf(LO_DEBUG, "W_UnlockLumpNum: Excess unlocks on %8s (%d-%d)\n", 
 	    lumpinfo[lump].name, lumpinfo[lump].locks, unlocks);
 #endif
@@ -602,7 +652,11 @@ void WritePredefinedLumpWad(const char *filename)
 
   // The following code writes a PWAD from the predefined lumps array
   // How to write a PWAD will not be explained here.
+#ifdef _MSC_VER // proff: In Visual C open is defined a bit different
+  if ( (handle = open (filenam, O_RDWR | O_CREAT | O_BINARY, _S_IWRITE|_S_IREAD)) != -1)
+#else
   if ( (handle = open (filenam, O_RDWR | O_CREAT | O_BINARY, S_IWUSR|S_IRUSR)) != -1)
+#endif
   {
     wadinfo_t header = {"PWAD"};
     size_t filepos = sizeof(wadinfo_t) + num_predefined_lumps * sizeof(filelump_t);
@@ -615,7 +669,7 @@ void WritePredefinedLumpWad(const char *filename)
     write(handle, &header, sizeof(header));
 
     // write directory
-    for (i=0;i<num_predefined_lumps;i++)
+    for (i=0;(size_t)i<num_predefined_lumps;i++)
     {
       filelump_t fileinfo = {0};
       fileinfo.filepos = LONG(filepos);
@@ -626,7 +680,7 @@ void WritePredefinedLumpWad(const char *filename)
     }
 
     // write lumps
-    for (i=0;i<num_predefined_lumps;i++)
+    for (i=0;(size_t)i<num_predefined_lumps;i++)
       write(handle, predefined_lumps[i].data, predefined_lumps[i].size);
 
     close(handle);
@@ -635,114 +689,3 @@ void WritePredefinedLumpWad(const char *filename)
  I_Error("Cannot open predefined lumps wad %s for output\n", filename);
 }
 #endif
-
-//----------------------------------------------------------------------------
-//
-// $Log: w_wad.c,v $
-// Revision 1.1  2000/05/04 08:18:54  proff_fs
-// Initial revision
-//
-// Revision 1.15  2000/05/01 17:50:37  Proff
-// made changes to compile with VisualC and SDL
-//
-// Revision 1.14  2000/04/26 12:58:31  cph
-// Fix ?name collision? on filelength(), from lsdldoom
-//
-// Revision 1.13  2000/04/09 10:32:34  cph
-// Fix W_CacheLumpNum logic for the no-lock case
-// Add W_PrintLump to give more info for the heap dumping code
-//
-// Revision 1.12  1999/10/27 18:35:50  cphipps
-// Made W_CacheLump* return a const pointer
-//
-// Revision 1.11  1999/10/12 13:01:15  cphipps
-// Changed header to GPL
-//
-// Revision 1.10  1999/10/02 11:59:12  cphipps
-// Diagnostics options now set in config.h
-//
-// Revision 1.9  1999/04/01 22:19:06  cphipps
-// Add call to network code to ask for missing wad files
-//
-// Revision 1.8  1999/01/02 20:30:51  cphipps
-// New lump locking code stressed and seems stable
-// Time diagnostics turned off
-//
-// Revision 1.7  1999/01/01 16:22:20  cphipps
-// Added debugging macros to find common errors
-//
-// Revision 1.6  1999/01/01 15:32:24  cphipps
-// New wad lump locking system implemented
-//
-// Revision 1.5  1998/12/22 20:55:50  cphipps
-// Renames W_InitMult... to W_Init, removed parameters, recoded to use
-// the wadfiles array
-// The wadfiles array and size moved here from d_main.c
-//
-// Revision 1.4  1998/10/27 19:03:17  cphipps
-// Boom v2.02 updates patched in:
-// Wad lump source markers
-// Logical output system
-//
-// Revision 1.3  1998/10/16 21:49:48  cphipps
-// Make W_InitMultipleFiles take a const * const *
-//
-// Revision 1.2  1998/09/14 19:05:30  cphipps
-// #ifdef around all predefined lumps code.
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.20  1998/05/06  11:32:00  jim
-// Moved predefined lump writer info->w_wad
-//
-// Revision 1.19  1998/05/03  22:43:09  killough
-// beautification, header #includes
-//
-// Revision 1.18  1998/05/01  14:53:59  killough
-// beautification
-//
-// Revision 1.17  1998/04/27  02:06:41  killough
-// Program beautification
-//
-// Revision 1.16  1998/04/17  10:34:53  killough
-// Tag lumps with namespace tags to resolve collisions
-//
-// Revision 1.15  1998/04/06  04:43:59  killough
-// Add C_START/C_END support, remove non-standard C code
-//
-// Revision 1.14  1998/03/23  03:42:59  killough
-// Fix drive-letter bug and force marker lumps to 0-size
-//
-// Revision 1.12  1998/02/23  04:59:18  killough
-// Move TRANMAP init code to r_data.c
-//
-// Revision 1.11  1998/02/20  23:32:30  phares
-// Added external tranmap
-//
-// Revision 1.10  1998/02/20  22:53:25  phares
-// Moved TRANMAP initialization to w_wad.c
-//
-// Revision 1.9  1998/02/17  06:25:07  killough
-// Make numlumps static add #ifdef RANGECHECK for perf
-//
-// Revision 1.8  1998/02/09  03:20:16  killough
-// Fix garbage printed in lump error message
-//
-// Revision 1.7  1998/02/02  13:21:04  killough
-// improve hashing, add predef lumps, fix err handling
-//
-// Revision 1.6  1998/01/26  19:25:10  phares
-// First rev with no ^Ms
-//
-// Revision 1.5  1998/01/26  06:30:50  killough
-// Rewrite merge routine to use simpler, robust algorithm
-//
-// Revision 1.3  1998/01/23  20:28:11  jim
-// Basic sprite/flat functionality in PWAD added
-//
-// Revision 1.2  1998/01/22  05:55:58  killough
-// Improve hashing algorithm
-//
-//----------------------------------------------------------------------------
-

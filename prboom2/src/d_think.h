@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: d_think.h,v 1.1 2000/05/04 08:00:53 proff_fs Exp $
+ * $Id: d_think.h,v 1.1.1.2 2000/09/20 09:39:59 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -44,13 +45,16 @@
  *  we will need to handle the various
  *  action functions cleanly.
  */
-typedef  void (*actionf_v)();
-typedef  void (*actionf_p1)( void* );
-typedef  void (*actionf_p2)( void*, void* );
+// killough 11/98: convert back to C instead of C++
+typedef  void (*actionf_t)();
+//typedef  void (*actionf_v)();
+//typedef  void (*actionf_p1)( void* );
+//typedef  void (*actionf_p2)( void*, void* );
 
 /* Note: In d_deh.c you will find references to these
  * wherever code pointers and function handlers exist
  */
+/*
 typedef union
 {
   actionf_p1    acp1;
@@ -58,6 +62,7 @@ typedef union
   actionf_p2    acp2;
 
 } actionf_t;
+*/
 
 /* Historically, "think_t" is yet another
  *  function pointer to a routine to handle
@@ -73,30 +78,16 @@ typedef struct thinker_s
   struct thinker_s*   next;
   think_t             function;
     
+  /* killough 8/29/98: we maintain thinkers in several equivalence classes,
+   * according to various criteria, so as to allow quicker searches.
+   */
+
+  struct thinker_s *cnext, *cprev; /* Next, previous thinkers in same class */
+
+  /* killough 11/98: count of how many other objects reference
+   * this one using pointers. Used for garbage collection.
+   */
+  unsigned references;
 } thinker_t;
 
 #endif
-
-/*----------------------------------------------------------------------------
- *
- * $Log: d_think.h,v $
- * Revision 1.1  2000/05/04 08:00:53  proff_fs
- * Initial revision
- *
- * Revision 1.2  1999/10/12 13:00:56  cphipps
- * Changed header to GPL, converted C++ comments to C
- *
- * Revision 1.1  1998/09/13 16:49:50  cphipps
- * Initial revision
- *
- * Revision 1.3  1998/05/04  21:34:20  thldrmn
- * commenting and reformatting
- *
- * Revision 1.2  1998/01/26  19:26:34  phares
- * First rev with no ^Ms
- *
- * Revision 1.1.1.1  1998/01/19  14:03:08  rand
- * Lee's Jan 19 sources
- *
- *
- *----------------------------------------------------------------------------*/

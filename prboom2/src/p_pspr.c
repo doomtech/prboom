@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_pspr.c,v 1.1 2000/05/04 08:13:05 proff_fs Exp $
+ * $Id: p_pspr.c,v 1.1.1.2 2000/09/20 09:44:14 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_pspr.c,v 1.1 2000/05/04 08:13:05 proff_fs Exp $";
+rcsid[] = "$Id: p_pspr.c,v 1.1.1.2 2000/09/20 09:44:14 figgi Exp $";
 
 #include "doomstat.h"
 #include "r_main.h"
@@ -99,9 +100,9 @@ static void P_SetPsprite(player_t *player, int position, statenum_t stnum)
 
       // Call action routine.
       // Modified handling.
-      if (state->action.acp2)
+      if (state->action)
         {
-          state->action.acp2(player, psp);
+          state->action(player, psp);
           if (!psp->state)
             break;
         }
@@ -130,7 +131,9 @@ static void P_BringUpWeapon(player_t *player)
   newstate = weaponinfo[player->pendingweapon].upstate;
 
   player->pendingweapon = wp_nochange;
-  player->psprites[ps_weapon].sy = WEAPONBOTTOM;
+  // killough 12/98: prevent pistol from starting visibly at bottom of screen:
+  player->psprites[ps_weapon].sy = 
+    mbf_features ? WEAPONBOTTOM+FRACUNIT*2 : WEAPONBOTTOM;
 
   P_SetPsprite(player, ps_weapon, newstate);
 }
@@ -489,7 +492,13 @@ void A_Punch(player_t *player, pspdef_t *psp)
   // killough 5/5/98: remove dependence on order of evaluation:
   t = P_Random(pr_punchangle);
   angle += (t - P_Random(pr_punchangle))<<18;
-  slope = P_AimLineAttack(player->mo, angle, MELEERANGE);
+
+  /* killough 8/2/98: make autoaiming prefer enemies */
+  if (!mbf_features ||
+      (slope = P_AimLineAttack(player->mo, angle, MELEERANGE, MF_FRIEND),
+       !linetarget))
+    slope = P_AimLineAttack(player->mo, angle, MELEERANGE, 0);
+
   P_LineAttack(player->mo, angle, MELEERANGE, slope, damage);
 
   if (!linetarget)
@@ -515,8 +524,13 @@ void A_Saw(player_t *player, pspdef_t *psp)
   int t = P_Random(pr_saw);
   angle += (t - P_Random(pr_saw))<<18;
 
-  // Use meleerange + 1 so that the puff doesn't skip the flash
-  slope = P_AimLineAttack(player->mo, angle, MELEERANGE+1);
+  /* Use meleerange + 1 so that the puff doesn't skip the flash
+   * killough 8/2/98: make autoaiming prefer enemies */
+  if (!mbf_features ||
+      (slope = P_AimLineAttack(player->mo, angle, MELEERANGE+1, MF_FRIEND),
+       !linetarget))
+    slope = P_AimLineAttack(player->mo, angle, MELEERANGE+1, 0);
+
   P_LineAttack(player->mo, angle, MELEERANGE+1, slope, damage);
 
   if (!linetarget)
@@ -566,6 +580,20 @@ void A_FireBFG(player_t *player, pspdef_t *psp)
   P_SpawnPlayerMissile(player->mo, MT_BFG);
 }
 
+/*
+ * A_FireOldBFG
+ *
+ * This function emulates Doom's Pre-Beta BFG
+ * By Lee Killough 6/6/98, 7/11/98, 7/19/98, 8/20/98
+ *
+ * This code may not be used in other mods without appropriate credit given.
+ * Code leeches will be telefragged.
+ */
+
+void A_FireOldBFG(player_t *player, pspdef_t *psp)
+{
+}
+
 //
 // A_FirePlasma
 //
@@ -590,18 +618,18 @@ static void P_BulletSlope(mobj_t *mo)
 {
   angle_t an = mo->angle;    // see which target is to be aimed at
 
-  bulletslope = P_AimLineAttack(mo, an, 16*64*FRACUNIT);
+  /* killough 8/2/98: make autoaiming prefer enemies */
+  uint_64_t mask = mbf_features ? MF_FRIEND : 0;
 
-  if (!linetarget)
+  do
     {
-      an += 1<<26;
-      bulletslope = P_AimLineAttack(mo, an, 16*64*FRACUNIT);
+      bulletslope = P_AimLineAttack(mo, an, 16*64*FRACUNIT, mask);
       if (!linetarget)
-        {
-          an -= 2<<26;
-          bulletslope = P_AimLineAttack(mo, an, 16*64*FRACUNIT);
-        }
+	bulletslope = P_AimLineAttack(mo, an += 1<<26, 16*64*FRACUNIT, mask);
+      if (!linetarget)
+	bulletslope = P_AimLineAttack(mo, an -= 2<<26, 16*64*FRACUNIT, mask);
     }
+  while (mask && (mask=0, !linetarget));  /* killough 8/2/98 */
 }
 
 //
@@ -740,7 +768,11 @@ void A_BFGSpray(mobj_t *mo)
 
       // mo->target is the originator (player) of the missile
 
-      P_AimLineAttack(mo->target, an, 16*64*FRACUNIT);
+      // killough 8/2/98: make autoaiming prefer enemies
+      if (!mbf_features ||
+         (P_AimLineAttack(mo->target, an, 16*64*FRACUNIT, MF_FRIEND),
+         !linetarget))
+	      P_AimLineAttack(mo->target, an, 16*64*FRACUNIT, 0);
 
       if (!linetarget)
         continue;
@@ -803,62 +835,3 @@ void P_MovePsprites(player_t *player)
   player->psprites[ps_flash].sx = player->psprites[ps_weapon].sx;
   player->psprites[ps_flash].sy = player->psprites[ps_weapon].sy;
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_pspr.c,v $
-// Revision 1.1  2000/05/04 08:13:05  proff_fs
-// Initial revision
-//
-// Revision 1.4  1999/10/12 13:01:13  cphipps
-// Changed header to GPL
-//
-// Revision 1.3  1999/01/04 19:29:10  cphipps
-// Removed duplicate weapon_recoil instance
-//
-// Revision 1.2  1998/10/16 21:18:20  cphipps
-// 'Fixed' hanging else
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.13  1998/05/07  00:53:36  killough
-// Remove dependence on order of evaluation
-//
-// Revision 1.12  1998/05/05  16:29:17  phares
-// Removed RECOIL and OPT_BOBBING defines
-//
-// Revision 1.11  1998/05/03  22:35:21  killough
-// Fix weapons switch bug again, beautification, headers
-//
-// Revision 1.10  1998/04/29  10:01:55  killough
-// Fix buggy weapons switch code
-//
-// Revision 1.9  1998/03/28  18:01:38  killough
-// Prevent weapon recoil in no-clipping mode
-//
-// Revision 1.8  1998/03/23  03:28:29  killough
-// Move weapons changes to G_BuildTiccmd()
-//
-// Revision 1.7  1998/03/10  07:14:47  jim
-// Initial DEH support added, minus text
-//
-// Revision 1.6  1998/02/24  08:46:27  phares
-// Pushers, recoil, new friction, and over/under work
-//
-// Revision 1.5  1998/02/17  05:59:41  killough
-// Use new RNG calling sequence
-//
-// Revision 1.4  1998/02/15  02:47:54  phares
-// User-defined keys
-//
-// Revision 1.3  1998/02/09  03:06:15  killough
-// Add player weapon preference options
-//
-// Revision 1.2  1998/01/26  19:24:18  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:00  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------

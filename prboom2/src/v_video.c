@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: v_video.c,v 1.1 2000/05/04 08:18:37 proff_fs Exp $
+ * $Id: v_video.c,v 1.1.1.2 2000/09/20 09:45:47 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -34,38 +35,23 @@
  */
 
 static const char
-rcsid[] = "$Id: v_video.c,v 1.1 2000/05/04 08:18:37 proff_fs Exp $";
+rcsid[] = "$Id: v_video.c,v 1.1.1.2 2000/09/20 09:45:47 figgi Exp $";
 
 #include "doomdef.h"
 #include "r_main.h"
+#include "r_draw.h"
 #include "m_bbox.h"
 #include "w_wad.h"   /* needed for color translation lump lookup */
 #include "v_video.h"
 #include "i_video.h"
+#include "lprintf.h"
 
 // Each screen is [SCREENWIDTH*SCREENHEIGHT];
 byte *screens[6];
 int  dirtybox[4];
 
-/* jff 2/18/98 palette color ranges for translation
- * jff 4/24/98 now pointers set to predefined lumps to allow overloading
- * cphipps 10/99 - be consistent in using byte for pixel values
- */
-
-const byte *cr_brick;
-const byte *cr_tan;
-const byte *cr_gray;
-const byte *cr_green;
-const byte *cr_brown;
-const byte *cr_gold;
-const byte *cr_red;
-const byte *cr_blue;
-const byte *cr_blue_status;
-const byte *cr_orange;
-const byte *cr_yellow;
-
-//jff 4/24/98 initialize this at runtime
-const byte *colrngs[10];
+/* jff 4/24/98 initialize this at runtime */
+const byte *colrngs[CR_LIMIT];
 
 // Now where did these came from?
 const byte gammatable[5][256] = // CPhipps - const
@@ -171,22 +157,22 @@ int usegamma;
 
 typedef struct {
   const char *name;
-  const byte **map1, **map2;
+  const byte **map;
 } crdef_t;
 
 // killough 5/2/98: table-driven approach
 static const crdef_t crdefs[] = {
-  {"CRBRICK",  &cr_brick,   &colrngs[CR_BRICK ]},
-  {"CRTAN",    &cr_tan,     &colrngs[CR_TAN   ]},
-  {"CRGRAY",   &cr_gray,    &colrngs[CR_GRAY  ]},
-  {"CRGREEN",  &cr_green,   &colrngs[CR_GREEN ]},
-  {"CRBROWN",  &cr_brown,   &colrngs[CR_BROWN ]},
-  {"CRGOLD",   &cr_gold,    &colrngs[CR_GOLD  ]},
-  {"CRRED",    &cr_red,     &colrngs[CR_RED   ]},
-  {"CRBLUE",   &cr_blue,    &colrngs[CR_BLUE  ]},
-  {"CRORANGE", &cr_orange,  &colrngs[CR_ORANGE]},
-  {"CRYELLOW", &cr_yellow,  &colrngs[CR_YELLOW]},
-  {"CRBLUE2",  &cr_blue_status, &cr_blue_status},
+  {"CRBRICK",  &colrngs[CR_BRICK ]},
+  {"CRTAN",    &colrngs[CR_TAN   ]},
+  {"CRGRAY",   &colrngs[CR_GRAY  ]},
+  {"CRGREEN",  &colrngs[CR_GREEN ]},
+  {"CRBROWN",  &colrngs[CR_BROWN ]},
+  {"CRGOLD",   &colrngs[CR_GOLD  ]},
+  {"CRRED",    &colrngs[CR_RED   ]},
+  {"CRBLUE",   &colrngs[CR_BLUE  ]},
+  {"CRORANGE", &colrngs[CR_ORANGE]},
+  {"CRYELLOW", &colrngs[CR_YELLOW]},
+  {"CRBLUE2",  &colrngs[CR_BLUE2]},
   {NULL}
 };
 
@@ -195,7 +181,7 @@ void V_InitColorTranslation(void)
 {
   register const crdef_t *p;
   for (p=crdefs; p->name; p++)
-    *p->map1 = *p->map2 = W_CacheLumpName(p->name);
+    *p->map = W_CacheLumpName(p->name);
 }
 
 //
@@ -205,11 +191,13 @@ void V_InitColorTranslation(void)
 // upper left origin and height and width dirty to minimize
 // the amount of screen update necessary. No return.
 //
+#ifndef GL_DOOM
 void V_MarkRect(int x, int y, int width, int height)
 {
   M_AddToBox(dirtybox, x, y);
   M_AddToBox(dirtybox, x+width-1, y+height-1);
 }
+#endif /* GL_DOOM */
 
 //
 // V_CopyRect
@@ -223,11 +211,23 @@ void V_MarkRect(int x, int y, int width, int height)
 //
 // No return.
 //
+#ifndef GL_DOOM
 void V_CopyRect(int srcx, int srcy, int srcscrn, int width,
-                int height, int destx, int desty, int destscrn )
+                int height, int destx, int desty, int destscrn,
+                enum patch_translation_e flags)
 {
   byte *src;
   byte *dest;
+
+  if (flags & VPT_STRETCH)
+  {
+    srcx=srcx*SCREENWIDTH/320;
+    srcy=srcy*SCREENHEIGHT/200;
+    width=width*SCREENWIDTH/320;
+    height=height*SCREENHEIGHT/200;
+    destx=destx*SCREENWIDTH/320;
+    desty=desty*SCREENHEIGHT/200;
+  }
 
 #ifdef RANGECHECK
   if (srcx<0
@@ -252,6 +252,7 @@ void V_CopyRect(int srcx, int srcy, int srcscrn, int width,
       dest += SCREENWIDTH;
     }
 }
+#endif /* GL_DOOM */
 
 //
 // V_DrawBlock
@@ -268,6 +269,7 @@ void V_CopyRect(int srcx, int srcy, int srcscrn, int width,
 // CPhipps - modified  to take the patch translation flags. For now, only stretching is 
 //  implemented, to support highres in the menus
 //
+#ifndef GL_DOOM
 void V_DrawBlock(int x, int y, int scrn, int width, int height, 
 		 const byte *src, enum patch_translation_e flags)
 {
@@ -318,6 +320,7 @@ void V_DrawBlock(int x, int y, int scrn, int width, int height,
     }
   }
 }
+#endif /* GL_DOOM */
 
 /*
  * V_DrawBackground tiles a 64x64 patch over the entire screen, providing the
@@ -325,8 +328,8 @@ void V_DrawBlock(int x, int y, int scrn, int width, int height,
  * cphipps - used to have M_DrawBackground, but that was used the framebuffer 
  * directly, so this is my code from the equivalent function in f_finale.c
  */
-
-void V_DrawBackground(const char* flatname)
+#ifndef GL_DOOM
+void V_DrawBackground(const char* flatname, int scrn)
 {
   /* erase the entire screen to a tiled background */
   const byte *src;
@@ -336,14 +339,15 @@ void V_DrawBackground(const char* flatname)
   // killough 4/17/98: 
   src = W_CacheLumpNum(lump = firstflat + R_FlatNumForName(flatname));
   
-  V_DrawBlock(0, 0, 0, 64, 64, src, 0);
+  V_DrawBlock(0, 0, scrn, 64, 64, src, 0);
   
   for (y=0 ; y<SCREENHEIGHT ; y+=64)
     for (x=y ? 0 : 64; x<SCREENWIDTH ; x+=64)
-      V_CopyRect(0, 0, 0, ((SCREENWIDTH-x) < 64) ? (SCREENWIDTH-x) : 64, 
-		 ((SCREENHEIGHT-y) < 64) ? (SCREENHEIGHT-y) : 64, x, y, 0);
+      V_CopyRect(0, 0, scrn, ((SCREENWIDTH-x) < 64) ? (SCREENWIDTH-x) : 64, 
+		 ((SCREENHEIGHT-y) < 64) ? (SCREENHEIGHT-y) : 64, x, y, scrn, VPT_NONE);
   W_UnlockLumpNum(lump);
 }
+#endif
 
 //
 // V_GetBlock
@@ -355,6 +359,7 @@ void V_DrawBackground(const char* flatname)
 // No return
 //
 
+#ifndef GL_DOOM
 void V_GetBlock(int x, int y, int scrn, int width, int height, byte *dest)
 {
   byte *src;
@@ -376,6 +381,7 @@ void V_GetBlock(int x, int y, int scrn, int width, int height, byte *dest)
       dest += width;
     }
 }
+#endif /* GL_DOOM */
 
 //
 // V_Init
@@ -412,9 +418,16 @@ void V_Init (void)
 // (indeed, laziness of the people who wrote the 'clones' of the original V_DrawPatch
 //  means that their inner loops weren't so well optimised, so merging code may even speed them).
 //
+#ifndef GL_DOOM
 void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch, 
-		    const byte *trans, enum patch_translation_e flags)
+		    int cm, enum patch_translation_e flags)
 {
+  const byte *trans;
+
+  if (cm<CR_LIMIT)
+    trans=colrngs[cm];
+  else
+    trans=translationtables + 256*((cm-CR_LIMIT)-1);
   y -= SHORT(patch->topoffset);
   x -= SHORT(patch->leftoffset);
 
@@ -450,7 +463,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
     
     w--; // CPhipps - note: w = width-1 now, speeds up flipping
     
-    for (col=0 ; col<=w ; desttop++, col++) {
+    for (col=0 ; (unsigned int)col<=w ; desttop++, col++) {
       column = (column_t *)((byte *)patch + 
 			    LONG(patch->columnofs[(flags & VPT_FLIP) ? w-col : col]));
       
@@ -572,6 +585,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
   }
 #endif
 }
+#endif // GL_DOOM
 
 // CPhipps - some simple, useful wrappers for that function, for drawing patches from wads
 
@@ -579,31 +593,18 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
 // static inline; other compilers have different behaviour.
 // This inline is _only_ for the function below
 // Proff - added __inline for VisualC
-/*
-#ifdef _MSC_VER
-__inline
-#else
-#ifdef __GNUC__
-inline
-#endif
-#endif
-*/
+#ifndef GL_DOOM
 #ifdef __GNUC__
 inline
 #endif
 void V_DrawNumPatch(int x, int y, int scrn, int lump, 
-			   const byte *trans, enum patch_translation_e flags)
+			   int cm, enum patch_translation_e flags)
 {
   V_DrawMemPatch(x, y, scrn, (const patch_t*)W_CacheLumpNum(lump), 
-		 trans, flags);
+		 cm, flags);
   W_UnlockLumpNum(lump);
 }
-
-void V_DrawNamePatch(int x, int y, int scrn, const char *name, 
-		     const byte *trans, enum patch_translation_e flags)
-{
-  V_DrawNumPatch(x, y, scrn, W_GetNumForName(name), trans, flags);
-}
+#endif // GL_DOOM
 
 /* cph -
  * V_NamePatchWidth - returns width of a patch.
@@ -643,7 +644,8 @@ int V_NamePatchHeight(const char* name)
 // Returns a simple bitmap which contains the patch. See-through parts of the 
 // patch will be undefined (in fact black for now)
 
-byte *V_PatchToBlock(const char* name, const byte *trans, 
+#ifndef GL_DOOM
+byte *V_PatchToBlock(const char* name, int cm, 
 			      enum patch_translation_e flags, 
 			      unsigned short* width, unsigned short* height)
 {
@@ -655,7 +657,7 @@ byte *V_PatchToBlock(const char* name, const byte *trans,
 
   patch = W_CacheLumpName(name);
   V_DrawMemPatch(SHORT(patch->leftoffset), SHORT(patch->topoffset), 
-		  1, patch, trans, flags);
+		  1, patch, cm, flags);
 
 #ifdef RANGECHECK
   if (flags & VPT_STRETCH) 
@@ -673,6 +675,7 @@ byte *V_PatchToBlock(const char* name, const byte *trans,
   screens[1] = oldscr;
   return block;
 }
+#endif /* GL_DOOM */
 
 //
 // V_SetPalette
@@ -680,16 +683,21 @@ byte *V_PatchToBlock(const char* name, const byte *trans,
 // CPhipps - New function to set the palette to palette number pal.
 // Handles loading of PLAYPAL and calls I_SetPalette
 
-void V_SetPalette(unsigned short pal)
+void V_SetPalette(int pal)
 {
+#ifndef GL_DOOM
   I_SetPalette(pal);
+#else
+  // proff 11/99: update the palette
+  gld_SetPalette(pal);
+#endif
 }
 
 // 
 // V_FillRect
 //
 // CPhipps - New function to fill a rectangle with a given colour
-
+#ifndef GL_DOOM
 void V_FillRect(int scrn, int x, int y, int width, int height, byte colour)
 {
   byte* dest = screens[scrn] + x + y*SCREENWIDTH;
@@ -698,118 +706,4 @@ void V_FillRect(int scrn, int x, int y, int width, int height, byte colour)
     dest += SCREENWIDTH;
   }
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: v_video.c,v $
-// Revision 1.1  2000/05/04 08:18:37  proff_fs
-// Initial revision
-//
-// Revision 1.22  2000/05/01 17:50:37  Proff
-// made changes to compile with VisualC and SDL
-//
-// Revision 1.21  2000/05/01 15:16:47  Proff
-// added __inline for VisualC
-//
-// Revision 1.20  2000/04/04 10:55:33  cph
-// Also add patch height function
-//
-// Revision 1.19  2000/04/04 10:03:00  cph
-// New patch width function
-//
-// Revision 1.18  1999/10/27 18:38:03  cphipps
-// Updated for W_Cache'd lumps being properly const
-// Made colour translation tables be referenced by const byte*'s
-// Updated various V_* functions for this change
-//
-// Revision 1.17  1999/10/27 11:59:49  cphipps
-// Added V_DrawBackground, which draws a tiled flat over the screen
-// (taken from M_DrawBackground and similar code in f_finale.c)
-//
-// Revision 1.16  1999/10/12 13:01:15  cphipps
-// Changed header to GPL
-//
-// Revision 1.15  1999/10/02 12:34:45  cphipps
-// Remove RANGECHECK checks which erroneously thought 4 was the highest
-//  screen number
-// Fixed bad V_GetBlock RANGECHECK error message
-//
-// Revision 1.14  1999/09/05 16:07:05  cphipps
-// Fixed bug with flipped high-res patch drawing, thanks to Gady Kozma <gady@math.tau.ac.il>
-//
-// Revision 1.13  1999/08/30 12:48:35  cphipps
-// Added V_FillRect, to fill a rectangle on screen to a given colour
-//
-// Revision 1.12  1999/03/26 11:58:10  cphipps
-// Remove I_AllocLow() call
-// Allocate screens separately
-//
-// Revision 1.11  1999/02/04 21:38:23  cphipps
-// Extra pointer in screens[] ready for status bar scaling
-//
-// Revision 1.10  1999/02/01 09:10:13  cphipps
-// Pass palette number to I_SetPalette
-//
-// Revision 1.9  1999/01/13 08:00:49  cphipps
-// Fix inlining for nono-gnu compilers
-//
-// Revision 1.8  1999/01/01 13:34:53  cphipps
-// Added i_video.h
-// Fix palette handling function
-//
-// Revision 1.7  1998/12/31 20:19:52  cphipps
-// Added palette handling function
-//
-// Revision 1.6  1998/12/31 14:13:19  cphipps
-// Merged all patch drawing functions into 1 function, flags selectnig stretching, translating
-// etc.
-// Merged block drawing functions similarly.
-// New V_PatchToBlock function to convert patches to simple bitmap block images.
-// Added const to many parameters.
-//
-// Revision 1.5  1998/12/28 21:24:57  cphipps
-// Don't allocate screens[2 to 3] in startup
-// Made gamma correction tables const
-//
-// Revision 1.4  1998/12/24 20:41:11  cphipps
-// Stretched block drawing routine added
-// Added const to some paramters
-//
-// Revision 1.3  1998/12/22 21:14:01  cphipps
-// Fixed a few missing SHORT()'s
-//
-// Revision 1.2  1998/11/17 12:26:39  cphipps
-// Updated version from PrBoom v2.02 incorporated into LxDoom
-//
-// Revision 1.10  1998/05/06  11:12:48  jim
-// Formattted v_video.*
-//
-// Revision 1.9  1998/05/03  22:53:16  killough
-// beautification, simplify translation lookup
-//
-// Revision 1.8  1998/04/24  08:09:39  jim
-// Make text translate tables lumps
-//
-// Revision 1.7  1998/03/02  11:41:58  killough
-// Add cr_blue_status for blue statusbar numbers
-//
-// Revision 1.6  1998/02/24  01:40:12  jim
-// Tuned HUD font
-//
-// Revision 1.5  1998/02/23  04:58:17  killough
-// Fix performance problems
-//
-// Revision 1.4  1998/02/19  16:55:00  jim
-// Optimized HUD and made more configurable
-//
-// Revision 1.3  1998/02/17  23:00:36  jim
-// Added color translation machinery and data
-//
-// Revision 1.2  1998/01/26  19:25:08  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:05  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------
-
+#endif

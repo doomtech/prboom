@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: d_player.h,v 1.1 2000/05/04 08:00:46 proff_fs Exp $
+ * $Id: d_player.h,v 1.1.1.2 2000/09/20 09:40:08 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -104,6 +105,13 @@ typedef struct player_s
   fixed_t             deltaviewheight;
   // bounded/scaled total momentum.
   fixed_t             bob;    
+
+  /* killough 10/98: used for realistic bobbing (i.e. not simply overall speed)
+   * mo->momx and mo->momy represent true momenta experienced by player.
+   * This only represents the thrust that the player applies himself.
+   * This avoids anomolies with such things as Boom ice and conveyors.
+   */
+  fixed_t            momx, momy;      // killough 10/98
 
   // This is only used between levels,
   // mo->health is used during levels.
@@ -223,33 +231,3 @@ typedef struct
 
 
 #endif
-
-/*----------------------------------------------------------------------------
- *
- * $Log: d_player.h,v $
- * Revision 1.1  2000/05/04 08:00:46  proff_fs
- * Initial revision
- *
- * Revision 1.4  1999/10/12 13:01:15  cphipps
- * Changed header to GPL
- *
- * Revision 1.3  1999/01/02 15:53:05  cphipps
- * Added total time field
- *
- * Revision 1.2  1998/10/17 14:52:55  cphipps
- * const on player messages strings
- *
- * Revision 1.1  1998/09/13 16:49:50  cphipps
- * Initial revision
- *
- * Revision 1.3  1998/05/04  21:34:15  thldrmn
- * commenting and reformatting
- *
- * Revision 1.2  1998/01/26  19:26:31  phares
- * First rev with no ^Ms
- *
- * Revision 1.1.1.1  1998/01/19  14:03:07  rand
- * Lee's Jan 19 sources
- *
- *
- *----------------------------------------------------------------------------*/

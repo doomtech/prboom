@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: i_system.c,v 1.1 2000/05/08 23:58:37 jessh Exp $
+ * $Id: i_system.c,v 1.1.1.1 2000/09/20 09:46:38 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -32,7 +33,7 @@
  */
 
 static const char
-rcsid[] = "$Id: i_system.c,v 1.1 2000/05/08 23:58:37 jessh Exp $";
+rcsid[] = "$Id: i_system.c,v 1.1.1.1 2000/09/20 09:46:38 figgi Exp $";
 
 #include <stdio.h>
 
@@ -72,12 +73,7 @@ int I_GetTime_RealTime (void)
  */
 unsigned long I_GetRandomTimeSeed(void)
 {                            
-/*  / killough 3/26/98: shuffle random seed, use the clock / 
-  struct timeval tv;
-  struct timezone tz;
-  gettimeofday(&tv,&tz);
-  return (tv.tv_sec*1000ul + tv.tv_usec/1000ul);
-*/
+/* This isnt very random */
   return(SDL_GetTicks());
 }
 
@@ -86,9 +82,12 @@ unsigned long I_GetRandomTimeSeed(void)
  */
 const char* I_GetVersionString(char* buf, size_t sz)
 {
-//  snprintf(buf,sz,"LxDoom v%s (http://lxdoom.linuxgames.com/)",VERSION);
-//  return buf;
-  return NULL;
+#ifdef HAVE_SNPRINTF
+  snprintf(buf,sz,"%s v%s (http://prboom.sourceforge.net/)",PACKAGE,VERSION);
+#else
+  sprintf(buf,"%s v%s (http://prboom.sourceforge.net/)",PACKAGE,VERSION);
+#endif
+  return buf;
 }
 
 /* cphipps - I_SigString
@@ -104,21 +103,3 @@ const char* I_SigString(char* buf, size_t sz, int signum)
     sprintf(buf,"signal %d",signum);
   return buf;
 }
-
-
-/********************************************************************************************
- * $Log: i_system.c,v $
- * Revision 1.1  2000/05/08 23:58:37  jessh
- * Moved SDL Target to src/SDL
- *
- * Revision 1.1.1.1  2000/05/04 08:07:52  proff_fs
- * initial login on sourceforge as prboom2
- *
- * Revision 1.2  2000/05/01 17:50:35  Proff
- * made changes to compile with VisualC and SDL
- *
- * Revision 1.1  2000/05/01 16:18:41  Proff
- * initial revision
- *
- *
- ********************************************************************************************/

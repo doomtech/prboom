@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: dstrings.c,v 1.1 2000/05/04 08:01:22 proff_fs Exp $
+ * $Id: dstrings.c,v 1.1.1.2 2000/09/20 09:40:13 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  */
 
 static const char
-rcsid[] = "$Id: dstrings.c,v 1.1 2000/05/04 08:01:22 proff_fs Exp $";
+rcsid[] = "$Id: dstrings.c,v 1.1.1.2 2000/09/20 09:40:13 figgi Exp $";
 
 
 #ifdef __GNUG__
@@ -85,31 +86,3 @@ const char *const endmsg[]=
 
 // killough 1/18/98: remove hardcoded limit and replace with var (silly hack):
 const size_t NUM_QUITMESSAGES = sizeof(endmsg)/sizeof(*endmsg) - 1;
-
-  
-//----------------------------------------------------------------------------
-//
-// $Log: dstrings.c,v $
-// Revision 1.1  2000/05/04 08:01:22  proff_fs
-// Initial revision
-//
-// Revision 1.2  1999/10/12 13:01:09  cphipps
-// Changed header to GPL
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.5  1998/05/04  21:34:24  thldrmn
-// commenting and reformatting
-//
-// Revision 1.3  1998/01/27  21:11:17  phares
-// Commented out last section of end msgs.
-//
-// Revision 1.2  1998/01/26  19:23:13  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:07  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: hu_stuff.c,v 1.1 2000/05/04 08:02:51 proff_fs Exp $
+ * $Id: hu_stuff.c,v 1.1.1.2 2000/09/20 09:40:58 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,7 @@
  */
 
 static const char
-rcsid[] = "$Id: hu_stuff.c,v 1.1 2000/05/04 08:02:51 proff_fs Exp $";
+rcsid[] = "$Id: hu_stuff.c,v 1.1.1.2 2000/09/20 09:40:58 figgi Exp $";
 
 // killough 5/3/98: remove unnecessary headers
 
@@ -65,25 +66,27 @@ int hud_graph_keys=1; //jff 3/7/98 display HUD keys as graphics
 #define HU_TITLEX 0
 //jff 2/16/98 change 167 to ST_Y-1
 // CPhipps - changed to ST_TY
-#define HU_TITLEY (ST_TY - 1 - SHORT(hu_font[0]->height)) 
+// proff - changed to 200-ST_HEIGHT for stretching
+#define HU_TITLEY ((200-ST_HEIGHT) - 1 - SHORT(hu_font[0].height)) 
 
 //jff 2/16/98 add coord text widget coordinates
-#define HU_COORDX (SCREENWIDTH - 13*SHORT(hu_font2['A'-HU_FONTSTART]->width))
+// proff - changed to SCREENWIDTH to 320 for stretching
+#define HU_COORDX (320 - 13*SHORT(hu_font2['A'-HU_FONTSTART].width))
 //jff 3/3/98 split coord widget into three lines in upper right of screen
-#define HU_COORDX_Y (1 + 0*SHORT(hu_font['A'-HU_FONTSTART]->height))
-#define HU_COORDY_Y (2 + 1*SHORT(hu_font['A'-HU_FONTSTART]->height))
-#define HU_COORDZ_Y (3 + 2*SHORT(hu_font['A'-HU_FONTSTART]->height))
+#define HU_COORDX_Y (1 + 0*SHORT(hu_font['A'-HU_FONTSTART].height))
+#define HU_COORDY_Y (2 + 1*SHORT(hu_font['A'-HU_FONTSTART].height))
+#define HU_COORDZ_Y (3 + 2*SHORT(hu_font['A'-HU_FONTSTART].height))
 
 //jff 2/16/98 add ammo, health, armor widgets, 2/22/98 less gap
 #define HU_GAPY 8
 #define HU_HUDHEIGHT (6*HU_GAPY)
 #define HU_HUDX 2
-#define HU_HUDY (SCREENHEIGHT-HU_HUDHEIGHT-1)
+#define HU_HUDY (200-HU_HUDHEIGHT-1)
 #define HU_MONSECX (HU_HUDX)
 #define HU_MONSECY (HU_HUDY+0*HU_GAPY)
 #define HU_KEYSX   (HU_HUDX) 
 //jff 3/7/98 add offset for graphic key widget
-#define HU_KEYSGX  (HU_HUDX+4*SHORT(hu_font2['A'-HU_FONTSTART]->width))
+#define HU_KEYSGX  (HU_HUDX+4*SHORT(hu_font2['A'-HU_FONTSTART].width))
 #define HU_KEYSY   (HU_HUDY+1*HU_GAPY)
 #define HU_WEAPX   (HU_HUDX)
 #define HU_WEAPY   (HU_HUDY+2*HU_GAPY)
@@ -96,17 +99,17 @@ int hud_graph_keys=1; //jff 3/7/98 display HUD keys as graphics
 
 //jff 3/4/98 distributed HUD positions
 #define HU_HUDX_LL 2
-#define HU_HUDY_LL (SCREENHEIGHT-2*HU_GAPY-1)
+#define HU_HUDY_LL (200-2*HU_GAPY-1)
 // proff/nicolas 09/20/98: Changed for high-res
-#define HU_HUDX_LR (SCREENWIDTH-120)
-#define HU_HUDY_LR (SCREENHEIGHT-2*HU_GAPY-1)
+#define HU_HUDX_LR (320-120)
+#define HU_HUDY_LR (200-2*HU_GAPY-1)
 // proff/nicolas 09/20/98: Changed for high-res
-#define HU_HUDX_UR (SCREENWIDTH-96)
+#define HU_HUDX_UR (320-96)
 #define HU_HUDY_UR 2
 #define HU_MONSECX_D (HU_HUDX_LL)
 #define HU_MONSECY_D (HU_HUDY_LL+0*HU_GAPY)
 #define HU_KEYSX_D   (HU_HUDX_LL)
-#define HU_KEYSGX_D  (HU_HUDX_LL+4*SHORT(hu_font2['A'-HU_FONTSTART]->width))
+#define HU_KEYSGX_D  (HU_HUDX_LL+4*SHORT(hu_font2['A'-HU_FONTSTART].width))
 #define HU_KEYSY_D   (HU_HUDY_LL+1*HU_GAPY)
 #define HU_WEAPX_D   (HU_HUDX_LR)
 #define HU_WEAPY_D   (HU_HUDY_LR+0*HU_GAPY)
@@ -119,7 +122,7 @@ int hud_graph_keys=1; //jff 3/7/98 display HUD keys as graphics
 
 //#define HU_INPUTTOGGLE  't' // not used                           // phares
 #define HU_INPUTX HU_MSGX
-#define HU_INPUTY (HU_MSGY + HU_MSGHEIGHT*(SHORT(hu_font[0]->height) +1))
+#define HU_INPUTY (HU_MSGY + HU_MSGHEIGHT*(SHORT(hu_font[0].height) +1))
 #define HU_INPUTWIDTH 64
 #define HU_INPUTHEIGHT  1
 
@@ -163,10 +166,10 @@ char chat_char;                 // remove later.
 static player_t*  plr;
 
 // font sets
-const patch_t* hu_font[HU_FONTSIZE];
-const patch_t* hu_font2[HU_FONTSIZE];
-const patch_t* hu_fontk[HU_FONTSIZE];//jff 3/7/98 added for graphic key indicators
-const patch_t* hu_msgbg[9];          //jff 2/26/98 add patches for message background
+patchnum_t hu_font[HU_FONTSIZE];
+patchnum_t hu_font2[HU_FONTSIZE];
+patchnum_t hu_fontk[HU_FONTSIZE];//jff 3/7/98 added for graphic key indicators
+patchnum_t hu_msgbg[9];          //jff 2/26/98 add patches for message background
 
 // widgets
 static hu_textline_t  w_title;
@@ -312,53 +315,54 @@ void HU_Init(void)
     if ('0'<=j && j<='9')
     {
       sprintf(buffer, "DIG%.1d",j-48);
-      hu_font2[i] = (const patch_t *) W_CacheLumpName(buffer);
+      R_SetPatchNum(&hu_font2[i], buffer);
       sprintf(buffer, "STCFN%.3d",j);
-      hu_font[i] = (const patch_t *) W_CacheLumpName(buffer);
+      R_SetPatchNum(&hu_font[i], buffer);
     }
     else if ('A'<=j && j<='Z')
     {
       sprintf(buffer, "DIG%c",j);
-      hu_font2[i] = (const patch_t *) W_CacheLumpName(buffer);
+      R_SetPatchNum(&hu_font2[i], buffer);
       sprintf(buffer, "STCFN%.3d",j);
-      hu_font[i] = (const patch_t *) W_CacheLumpName(buffer);
+      R_SetPatchNum(&hu_font[i], buffer);
     }
     else if (j=='-')
     {
-      hu_font2[i] = (const patch_t *) W_CacheLumpName("DIG45");
-      hu_font[i] = (const patch_t *) W_CacheLumpName("STCFN045");
+      R_SetPatchNum(&hu_font2[i], "DIG45");
+      R_SetPatchNum(&hu_font[i], "STCFN045");
     }
     else if (j=='/')
     {
-      hu_font2[i] = (const patch_t *) W_CacheLumpName("DIG47");
-      hu_font[i] = (const patch_t *) W_CacheLumpName("STCFN047");
+      R_SetPatchNum(&hu_font2[i], "DIG47");
+      R_SetPatchNum(&hu_font[i], "STCFN047");
     }
     else if (j==':')
     {
-      hu_font2[i] = (const patch_t *) W_CacheLumpName("DIG58");
-      hu_font[i] = (const patch_t *) W_CacheLumpName("STCFN058");
+      R_SetPatchNum(&hu_font2[i], "DIG58");
+      R_SetPatchNum(&hu_font[i], "STCFN058");
     }
     else if (j=='[')
     {
-      hu_font2[i] = (const patch_t *) W_CacheLumpName("DIG91");
-      hu_font[i] = (const patch_t *) W_CacheLumpName("STCFN091");
+      R_SetPatchNum(&hu_font2[i], "DIG91");
+      R_SetPatchNum(&hu_font[i], "STCFN091");
     }
     else if (j==']')
     {
-      hu_font2[i] = (const patch_t *) W_CacheLumpName("DIG93");
-      hu_font[i] = (const patch_t *) W_CacheLumpName("STCFN093");
+      R_SetPatchNum(&hu_font2[i], "DIG93");
+      R_SetPatchNum(&hu_font[i], "STCFN093");
     }
     else if (j<97)
     {
       sprintf(buffer, "STCFN%.3d",j);
-      hu_font2[i] = hu_font[i] = (const patch_t *) W_CacheLumpName(buffer);
+      R_SetPatchNum(&hu_font2[i], buffer);
+      R_SetPatchNum(&hu_font[i], buffer);
       //jff 2/23/98 make all font chars defined, useful or not
     }
     else if (j>122)
     {
       sprintf(buffer, "STBR%.3d",j);
-      hu_font2[i] = hu_font[i] =
-        (const patch_t *) W_CacheLumpName(buffer);
+      R_SetPatchNum(&hu_font2[i], buffer);
+      R_SetPatchNum(&hu_font[i], buffer);
     }
     else
       hu_font[i] = hu_font[0]; //jff 2/16/98 account for gap
@@ -367,13 +371,13 @@ void HU_Init(void)
   // CPhipps - load patches for message background
   for (i=0; i<9; i++) {
     sprintf(buffer, "BOX%c%c", "UCL"[i/3], "LCR"[i%3]);
-    hu_msgbg[i] = (const patch_t*)W_CacheLumpName(buffer);
+    R_SetPatchNum(&hu_msgbg[i], buffer);
   }
     
   // CPhipps - load patches for keys and double keys
   for (i=0; i<6; i++) {
     sprintf(buffer, "STKEYS%d", i);
-    hu_fontk[i] = W_CacheLumpName(buffer);
+    R_SetPatchNum(&hu_fontk[i], buffer);
   }
 }
 
@@ -425,7 +429,7 @@ void HU_Start(void)
     HU_MSGHEIGHT,
     hu_font,
     HU_FONTSTART,
-    colrngs[hudcolor_mesg],
+    hudcolor_mesg,
     &message_on
   );
 
@@ -438,7 +442,7 @@ void HU_Start(void)
     HU_TITLEY,
     hu_font,
     HU_FONTSTART,
-    colrngs[hudcolor_titl]
+    hudcolor_titl
   );
 
   // create the hud health widget
@@ -451,7 +455,7 @@ void HU_Start(void)
     hud_distributed? HU_HEALTHY_D : HU_HEALTHY,
     hu_font2,
     HU_FONTSTART,
-    colrngs[CR_GREEN]
+    CR_GREEN
   );
 
   // create the hud armor widget
@@ -464,7 +468,7 @@ void HU_Start(void)
     hud_distributed? HU_ARMORY_D : HU_ARMORY,
     hu_font2,
     HU_FONTSTART,
-    colrngs[CR_GREEN]
+    CR_GREEN
   );
 
   // create the hud ammo widget
@@ -477,7 +481,7 @@ void HU_Start(void)
     hud_distributed? HU_AMMOY_D : HU_AMMOY,
     hu_font2,
     HU_FONTSTART,
-    colrngs[CR_GOLD]
+    CR_GOLD
   );
 
   // create the hud weapons widget
@@ -490,7 +494,7 @@ void HU_Start(void)
     hud_distributed? HU_WEAPY_D : HU_WEAPY,
     hu_font2,
     HU_FONTSTART,
-    colrngs[CR_GRAY]
+    CR_GRAY
   );
 
   // create the hud keys widget
@@ -503,7 +507,7 @@ void HU_Start(void)
     hud_distributed? HU_KEYSY_D : HU_KEYSY,
     hu_font2,
     HU_FONTSTART,
-    colrngs[CR_GRAY]
+    CR_GRAY
   );
 
   // create the hud graphic keys widget
@@ -516,7 +520,7 @@ void HU_Start(void)
     hud_distributed? HU_KEYSY_D : HU_KEYSY,
     hu_fontk,
     HU_FONTSTART,
-    colrngs[CR_RED]
+    CR_RED
   );
 
   // create the hud monster/secret widget
@@ -529,7 +533,7 @@ void HU_Start(void)
     hud_distributed? HU_MONSECY_D : HU_MONSECY,
     hu_font2,
     HU_FONTSTART,
-    colrngs[CR_GRAY]
+    CR_GRAY
   );
 
   // create the hud text refresh widget
@@ -544,11 +548,12 @@ void HU_Start(void)
     &w_rtext,
     0,
     0,
-    SCREENWIDTH,
+    320,
+//    SCREENWIDTH,
     (hud_msg_lines+2)*HU_REFRESHSPACING,
     hu_font,
     HU_FONTSTART,
-    colrngs[hudcolor_list],
+    hudcolor_list,
     hu_msgbg,
     &message_list
   );
@@ -582,7 +587,7 @@ void HU_Start(void)
     HU_COORDX_Y,
     hu_font,
     HU_FONTSTART,
-    colrngs[hudcolor_xyco]
+    hudcolor_xyco
   );
   HUlib_initTextLine
   (
@@ -591,7 +596,7 @@ void HU_Start(void)
     HU_COORDY_Y,
     hu_font,
     HU_FONTSTART,
-    colrngs[hudcolor_xyco]
+    hudcolor_xyco
   );
   HUlib_initTextLine
   (
@@ -600,7 +605,7 @@ void HU_Start(void)
     HU_COORDZ_Y,
     hu_font,
     HU_FONTSTART,
-    colrngs[hudcolor_xyco]
+    hudcolor_xyco
   );
   
   // initialize the automaps coordinate widget
@@ -671,7 +676,7 @@ void HU_Start(void)
     HU_INPUTY,
     hu_font,
     HU_FONTSTART,
-    colrngs[hudcolor_chat],
+    hudcolor_chat,
     &chat_on
   );
 
@@ -684,7 +689,7 @@ void HU_Start(void)
       0,
       0,
       0,
-      colrngs[hudcolor_chat],
+      hudcolor_chat,
       &always_off
     );
 
@@ -802,7 +807,7 @@ void HU_Drawer(void)
       if (weaponinfo[plr->readyweapon].ammo == am_noammo)
       { // special case for weapon with no ammo selected - blank bargraph + N/A
         strcat(hud_ammostr,"\x7f\x7f\x7f\x7f\x7f\x7f\x7f N/A");
-        w_ammo.cr = colrngs[CR_GRAY];
+        w_ammo.cm = CR_GRAY;
       }
       else
       {
@@ -840,11 +845,11 @@ void HU_Drawer(void)
 
         // set the display color from the percentage of total ammo held
         if (ammopct<ammo_red)
-          w_ammo.cr = colrngs[CR_RED];
+          w_ammo.cm = CR_RED;
         else if (ammopct<ammo_yellow)
-          w_ammo.cr = colrngs[CR_GOLD];
+          w_ammo.cm = CR_GOLD;
         else
-          w_ammo.cr = colrngs[CR_GREEN];
+          w_ammo.cm = CR_GREEN;
       }
       // transfer the init string to the widget
       s = hud_ammostr;
@@ -892,13 +897,13 @@ void HU_Drawer(void)
 
       // set the display color from the amount of health posessed
       if (health<health_red)
-        w_health.cr = colrngs[CR_RED];
+        w_health.cm = CR_RED;
       else if (health<health_yellow)
-        w_health.cr = colrngs[CR_GOLD];
+        w_health.cm = CR_GOLD;
       else if (health<=health_green)
-        w_health.cr = colrngs[CR_GREEN];
+        w_health.cm = CR_GREEN;
       else
-        w_health.cr = colrngs[CR_BLUE];
+        w_health.cm = CR_BLUE;
 
       // transfer the init string to the widget
       s = hud_healthstr;
@@ -945,13 +950,13 @@ void HU_Drawer(void)
 
       // set the display color from the amount of armor posessed
       if (armor<armor_red)
-        w_armor.cr = colrngs[CR_RED];
+        w_armor.cm = CR_RED;
       else if (armor<armor_yellow)
-        w_armor.cr = colrngs[CR_GOLD];
+        w_armor.cm = CR_GOLD;
       else if (armor<=armor_green)
-        w_armor.cr = colrngs[CR_GREEN];
+        w_armor.cm = CR_GREEN;
       else
-        w_armor.cr = colrngs[CR_BLUE];
+        w_armor.cm = CR_BLUE;
 
       // transfer the init string to the widget
       s = hud_armorstr;
@@ -1507,7 +1512,7 @@ boolean HU_Responder(event_t *ev)
           {
             eatkey = chat_on = true;
             HUlib_resetIText(&w_chat);
-            HU_queueChatChar(i+1);
+            HU_queueChatChar((char)(i+1));
             break;
           }
           else if (i == consoleplayer)
@@ -1540,12 +1545,12 @@ boolean HU_Responder(event_t *ev)
       macromessage = chat_macros[c];
       
       // kill last message with a '\n'
-        HU_queueChatChar(key_enter); // DEBUG!!!                // phares
+        HU_queueChatChar((char)key_enter); // DEBUG!!!                // phares
       
       // send the macro message
       while (*macromessage)
         HU_queueChatChar(*macromessage++);
-      HU_queueChatChar(key_enter);                            // phares
+      HU_queueChatChar((char)key_enter);                            // phares
       
       // leave chat mode and notify that it was sent
       chat_on = false;
@@ -1576,123 +1581,3 @@ boolean HU_Responder(event_t *ev)
   }
   return eatkey;
 }
-
-
-//----------------------------------------------------------------------------
-//
-// $Log: hu_stuff.c,v $
-// Revision 1.1  2000/05/04 08:02:51  proff_fs
-// Initial revision
-//
-// Revision 1.12  2000/04/09 16:31:43  cph
-// Fix SEGV when exiting a setup menu before first level/demo loaded with retail/registered Doom
-//
-// Revision 1.11  2000/02/26 19:18:54  cph
-// Do some s/sprintf/strcpy/g for neatness
-//
-// Revision 1.10  1999/10/12 13:01:10  cphipps
-// Changed header to GPL
-//
-// Revision 1.9  1999/03/24 17:57:53  cphipps
-// Fix SHIFT and ALT to used the fixed KEYD_ values, not the speed keys (!)
-//
-// Revision 1.8  1999/03/07 22:18:34  cphipps
-// Changed for new automap mode variable
-//
-// Revision 1.7  1999/02/08 08:27:53  cphipps
-// Modified to use true status bar size instead of logical (for status bar scaling)
-//
-// Revision 1.6  1999/01/01 10:31:54  cphipps
-// New wad lump handling
-// Slightly nicer code in HU_Init()
-//
-// Revision 1.5  1998/12/24 11:44:43  cphipps
-// Import MBF fix, no chat in demo playback
-//
-// Revision 1.4  1998/11/16 21:52:09  cphipps
-// Hi-res updates
-//
-// Revision 1.3  1998/10/27 15:50:57  cphipps
-// Substitute Boom v2.02 source
-// Redo const'ness fixes
-//
-// Revision 1.30  1998/09/07  20:05:25  jim
-// Added logical output routine
-//
-// Revision 1.29  1998/08/29  23:01:05  thldrmn
-// Gamemission fixes for TNT and Plutonia
-//
-// Revision 1.28  1998/08/08  15:17:58  jim
-// HUD update fixes
-//
-// Revision 1.27  1998/05/10  19:03:41  jim
-// formatted/documented hu_stuff
-//
-// Revision 1.26  1998/05/03  22:25:24  killough
-// Provide minimal headers at top; nothing else
-//
-// Revision 1.25  1998/04/28  15:53:58  jim
-// Fix message list bug in small screen mode
-//
-// Revision 1.24  1998/04/22  12:50:14  jim
-// Fix lockout from dynamic message change
-//
-// Revision 1.23  1998/04/05  10:09:51  jim
-// added STCFN096 lump
-//
-// Revision 1.22  1998/03/28  05:32:12  jim
-// Text enabling changes for DEH
-//
-// Revision 1.19  1998/03/17  20:45:23  jim
-// added frags to HUD
-//
-// Revision 1.18  1998/03/15  14:42:16  jim
-// added green fist/chainsaw in HUD when berserk
-//
-// Revision 1.17  1998/03/10  07:07:15  jim
-// Fixed display glitch in HUD cycle
-//
-// Revision 1.16  1998/03/09  11:01:48  jim
-// fixed string overflow for DEH, added graphic keys
-//
-// Revision 1.15  1998/03/09  07:10:09  killough
-// Use displayplayer instead of consoleplayer
-//
-// Revision 1.14  1998/03/05  00:57:37  jim
-// Scattered HUD
-//
-// Revision 1.13  1998/03/04  11:50:48  jim
-// Change automap coord display
-//
-// Revision 1.12  1998/02/26  22:58:26  jim
-// Added message review display to HUD
-//
-// Revision 1.11  1998/02/23  14:20:51  jim
-// Merged HUD stuff, fixed p_plats.c to support elevators again
-//
-// Revision 1.10  1998/02/23  04:26:07  killough
-// really allow new hud stuff to be turned off COMPLETELY
-//
-// Revision 1.9  1998/02/22  12:51:26  jim
-// HUD control on F5, z coord, spacing change
-//
-// Revision 1.7  1998/02/20  18:46:51  jim
-// cleanup of HUD control
-//
-// Revision 1.6  1998/02/19  16:54:53  jim
-// Optimized HUD and made more configurable
-//
-// Revision 1.5  1998/02/18  11:55:55  jim
-// Fixed issues with HUD and reduced screen size
-//
-// Revision 1.3  1998/02/15  02:47:47  phares
-// User-defined keys
-//
-// Revision 1.2  1998/01/26  19:23:22  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:55  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

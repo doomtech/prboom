@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_inter.c,v 1.1 2000/05/04 08:11:48 proff_fs Exp $
+ * $Id: p_inter.c,v 1.1.1.2 2000/09/20 09:44:00 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_inter.c,v 1.1 2000/05/04 08:11:48 proff_fs Exp $";
+rcsid[] = "$Id: p_inter.c,v 1.1.1.2 2000/09/20 09:44:00 figgi Exp $";
 
 #include "doomstat.h"
 #include "dstrings.h"
@@ -42,6 +43,9 @@ rcsid[] = "$Id: p_inter.c,v 1.1 2000/05/04 08:11:48 proff_fs Exp $";
 #include "d_deh.h"  // Ty 03/22/98 - externalized strings
 #include "p_tick.h"
 #include "lprintf.h"
+
+#include "p_inter.h"
+#include "p_enemy.h"
 
 #ifdef __GNUG__
 #pragma implementation "p_inter.h"
@@ -550,7 +554,7 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher)
       break;
 
     case SPR_MGUN:
-      if (!P_GiveWeapon (player, wp_chaingun, special->flags&MF_DROPPED) )
+      if (!P_GiveWeapon (player, wp_chaingun, (special->flags&MF_DROPPED)!=0) )
         return;
       player->message = s_GOTCHAINGUN; // Ty 03/22/98 - externalized
       sound = sfx_wpnup;
@@ -578,14 +582,14 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher)
       break;
 
     case SPR_SHOT:
-      if (!P_GiveWeapon (player, wp_shotgun, special->flags&MF_DROPPED ) )
+      if (!P_GiveWeapon (player, wp_shotgun, (special->flags&MF_DROPPED)!=0 ) )
         return;
       player->message = s_GOTSHOTGUN; // Ty 03/22/98 - externalized
       sound = sfx_wpnup;
       break;
 
     case SPR_SGN2:
-      if (!P_GiveWeapon(player, wp_supershotgun, special->flags&MF_DROPPED))
+      if (!P_GiveWeapon(player, wp_supershotgun, (special->flags&MF_DROPPED)!=0))
         return;
       player->message = s_GOTSHOTGUN2; // Ty 03/22/98 - externalized
       sound = sfx_wpnup;
@@ -731,12 +735,18 @@ static void P_KillMobj(mobj_t *source, mobj_t *target)
 void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
 {
   player_t *player;
+  boolean justhit;          /* killough 11/98 */
 
-  if (!(target->flags & MF_SHOOTABLE))
+  /* killough 8/31/98: allow bouncers to take damage */
+  if (!(target->flags & (MF_SHOOTABLE | MF_BOUNCES)))
     return; // shouldn't happen...
 
   if (target->health <= 0)
     return;
+  
+  /* proff 11/22/98: Andy Baker's Stealth monsters */
+  if (target->flags & MF_STEALTH)
+    P_BecomeVisible(target);
 
   if (target->flags & MF_SKULLFLY)
     target->momx = target->momy = target->momz = 0;
@@ -770,13 +780,15 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
       ang >>= ANGLETOFINESHIFT;
       target->momx += FixedMul (thrust, finecosine[ang]);
       target->momy += FixedMul (thrust, finesine[ang]);
+
+      /* killough 11/98: thrust objects hanging off ledges */
+      if (target->intflags & MIF_FALLING && target->gear >= MAXGEAR)
+      	target->gear = 0;
     }
 
   // player specific
   if (player)
     {
-      int temp;
-
       // end of game hell hack
       if (target->subsector->sector->special == 11 && damage >= target->health)
         damage = target->health - 1;
@@ -785,7 +797,7 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
       // ignore damage in GOD mode, or with INVUL power.
       // killough 3/26/98: make god mode 100% god mode in non-compat mode
 
-      if ((damage < 1000 || (!compatibility && (player->cheats&CF_GODMODE))) &&
+      if ((damage < 1000 || (!comp[comp_god] && (player->cheats&CF_GODMODE))) &&
           (player->cheats&CF_GODMODE || player->powers[pw_invulnerability]))
         return;
 
@@ -811,13 +823,6 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
 
       if (player->damagecount > 100)
         player->damagecount = 100;  // teleport stomp does 10k points...
-
-      temp = damage < 100 ? damage : 100;
-
-#if 0
-      if (player == &players[consoleplayer])
-        I_Tactile (40,10,40+temp*2);
-#endif
     }
 
   // do the damage
@@ -828,27 +833,58 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
       return;
     }
 
-  if ((P_Random (pr_painchance) < target->info->painchance)
-      && !(target->flags&MF_SKULLFLY) )
+  // killough 9/7/98: keep track of targets so that friends can help friends
+  if (mbf_features)
     {
-      target->flags |= MF_JUSTHIT;    // fight back!
-      P_SetMobjState(target, target->info->painstate);
+      /* If target is a player, set player's target to source,
+       * so that a friend can tell who's hurting a player
+       */
+      if (player)
+	P_SetTarget(&target->target, source);
+      
+      /* killough 9/8/98:
+       * If target's health is less than 50%, move it to the front of its list.
+       * This will slightly increase the chances that enemies will choose to
+       * "finish it off", but its main purpose is to alert friends of danger.
+       */
+      if (target->health*2 < target->info->spawnhealth)
+	{
+	  thinker_t *cap = &thinkerclasscap[target->flags & MF_FRIEND ? 
+					   th_friends : th_enemies];
+	  (target->thinker.cprev->cnext = target->thinker.cnext)->cprev =
+	    target->thinker.cprev;
+	  (target->thinker.cnext = cap->cnext)->cprev = &target->thinker;
+	  (target->thinker.cprev = cap)->cnext = &target->thinker;
+	}
     }
+
+  if ((justhit = (P_Random (pr_painchance) < target->info->painchance &&
+		  !(target->flags & MF_SKULLFLY)))) //killough 11/98: see below
+    P_SetMobjState(target, target->info->painstate);
 
   target->reactiontime = 0;           // we're awake now...
 
-  if ((!target->threshold || target->type == MT_VILE)
-      && source && /*->*/ source != target /* <- suicide bugfix? killough */
-      && source->type != MT_VILE)
+  /* killough 9/9/98: cleaned up, made more consistent: */
+
+  if (source && source != target && source->type != MT_VILE &&
+      (!target->threshold || target->type == MT_VILE) &&
+      ((source->flags ^ target->flags) & MF_FRIEND || 
+       monster_infighting || 
+       !mbf_features))
     {
-      // if not intent on another player, chase after this one
+      /* if not intent on another player, chase after this one
+       *
+       * killough 2/15/98: remember last enemy, to prevent
+       * sleeping early; 2/21/98: Place priority on players
+       * killough 9/9/98: cleaned up, made more consistent:
+       */
 
-      // killough 2/15/98: remember last enemy, to prevent
-      // sleeping early; 2/21/98: Place priority on players
-
-      if (!target->lastenemy || !target->lastenemy->player ||
-          target->lastenemy->health <= 0)
-        P_SetTarget(&target->lastenemy, target->target); // remember last enemy - killough
+      if (!target->lastenemy || target->lastenemy->health <= 0 ||
+	  (!mbf_features ? 
+	   !target->lastenemy->player :
+	   !((target->flags ^ target->lastenemy->flags) & MF_FRIEND) &&
+	   target->target != source)) // remember last enemy - killough
+	P_SetTarget(&target->lastenemy, target->target);
 
       P_SetTarget(&target->target, source);       // killough 11/98
       target->threshold = BASETHRESHOLD;
@@ -856,72 +892,9 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
           && target->info->seestate != S_NULL)
         P_SetMobjState (target, target->info->seestate);
     }
-}
 
-//----------------------------------------------------------------------------
-//
-// $Log: p_inter.c,v $
-// Revision 1.1  2000/05/04 08:11:48  proff_fs
-// Initial revision
-//
-// Revision 1.9  1999/10/31 11:51:23  cphipps
-// Comment out I_Tactile call (unused)
-// Include lprintf.h for I_Error
-//
-// Revision 1.8  1999/10/17 09:35:15  cphipps
-// Fixed hanging else(s)
-//
-// Revision 1.7  1999/10/12 13:01:12  cphipps
-// Changed header to GPL
-//
-// Revision 1.6  1999/06/20 16:17:33  cphipps
-// Fixed the "medikit you REALLY needed!" message
-// (bug spotted by Quasar`)
-//
-// Revision 1.5  1999/03/07 22:16:50  cphipps
-// Change for new automap mode variable
-//
-// Revision 1.4  1999/02/04 15:34:17  cphipps
-// Added pointer reference counting from MBF
-//
-// Revision 1.3  1999/01/01 18:49:36  cphipps
-// Minor MBF optimisations
-// Coop monster kills `fix' - from rain
-//
-// Revision 1.2  1998/10/16 21:16:00  cphipps
-// Fix hanging else
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.10  1998/05/03  23:09:29  killough
-// beautification, fix #includes, move some global vars here
-//
-// Revision 1.9  1998/04/27  01:54:43  killough
-// Prevent pickup sounds from silencing player weapons
-//
-// Revision 1.8  1998/03/28  17:58:27  killough
-// Fix spawn telefrag bug
-//
-// Revision 1.7  1998/03/28  05:32:41  jim
-// Text enabling changes for DEH
-//
-// Revision 1.6  1998/03/23  03:25:44  killough
-// Fix weapon pickup sounds in spy mode
-//
-// Revision 1.5  1998/03/10  07:15:10  jim
-// Initial DEH support added, minus text
-//
-// Revision 1.4  1998/02/23  04:44:33  killough
-// Make monsters smarter
-//
-// Revision 1.3  1998/02/17  06:00:54  killough
-// Save last enemy, change RNG calling sequence
-//
-// Revision 1.2  1998/01/26  19:24:05  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:59  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------
+  /* killough 11/98: Don't attack a friend, unless hit by that friend. */
+  if (justhit && (target->target == source || !target->target ||
+		  !(target->flags & target->target->flags & MF_FRIEND)))
+    target->flags |= MF_JUSTHIT;    // fight back!
+}

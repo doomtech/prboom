@@ -1,6 +1,6 @@
 /* acconfig.h for LxDoom
  *
- * $Id: acconfig.h,v 1.1 2000/05/04 07:53:31 proff_fs Exp $
+ * $Id: acconfig.h,v 1.1.1.2 2000/09/20 09:38:13 figgi Exp $
  * Parts Copyright (C) 1993-1996 by id Software, Inc.
  *
  * Process this file with autoheader to produce config.h.in,
@@ -27,11 +27,17 @@
 /* Define on I386 target */
 #undef I386
 
+/* Define on targets supporting 386 Assembly */
+#undef I386_ASM
+
 /* Define on big endian target */
 #undef __BIG_ENDIAN__
 
 /* Define for high resolution support */
 #undef HIGHRES
+
+/* Define for support for MBF helper dogs */
+#undef DOGS
 
 /* Define to enable internal range checking */
 #undef RANGECHECK
@@ -85,29 +91,42 @@
 /* Define if you have the DGA library -lXxf86dga */
 #undef HAVE_LIBXXF86DGA
 
+/* Define if you have the SDL mixer library -lSDL_mixer */
+#undef HAVE_LIBSDL_MIXER
+
+/* Define if you have the SDL net library -lSDL_net */
+#undef HAVE_LIBSDL_NET
+
+/* Define if you want networkg ame support */
+#undef HAVE_NET
+
+/* Define if you want to use the SDL net lib */
+#undef USE_SDL_NET
+
+/* Define if you have an old SDL_net, such that the 
+ * UDPpacket structure has a src member instead of 
+ * an address member */
+#undef SDL_NET_UDP_PACKET_SRC
+
 /* Define if you have struct sockaddr_in6 */
 #undef HAVE_IPv6
 
-/* 
- * $Log: acconfig.h,v $
- * Revision 1.1  2000/05/04 07:53:31  proff_fs
- * Initial revision
- *
- * Revision 1.5  2000/04/09 13:39:43  cph
- * Get ./configure heap dumping option working
- * Fix w_wad.c check
- *
- * Revision 1.4  2000/04/03 21:47:35  cph
- * Better detection fo IPv6
- * Minor header file corrections
- *
- * Revision 1.3  2000/01/25 21:33:22  cphipps
- * Fix security in case of being setuid
- *
- * Revision 1.2  1999/10/02 11:43:37  cphipps
- * Added autoconf options to control diagnostics
- *
- * Revision 1.1  1999/09/10 20:09:11  cphipps
- * Initial revision
- *
- */
+/* Define if you want to build with OpenGL support */
+#undef GL_DOOM
+
+/* Define if you want to use the gluTesselator  */
+#undef USE_GLU_TESS
+
+/* Define if you want to use gluImageScale  */
+#undef USE_GLU_IMAGESCALE
+
+/* Define if you want to use gluBuild2DMipmaps  */
+#undef USE_GLU_MIPMAP
+
+/* Define if you want to have prboom.wad in the exe  */
+#undef ALL_IN_ONE
+
+/* Define if you want to poll the mouse rather than rely on 
+ * (unreliable) X11 mouse motion events */
+#undef POLL_MOUSE
+

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: doomstat.h,v 1.1 2000/05/04 08:01:08 proff_fs Exp $
+ * $Id: doomstat.h,v 1.1.1.2 2000/09/20 09:40:15 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -71,25 +72,62 @@ extern  boolean modifiedgame;
 // CPhipps - new compatibility handling
 extern int compatibility_level, default_compatibility_level;
 
-enum {
-  boom_demo_compatibility_compatibility, // Boom's demo compatibility mode
+typedef enum {
+  doom_demo_compatibility, /* As compatible as possible for 
+			    * playing original Doom demos */
+  doom_compatibility,      /* Compatible with original Doom levels */
   boom_compatibility_compatibility,      // Boom's compatibility mode
   boom_compatibility,                    // Compatible with Boom
   lxdoom_1_compatibility,                // LxDoom v1.3.2+
+  mbf_compatibility,                     /* MBF */
+  prboom_1_compatibility,                /* PrBoom 2.03beta? */
+  prboom_2_compatibility,                /* New PrBoom */
   MAX_COMPATIBILITY_LEVEL                // Must be last entry
-};
+} complevel_t;
 
 // CPhipps - old compatibility testing flags aliased to new handling
-#define compatibility (compatibility_level<=1)
+#define compatibility (compatibility_level<=boom_compatibility_compatibility)
 #define demo_compatibility (!compatibility_level)
+#define mbf_features (compatibility_level>=mbf_compatibility)
 
 // v1.1-like pitched sounds
-extern int pitched_sounds, default_pitched_sounds;        // killough
+extern int pitched_sounds;        // killough
 
 extern int     default_translucency; // config file says           // phares
 extern boolean general_translucency; // true if translucency is ok // phares
 
 extern int demo_insurance, default_demo_insurance;      // killough 4/5/98
+
+// -------------------------------------------
+// killough 10/98: compatibility vector
+
+enum {
+  comp_telefrag,
+  comp_dropoff,
+  comp_vile,
+  comp_pain,
+  comp_skull,
+  comp_blazing,
+  comp_doorlight,
+  comp_model,
+  comp_god,
+  comp_falloff,
+  comp_floors,
+  comp_skymap,
+  comp_pursuit,
+  comp_doorstuck,
+  comp_staylift,
+  comp_zombie,
+  comp_stairs,
+  comp_infcheat,
+  comp_zerotags,
+  comp_moveblock,
+  comp_respawn,  /* cph - this is the inverse of comp_respawnfix from eternity */
+  COMP_NUM,      /* cph - should be last in sequence */
+  COMP_TOTAL=32  // Some extra room for additional variables
+};
+
+extern int comp[COMP_TOTAL], default_comp[COMP_TOTAL];
 
 // -------------------------------------------
 // Language.
@@ -194,6 +232,7 @@ extern  int totalsecret;
 
 // Timer, for scores.
 extern  int levelstarttic;  // gametic at level start
+extern  int basetic;    /* killough 9/29/98: levelstarttic, adjusted */
 extern  int leveltime;  // tics in game play for par
 
 // --------------------------------------
@@ -290,7 +329,7 @@ extern thinker_t thinkercap;  // Both the head and tail of the thinker list
 //-----------------------------------------------------------------------------
 
 // v1.1-like pitched sounds
-extern int pitched_sounds, default_pitched_sounds;     // killough 2/21/98
+extern int pitched_sounds;     // killough 2/21/98
 
 extern int allow_pushers;         // MT_PUSH Things    // phares 3/10/98
 extern int default_allow_pushers;
@@ -307,81 +346,33 @@ extern int default_weapon_recoil;
 extern int player_bobbing;  // whether player bobs or not   // phares 2/25/98
 extern int default_player_bobbing;  // killough 3/1/98: make local to each game
 
+#ifdef DOGS
+extern int dogs, default_dogs;     // killough 7/19/98: Marine's best friend :)
+extern int dog_jumping, default_dog_jumping;   // killough 10/98
 #endif
 
-//----------------------------------------------------------------------------
-//
-// $Log: doomstat.h,v $
-// Revision 1.1  2000/05/04 08:01:08  proff_fs
-// Initial revision
-//
-// Revision 1.11  2000/03/28 08:47:48  cph
-// New free join/parting for network games
-//
-// Revision 1.10  1999/10/12 13:01:15  cphipps
-// Changed header to GPL
-//
-// Revision 1.9  1999/08/31 19:46:20  cphipps
-// Removed old viewactive variable
-//
-// Revision 1.8  1999/03/28 11:30:39  cphipps
-// Removed a couple of network things from global scope
-//
-// Revision 1.7  1999/03/26 11:09:52  cphipps
-// Added elements to the automapmode_e enum for other automap mode stuff
-//
-// Revision 1.6  1999/03/22 20:13:56  cphipps
-// Made nettics not global
-//
-// Revision 1.5  1999/03/07 22:15:26  cphipps
-// New automap mode variable
-//
-// Revision 1.4  1998/12/26 11:55:01  cphipps
-// New compatibility stuff
-//
-// Revision 1.3  1998/12/16 22:33:54  cphipps
-// Add default screen size config vars
-//
-// Revision 1.2  1998/10/27 15:32:24  cphipps
-// Substituted new Boom v2.02 version
-//
-// Revision 1.14  1998/08/11  19:31:46  phares
-// DM Weapon bug fix
-//
-// Revision 1.13  1998/05/12  12:47:28  phares
-// Removed OVER_UNDER code
-//
-// Revision 1.12  1998/05/06  16:05:34  jim
-// formatting and documenting
-//
-// Revision 1.11  1998/05/05  16:28:51  phares
-// Removed RECOIL and OPT_BOBBING defines
-//
-// Revision 1.10  1998/05/03  23:12:52  killough
-// beautify, move most global switch variable decls here
-//
-// Revision 1.9  1998/04/06  04:54:55  killough
-// Add demo_insurance
-//
-// Revision 1.8  1998/03/02  11:26:25  killough
-// Remove now-dead monster_ai mask idea
-//
-// Revision 1.7  1998/02/23  04:17:38  killough
-// fix bad translucency flag
-//
-// Revision 1.5  1998/02/20  21:56:29  phares
-// Preliminarey sprite translucency
-//
-// Revision 1.4  1998/02/19  16:55:30  jim
-// Optimized HUD and made more configurable
-//
-// Revision 1.3  1998/02/18  00:58:54  jim
-// Addition of HUD
-//
-// Revision 1.2  1998/01/26  19:26:41  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:09  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------
+/* killough 8/8/98: distance friendly monsters tend to stay from player */
+extern int distfriend, default_distfriend;
+
+/* killough 9/8/98: whether monsters are allowed to strafe or retreat */
+extern int monster_backing, default_monster_backing;
+
+/* killough 9/9/98: whether monsters intelligently avoid hazards */
+extern int monster_avoid_hazards, default_monster_avoid_hazards;
+
+/* killough 10/98: whether monsters are affected by friction */
+extern int monster_friction, default_monster_friction;
+
+/* killough 9/9/98: whether monsters help friends */
+extern int help_friends, default_help_friends;
+
+extern int flashing_hom; // killough 10/98
+
+extern int doom_weapon_toggles;   // killough 10/98
+
+/* killough 7/19/98: whether monsters should fight against each other */
+extern int monster_infighting, default_monster_infighting;
+
+extern int monkeys, default_monkeys;
+
+#endif

@@ -1,12 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: v_video_trans.c,v 1.1 2000/05/09 20:47:07 proff_fs Exp $
+ * $Id: v_video_trans.c,v 1.1.1.1 2000/09/20 09:46:19 figgi Exp $
  *
- *  Video mode translation for LxDoom, 
- *   parts from the original linuxdoom i_video.c
- *  Copyright (C) 1994-1996 by id Software
- *  Copyright (C) 1999 by Colin Phipps
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
+ *  based on BOOM, a modified and improved DOOM engine
+ *  Copyright (C) 1999 by
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -28,7 +30,7 @@
  *-----------------------------------------------------------------------------*/
 
 #ifndef lint
-static const char rcsid[] = "$Id: v_video_trans.c,v 1.1 2000/05/09 20:47:07 proff_fs Exp $";
+static const char rcsid[] = "$Id: v_video_trans.c,v 1.1.1.1 2000/09/20 09:46:19 figgi Exp $";
 #endif /* lint */
 
 #ifdef HAVE_LINUX_BITOPS_H
@@ -115,7 +117,7 @@ void I_SetPaletteTranslation(const byte* palette)
 {
   // This builds a suitable palette for DirectColor and TrueColor modes
   register unsigned short int i = 256;
-  register unsigned long*     ppnum;
+  register pval *ppnum;
   register const byte *const  gtable = gammatable[usegamma];
 
   pv_changed = true; // Flag the buffer copying routines that palette
@@ -126,11 +128,13 @@ void I_SetPaletteTranslation(const byte* palette)
     pixelvals = Z_Malloc(256 * sizeof(*pixelvals), PU_STATIC, NULL);
   
   ppnum = pixelvals;
-  do {
-    *ppnum++ = ((gtable[palette[0]] >> redshift.rshift) << redshift.pshift)
-      | ((gtable[palette[1]] >> greenshift.rshift) << greenshift.pshift)
-      | ((gtable[palette[2]] >> blueshift.rshift) << blueshift.pshift);
-    
+  do
+  {
+    *ppnum++ = 
+        (((pval)gtable[palette[0]] >> redshift.rshift) << redshift.pshift)
+      | (((pval)gtable[palette[1]] >> greenshift.rshift) << greenshift.pshift)
+      | (((pval)gtable[palette[2]] >> blueshift.rshift) << blueshift.pshift);
+
     palette+=3;
   } while (--i);
 }
@@ -151,7 +155,7 @@ static void I_Double8Buf(pval* out_buffer, const byte* src)
       register unsigned int twoopixels;
       register unsigned int twomoreopixels;
       unsigned long* oline2ptr = olineptr + SCREENWIDTH*2 / sizeof(*olineptr);
-#ifndef I386
+#ifndef I386_ASM
       unsigned int fouripixels = *ilineptr++;
       twoopixels =	(fouripixels & 0xff000000)
 	|	((fouripixels>>8) & 0xffff00)
@@ -160,6 +164,15 @@ static void I_Double8Buf(pval* out_buffer, const byte* src)
 	|	((fouripixels<<8) & 0xffff00)
 	|	(fouripixels & 0xff);
 #else
+# ifdef _MSC_VER
+      unsigned int fouripixels = *ilineptr++;
+      twoopixels =	(fouripixels & 0xff000000)
+	|	((fouripixels>>8) & 0xffff00)
+	|	((fouripixels>>16) & 0xff);
+      twomoreopixels =	((fouripixels<<16) & 0xff000000)
+	|	((fouripixels<<8) & 0xffff00)
+	|	(fouripixels & 0xff);
+# else /* _MSC_VER */
       asm( "movl %%eax, %%edx ; "
 	       "shrl $16, %%eax ; "
 	       "movb %%dh, %%cl ; "
@@ -174,6 +187,7 @@ static void I_Double8Buf(pval* out_buffer, const byte* src)
 	       "movb %%al, %%bl ; "
 	       : "=b" (twoopixels), "=c" (twomoreopixels)
 	       : "a" (*ilineptr++) : "%cc", "%edx");
+# endif /* _MSC_VER */
 #endif
 #ifdef WORDS_BIGENDIAN
       olineptr[0] = oline2ptr[0] = twoopixels;
@@ -249,16 +263,26 @@ static void I_Copyto16Buf(pval* out_buffer, const byte* src)
 
   if (pixelvals == NULL) return;
 
-#ifndef I386
+#ifndef I386_ASM
   do {
-    optr[0] = pixelvals[iptr[0]];
-    optr[1] = pixelvals[iptr[1]];
-    optr[2] = pixelvals[iptr[2]];
-    optr[3] = pixelvals[iptr[3]];
+    optr[0] = (unsigned short)pixelvals[iptr[0]];
+    optr[1] = (unsigned short)pixelvals[iptr[1]];
+    optr[2] = (unsigned short)pixelvals[iptr[2]];
+    optr[3] = (unsigned short)pixelvals[iptr[3]];
 
     iptr += 4; optr += 4;
   } while (--count);
 #else
+# ifdef _MSC_VER
+  do {
+    optr[0] = (unsigned short)pixelvals[iptr[0]];
+    optr[1] = (unsigned short)pixelvals[iptr[1]];
+    optr[2] = (unsigned short)pixelvals[iptr[2]];
+    optr[3] = (unsigned short)pixelvals[iptr[3]];
+
+    iptr += 4; optr += 4;
+  } while (--count);
+# else /* _MSC_VER */
   asm("xorl %%eax,%%eax ; "
       ".align 8 ; "
       "0:"
@@ -279,6 +303,7 @@ static void I_Copyto16Buf(pval* out_buffer, const byte* src)
       "dec %%ecx ; jg 0b"
       :: "D" (optr), "S" (iptr), "b" (pixelvals), "c" (count)
       : "%eax", "%edx");
+# endif /* _MSC_VER */
 #endif
 }
 
@@ -393,7 +418,7 @@ static void I_Copyto32Buf(pval* out_buffer, const byte* src)
 
   if (pixelvals == NULL) return;
 
-#ifndef I386
+#ifndef I386_ASM
   do {
     optr[0] = pixelvals[iptr[0]];
     optr[1] = pixelvals[iptr[1]];
@@ -403,6 +428,16 @@ static void I_Copyto32Buf(pval* out_buffer, const byte* src)
     iptr += 4; optr += 4;
   } while (--count);
 #else
+# ifdef _MSC_VER
+  do {
+    optr[0] = pixelvals[iptr[0]];
+    optr[1] = pixelvals[iptr[1]];
+    optr[2] = pixelvals[iptr[2]];
+    optr[3] = pixelvals[iptr[3]];
+
+    iptr += 4; optr += 4;
+  } while (--count);
+# else /* _MSC_VER */
   asm("xorl %%eax,%%eax ; "
       ".align 8 ; " 
       "0:"
@@ -423,6 +458,7 @@ static void I_Copyto32Buf(pval* out_buffer, const byte* src)
       "dec %%ecx ; jg 0b"
       :: "D" (optr), "S" (iptr), "b" (pixelvals), "c" (count)
       : "%eax", "%edx");
+# endif /* _MSC_VER */
 #endif
 }
 
@@ -509,59 +545,3 @@ size_t I_InitImageTranslation(void)
 void I_EndImageTranslation(void)
 {
 }
-
-/*
- * $Log: v_video_trans.c,v $
- * Revision 1.1  2000/05/09 20:47:07  proff_fs
- * renamed
- *
- * Revision 1.1.1.1  2000/05/04 08:08:23  proff_fs
- * initial login on sourceforge as prboom2
- *
- * Revision 1.19  2000/05/01 17:50:35  Proff
- * made changes to compile with VisualC and SDL
- *
- * Revision 1.18  2000/05/01 15:16:47  Proff
- * added __inline for VisualC
- *
- * Revision 1.17  2000/04/05 10:47:31  cph
- * Remove dead #ifdef magic, rely on config.h now
- * Make sndserv work on (Open|Net)BSD, using libossaudio
- * Make --enable-debug compile with -g
- * Make asm stuff only compile on Linux and FreeBSD
- * (draw(col|span).s failed on OpenBSD, linker troubles)
- *
- * Revision 1.16  1999/12/13 17:22:43  cphipps
- * Reduce .align 16's to .align 8's to allow compiling on OpenBSD
- *
- * Revision 1.15  1999/10/31 12:49:44  cphipps
- * Use lprintf.h for I_Error
- *
- * Revision 1.14  1999/10/12 13:01:11  cphipps
- * Changed header to GPL
- *
- * Revision 1.13  1999/08/27 17:26:19  cphipps
- * I386 assembler optimisations for Copyto 16 and 32 bpp buffers
- *
- * Revision 1.12  1999/05/16 08:44:07  cphipps
- * Use endianness detection from m_swap.h
- *
- * Revision 1.11  1999/03/30 06:19:27  cphipps
- * Improved 24bpp stuff
- *
- * Revision 1.10  1999/01/04 19:39:02  cphipps
- * Made portable ffz() static const
- * Added instance of I_ExpandImage
- *
- * Revision 1.9  1998/12/28 21:12:47  cphipps
- * Fix gamma correction table const'ness
- *
- * Revision 1.8  1998/12/03 16:30:14  cphipps
- * Implement 24bpp and 32bpp conversion routines
- *
- * Revision 1.7  1998/11/18 20:13:48  cphipps
- * Fixed 16 bpp problems with hi-res
- *
- * Revision 1.6  1998/11/18 19:38:01  cphipps
- * Fixing stuff for hi-res, headers
- */

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_spec.c,v 1.1 2000/05/04 08:14:28 proff_fs Exp $
+ * $Id: p_spec.c,v 1.1.1.2 2000/09/20 09:44:53 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -38,7 +39,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_spec.c,v 1.1 2000/05/04 08:14:28 proff_fs Exp $";
+rcsid[] = "$Id: p_spec.c,v 1.1.1.2 2000/09/20 09:44:53 figgi Exp $";
 
 #include "doomstat.h"
 #include "p_spec.h"
@@ -259,7 +260,7 @@ int twoSided
   //jff 1/26/98 return what is actually needed, whether the line
   //has two sidedefs, rather than whether the 2S flag is set
 
-  return compatibility?
+  return comp[comp_model] ?
     (sectors[sector].lines[line])->flags & ML_TWOSIDED
     :
     (sectors[sector].lines[line])->sidenum[1] != -1;
@@ -281,14 +282,14 @@ sector_t* getNextSector
   //returns NULL if the line is not two sided, and does so from
   //the actual two-sidedness of the line, rather than its 2S flag
 
-  if (compatibility)
+  if (comp[comp_model])
   {
     if (!(line->flags & ML_TWOSIDED))
       return NULL;
   }
 
   if (line->frontsector == sec) {
-    if (compatibility || line->backsector!=sec)
+    if (comp[comp_model] || line->backsector!=sec)
       return line->backsector; //jff 5/3/98 don't retn sec unless compatibility
     else                       // fixes an intra-sector line breaking functions
       return NULL;             // like floor->highest floor
@@ -343,7 +344,7 @@ fixed_t P_FindHighestFloorSurrounding(sector_t *sec)
 
   //jff 1/26/98 Fix initial value for floor to not act differently
   //in sections of wad that are below -500 units
-  if (!compatibility)          //jff 3/12/98 avoid ovf
+  if (!comp[comp_model])       /* jff 3/12/98 avoid ovf */
     floor = -32000*FRACUNIT;   // in height calculations
 
   for (i=0 ;i < sec->linecount ; i++)
@@ -501,8 +502,9 @@ fixed_t P_FindLowestCeilingSurrounding(sector_t* sec)
   sector_t*           other;
   fixed_t             height = INT_MAX;
 
-  if (!compatibility) height = 32000*FRACUNIT; //jff 3/12/98 avoid ovf in
-                                               // height calculations
+  /* jff 3/12/98 avoid ovf in height calculations */
+  if (!comp[comp_model]) height = 32000*FRACUNIT; 
+
   for (i=0 ;i < sec->linecount ; i++)
   {
     check = sec->lines[i];
@@ -534,10 +536,11 @@ fixed_t P_FindHighestCeilingSurrounding(sector_t* sec)
   sector_t*       other;
   fixed_t height = 0;
 
-  //jff 1/26/98 Fix initial value for floor to not act differently
-  //in sections of wad that are below 0 units
-  if (!compatibility) height = -32000*FRACUNIT; //jff 3/12/98 avoid ovf in
-                                                // height calculations
+  /* jff 1/26/98 Fix initial value for floor to not act differently
+   * in sections of wad that are below 0 units
+   * jff 3/12/98 avoid ovf in height calculations */
+  if (!comp[comp_model]) height = -32000*FRACUNIT; 
+
   for (i=0 ;i < sec->linecount ; i++)
   {
     check = sec->lines[i];
@@ -571,7 +574,7 @@ fixed_t P_FindShortestTextureAround(int secnum)
   int i;
   sector_t *sec = &sectors[secnum];
 
-  if (!compatibility)
+  if (!comp[comp_model])
     minsize = 32000<<FRACBITS; //jff 3/13/98 prevent overflow in height calcs
 
   for (i = 0; i < sec->linecount; i++)
@@ -610,7 +613,7 @@ fixed_t P_FindShortestUpperAround(int secnum)
   int i;
   sector_t *sec = &sectors[secnum];
 
-  if (!compatibility)
+  if (!comp[comp_model])
     minsize = 32000<<FRACBITS; //jff 3/13/98 prevent overflow
                                // in height calcs
   for (i = 0; i < sec->linecount; i++)
@@ -994,10 +997,9 @@ int P_SectorActive(special_e t,sector_t *sec)
 //
 int P_CheckTag(line_t *line)
 {
-  if (compatibility)        // killough: allow zero tags in compatibility mode
-    return 1;
-
-  if (line->tag)            // tag not zero, allowed
+  /* tag not zero, allowed, or
+   * killough 11/98: compatibility option */
+  if (comp[comp_zerotags] || line->tag)
     return 1;
 
   switch(line->special)
@@ -1408,8 +1410,7 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
     case 52:
       // EXIT!
       // killough 10/98: prevent zombies from exiting levels
-      if ((!(thing->player && thing->player->health <= 0) || 
-	    (compatibility_level < lxdoom_1_compatibility)))
+      if (!(thing->player && thing->player->health <= 0 && !comp[comp_zombie]))
 	G_ExitLevel ();
       break;
 
@@ -1495,8 +1496,7 @@ void P_CrossSpecialLine(line_t *line, int side, mobj_t *thing)
       // Secret EXIT
       // killough 10/98: prevent zombies from exiting levels
       // CPhipps - change for lxdoom's compatibility handling
-      if ((!(thing->player && thing->player->health <= 0) || 
-	    (compatibility_level < lxdoom_1_compatibility)))
+      if (!(thing->player && thing->player->health <= 0 && !comp[comp_zombie]))
 	G_SecretExitLevel ();
       break;
 
@@ -2154,8 +2154,7 @@ void P_ShootSpecialLine
           case 197:
             // Exit to next level
             // killough 10/98: prevent zombies from exiting levels
-            if(thing->player && thing->player->health<=0 && 
-	       (compatibility_level >= lxdoom_1_compatibility))
+            if(thing->player && thing->player->health<=0 && !comp[comp_zombie])
               break;
             P_ChangeSwitchTexture(line,0);
             G_ExitLevel();
@@ -2164,8 +2163,7 @@ void P_ShootSpecialLine
           case 198:
             // Exit to secret level
             // killough 10/98: prevent zombies from exiting levels
-            if(thing->player && thing->player->health<=0 && 
-	       (compatibility_level >= lxdoom_1_compatibility))
+            if(thing->player && thing->player->health<=0 && !comp[comp_zombie])
               break;
             P_ChangeSwitchTexture(line,0);
             G_SecretExitLevel();
@@ -2236,7 +2234,7 @@ void P_PlayerInSpecialSector (player_t* player)
 
       case 11:
         // Exit on health < 11, take 10/20 damage per 31 ticks
-        if (compatibility)     // killough 2/21/98: add compatibility switch
+        if (comp[comp_god]) /* killough 2/21/98: add compatibility switch */
           player->cheats &= ~CF_GODMODE; // on godmode cheat clearing
                                          // does not affect invulnerability
         if (!(leveltime&0x1f))
@@ -2699,7 +2697,7 @@ static void Add_Scroller(int type, fixed_t dx, fixed_t dy,
                          int control, int affectee, int accel)
 {
   scroll_t *s = Z_Malloc(sizeof *s, PU_LEVSPEC, 0);
-  s->thinker.function.acp1 = (actionf_p1) T_Scroll;
+  s->thinker.function = T_Scroll;
   s->type = type;
   s->dx = dx;
   s->dy = dy;
@@ -2733,8 +2731,8 @@ static void Add_WallScroller(fixed_t dx, fixed_t dy, const line_t *l,
 
   // CPhipps - Import scroller calc overflow fix, compatibility optioned
   if (compatibility_level >= lxdoom_1_compatibility) {
-    x = (dy * -l->dy - dx * l->dx) / d;  // killough 10/98:
-    y = (dy * l->dx - dx * l->dy) / d;   // Use long long arithmetic
+    x = (fixed_t)(((int_64_t)dy * -(int_64_t)l->dy - (int_64_t)dx * (int_64_t)l->dx) / (int_64_t)d);  // killough 10/98:
+    y = (fixed_t)(((int_64_t)dy * (int_64_t)l->dx - (int_64_t)dx * (int_64_t)l->dy) / (int_64_t)d);   // Use long long arithmetic
   } else {
     x = -FixedDiv(FixedMul(dy, l->dy) + FixedMul(dx, l->dx), d);
     y = -FixedDiv(FixedMul(dx, l->dy) - FixedMul(dy, l->dx), d);
@@ -2838,7 +2836,7 @@ static void P_SpawnScrollers(void)
 // FRICTION EFFECTS
 //
 // phares 3/12/98: Start of friction effects
-
+//
 // As the player moves, friction is applied by decreasing the x and y
 // momentum values on each tic. By varying the percentage of decrease,
 // we can simulate muddy or icy conditions. In mud, the player slows
@@ -2860,109 +2858,83 @@ static void P_SpawnScrollers(void)
 // their sectors, looking for players whose feet are at the same level as
 // their floors. Players satisfying this condition are given new friction
 // values that are applied by the player movement code later.
-
-/////////////////////////////
 //
-// Add a friction thinker to the thinker list
+// killough 8/28/98:
 //
-// Add_Friction adds a new friction thinker to the list of active thinkers.
+// Completely redid code, which did not need thinkers, and which put a heavy
+// drag on CPU. Friction is now a property of sectors, NOT objects inside
+// them. All objects, not just players, are affected by it, if they touch
+// the sector's floor. Code simpler and faster, only calling on friction
+// calculations when an object needs friction considered, instead of doing
+// friction calculations on every sector during every tic.
 //
-
-static void Add_Friction(int friction, int movefactor, int affectee)
-    {
-    friction_t *f = Z_Malloc(sizeof *f, PU_LEVSPEC, 0);
-
-    f->thinker.function.acp1 = (actionf_p1) T_Friction;
-    f->friction = friction;
-    f->movefactor = movefactor;
-    f->affectee = affectee;
-    P_AddThinker(&f->thinker);
-    }
-
-/////////////////////////////
+// Although this -might- ruin Boom demo sync involving friction, it's the only
+// way, short of code explosion, to fix the original design bug. Fixing the
+// design bug in Boom's original friction code, while maintaining demo sync
+// under every conceivable circumstance, would double or triple code size, and
+// would require maintenance of buggy legacy code which is only useful for old
+// demos. Doom demos, which are more important IMO, are not affected by this
+// change.
 //
-// This is where abnormal friction is applied to objects in the sectors.
-// A friction thinker has been spawned for each sector where less or
-// more friction should be applied. The amount applied is proportional to
-// the length of the controlling linedef.
-
-void T_Friction(friction_t *f)
-    {
-    sector_t *sec;
-    mobj_t   *thing;
-    msecnode_t* node;
-
-    if (compatibility || !variable_friction)
-        return;
-
-    sec = sectors + f->affectee;
-
-    // Be sure the special sector type is still turned on. If so, proceed.
-    // Else, bail out; the sector type has been changed on us.
-
-    if (!(sec->special & FRICTION_MASK))
-        return;
-
-    // Assign the friction value to players on the floor, non-floating,
-    // and clipped. Normally the object's friction value is kept at
-    // ORIG_FRICTION and this thinker changes it for icy or muddy floors.
-
-    // In Phase II, you can apply friction to Things other than players.
-
-    // When the object is straddling sectors with the same
-    // floorheight that have different frictions, use the lowest
-    // friction value (muddy has precedence over icy).
-
-    node = sec->touching_thinglist; // things touching this sector
-    while (node)
-        {
-        thing = node->m_thing;
-        if (thing->player &&
-            !(thing->flags & (MF_NOGRAVITY | MF_NOCLIP)) &&
-            thing->z <= sec->floorheight)
-            {
-            if ((thing->friction == ORIG_FRICTION) ||     // normal friction?
-                (f->friction < thing->friction))
-                {
-                thing->friction   = f->friction;
-                thing->movefactor = f->movefactor;
-                }
-            }
-        node = node->m_snext;
-        }
-    }
-
 /////////////////////////////
 //
 // Initialize the sectors where friction is increased or decreased
 
 static void P_SpawnFriction(void)
+{
+  int i;
+  line_t *l = lines;
+
+  // killough 8/28/98: initialize all sectors to normal friction first
+  for (i = 0; i < numsectors; i++)
     {
-    int i;
-    line_t *l = lines;
-    register int s;
-    int length;     // line length controls magnitude
-    int friction;   // friction value to be applied during movement
-    int movefactor; // applied to each player move to simulate inertia
-
-    for (i = 0 ; i < numlines ; i++,l++)
-        if (l->special == 223)
-            {
-            length = P_AproxDistance(l->dx,l->dy)>>FRACBITS;
-            friction = (0x1EB8*length)/0x80 + 0xD000;
-
-            // The following check might seem odd. At the time of movement,
-            // the move distance is multiplied by 'friction/0x10000', so a
-            // higher friction value actually means 'less friction'.
-
-            if (friction > ORIG_FRICTION)       // ice
-                movefactor = ((0x10092 - friction)*(0x70))/0x158;
-            else
-                movefactor = ((friction - 0xDB34)*(0xA))/0x80;
-            for (s = -1; (s = P_FindSectorFromLineTag(l,s)) >= 0 ; )
-                Add_Friction(friction,movefactor,s);
-            }
+      sectors[i].friction = ORIG_FRICTION;
+      sectors[i].movefactor = ORIG_FRICTION_FACTOR;
     }
+
+  for (i = 0 ; i < numlines ; i++,l++)
+    if (l->special == 223)
+      {
+        int length = P_AproxDistance(l->dx,l->dy)>>FRACBITS;
+        int friction = (0x1EB8*length)/0x80 + 0xD000;
+        int movefactor, s;
+
+        // The following check might seem odd. At the time of movement,
+        // the move distance is multiplied by 'friction/0x10000', so a
+        // higher friction value actually means 'less friction'.
+
+        if (friction > ORIG_FRICTION)       // ice
+          movefactor = ((0x10092 - friction)*(0x70))/0x158;
+        else
+          movefactor = ((friction - 0xDB34)*(0xA))/0x80;
+
+        if (mbf_features)
+          { // killough 8/28/98: prevent odd situations
+            if (friction > FRACUNIT)
+              friction = FRACUNIT;
+            if (friction < 0)
+              friction = 0;
+            if (movefactor < 32)
+              movefactor = 32;
+          }
+
+        for (s = -1; (s = P_FindSectorFromLineTag(l,s)) >= 0 ; )
+          {
+            // killough 8/28/98:
+            //
+            // Instead of spawning thinkers, which are slow and expensive,
+            // modify the sector's own friction values. Friction should be
+            // a property of sectors, not objects which reside inside them.
+            // Original code scanned every object in every friction sector
+            // on every tic, adjusting its friction, putting unnecessary
+            // drag on CPU. New code adjusts friction of sector only once
+            // at level startup, and then uses this friction value.
+
+            sectors[s].friction = friction;
+            sectors[s].movefactor = movefactor;
+          }
+      }
+}
 
 //
 // phares 3/12/98: End of friction effects
@@ -3024,7 +2996,7 @@ static void Add_Pusher(int type, int x_mag, int y_mag, mobj_t* source, int affec
     {
     pusher_t *p = Z_Malloc(sizeof *p, PU_LEVSPEC, 0);
 
-    p->thinker.function.acp1 = (actionf_p1) T_Pusher;
+    p->thinker.function = T_Pusher;
     p->source = source;
     p->type = type;
     p->x_mag = x_mag>>FRACBITS;
@@ -3047,40 +3019,57 @@ static void Add_Pusher(int type, int x_mag, int y_mag, mobj_t* source, int affec
 //
 // tmpusher belongs to the point source (MT_PUSH/MT_PULL).
 //
+// killough 10/98: allow to affect things besides players
 
 pusher_t* tmpusher; // pusher structure for blockmap searches
 
 boolean PIT_PushThing(mobj_t* thing)
+{
+  /* killough 10/98: made more general */
+  if (!mbf_features ?
+      thing->player && !(thing->flags & (MF_NOCLIP | MF_NOGRAVITY)) :
+      (sentient(thing) || thing->flags & MF_SHOOTABLE) &&
+      !(thing->flags & MF_NOCLIP))
     {
-    if (thing->player &&
-        !(thing->flags & (MF_NOGRAVITY | MF_NOCLIP)))
+      angle_t pushangle;
+      fixed_t speed;
+      fixed_t sx = tmpusher->x;
+      fixed_t sy = tmpusher->y;
+
+      speed = (tmpusher->magnitude -
+               ((P_AproxDistance(thing->x - sx,thing->y - sy)
+                 >>FRACBITS)>>1))<<(FRACBITS-PUSH_FACTOR-1);
+
+      // killough 10/98: make magnitude decrease with square
+      // of distance, making it more in line with real nature,
+      // so long as it's still in range with original formula.
+      //
+      // Removes angular distortion, and makes effort required
+      // to stay close to source, grow increasingly hard as you
+      // get closer, as expected. Still, it doesn't consider z :(
+
+      if (speed > 0 && mbf_features)
         {
-        angle_t pushangle;
-        int dist;
-        int speed;
-        int sx,sy;
-
-        sx = tmpusher->x;
-        sy = tmpusher->y;
-        dist = P_AproxDistance(thing->x - sx,thing->y - sy);
-        speed = (tmpusher->magnitude -
-                 ((dist>>FRACBITS)>>1))<<(FRACBITS-PUSH_FACTOR-1);
-
-        // If speed <= 0, you're outside the effective radius. You also have
-        // to be able to see the push/pull source point.
-
-        if ((speed > 0) && (P_CheckSight(thing,tmpusher->source)))
-            {
-            pushangle = R_PointToAngle2(thing->x,thing->y,sx,sy);
-            if (tmpusher->source->type == MT_PUSH)
-                pushangle += ANG180;    // away
-            pushangle >>= ANGLETOFINESHIFT;
-            thing->momx += FixedMul(speed,finecosine[pushangle]);
-            thing->momy += FixedMul(speed,finesine[pushangle]);
-            }
+          int x = (thing->x-sx) >> FRACBITS;
+          int y = (thing->y-sy) >> FRACBITS;
+          speed = (int)(((uint_64_t) tmpusher->magnitude << 23) / (x*x+y*y+1));
         }
-    return true;
+
+      // If speed <= 0, you're outside the effective radius. You also have
+      // to be able to see the push/pull source point.
+
+      if (speed > 0 && P_CheckSight(thing,tmpusher->source))
+        {
+          pushangle = R_PointToAngle2(thing->x,thing->y,sx,sy);
+          if (tmpusher->source->type == MT_PUSH)
+            pushangle += ANG180;    // away
+          pushangle >>= ANGLETOFINESHIFT;
+          thing->momx += FixedMul(speed,finecosine[pushangle]);
+          thing->momy += FixedMul(speed,finesine[pushangle]);
+        }
     }
+  return true;
+}
 
 /////////////////////////////
 //
@@ -3122,10 +3111,6 @@ void T_Pusher(pusher_t *p)
     // 3) Affected Thing is below the ground (underwater effect).
     //
     //    Apply no force if wind, full force if current.
-    //
-    // Apply the effect to clipped players only for now.
-    //
-    // In Phase II, you can apply these effects to Things other than players.
 
     if (p->type == p_push)
         {
@@ -3278,206 +3263,3 @@ static void P_SpawnPushers(void)
 // phares 3/20/98: End of Pusher effects
 //
 ////////////////////////////////////////////////////////////////////////////
-
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_spec.c,v $
-// Revision 1.1  2000/05/04 08:14:28  proff_fs
-// Initial revision
-//
-// Revision 1.16  2000/05/01 17:50:36  Proff
-// made changes to compile with VisualC and SDL
-//
-// Revision 1.15  2000/05/01 14:37:33  Proff
-// changed abs to D_abs
-//
-// Revision 1.14  1999/10/31 11:52:23  cphipps
-// Include lprintf.h for I_Error
-//
-// Revision 1.13  1999/10/17 09:35:14  cphipps
-// Fixed hanging else(s)
-//
-// Revision 1.12  1999/10/12 13:01:13  cphipps
-// Changed header to GPL
-//
-// Revision 1.11  1999/02/02 09:17:13  cphipps
-// Add MBF enhanced skies support
-//
-// Revision 1.10  1999/01/27 16:04:56  cphipps
-// Use newer limits.h integer limit macros instead of depreciated values.h ones
-//
-// Revision 1.9  1999/01/13 19:07:31  cphipps
-// Fix signedness in animdef_t
-//
-// Revision 1.8  1999/01/07 10:43:10  cphipps
-// Fix struct packing for Metrowerks
-//
-// Revision 1.7  1998/12/31 20:56:09  cphipps
-// Updated for new wad lump handling
-//
-// Revision 1.6  1998/12/27 13:26:10  cphipps
-// Modify P_CrossSpecialLine to take line pointer instead of index, as in MBF
-//
-// Revision 1.5  1998/12/26 20:02:17  cphipps
-// Compatibility option scroller overflow fix
-// Add fix for zombies exiting levels (fix from MBF), compatibility optioned
-//
-// Revision 1.4  1998/12/24 12:08:40  cphipps
-// MBF fix for overflow in wall scroller calcs
-//
-// Revision 1.3  1998/10/27 18:40:44  cphipps
-// Boom v2.02 updated version
-//
-// Revision 1.57  1998/08/14  11:27:27  jim
-// Fixed raise shortest texture linedefs
-//
-// Revision 1.56  1998/05/25  10:40:30  killough
-// Fix wall scrolling bug
-//
-// Revision 1.55  1998/05/23  10:23:32  jim
-// Fix numeric changer loop corruption
-//
-// Revision 1.54  1998/05/11  06:52:56  phares
-// Documentation
-//
-// Revision 1.53  1998/05/07  00:51:34  killough
-// beautification
-//
-// Revision 1.52  1998/05/04  11:47:23  killough
-// Add #include d_deh.h
-//
-// Revision 1.51  1998/05/04  02:22:06  jim
-// formatted p_specs, moved a coupla routines to p_floor
-//
-// Revision 1.50  1998/05/03  22:06:30  killough
-// Provide minimal required headers at top (no other changes)
-//
-// Revision 1.49  1998/04/17  18:57:51  killough
-// fix comment
-//
-// Revision 1.48  1998/04/17  18:49:02  killough
-// Fix lack of animation in flats
-//
-// Revision 1.47  1998/04/17  10:24:47  killough
-// Add P_FindLineFromLineTag(), add CARRY_CEILING macro
-//
-// Revision 1.46  1998/04/14  18:49:36  jim
-// Added monster only and reverse teleports
-//
-// Revision 1.45  1998/04/12  02:05:25  killough
-// Add ceiling light setting, start ceiling carriers
-//
-// Revision 1.44  1998/04/06  11:05:23  jim
-// Remove LEESFIXES, AMAP bdg->247
-//
-// Revision 1.43  1998/04/06  04:39:04  killough
-// Make scroll carriers carry all things underwater
-//
-// Revision 1.42  1998/04/01  16:39:11  jim
-// Fix keyed door message on gunfire
-//
-// Revision 1.41  1998/03/29  20:13:35  jim
-// Fixed use of 2S flag in Donut linedef
-//
-// Revision 1.40  1998/03/28  18:13:24  killough
-// Fix conveyor bug (carry objects not touching but overhanging)
-//
-// Revision 1.39  1998/03/28  05:32:48  jim
-// Text enabling changes for DEH
-//
-// Revision 1.38  1998/03/23  18:38:48  jim
-// Switch and animation tables now lumps
-//
-// Revision 1.37  1998/03/23  15:24:41  phares
-// Changed pushers to linedef control
-//
-// Revision 1.36  1998/03/23  03:32:36  killough
-// Make "oof" sounds have true mobj origins (for spy mode hearing)
-// Make carrying floors carry objects hanging over edges of sectors
-//
-// Revision 1.35  1998/03/20  14:24:36  jim
-// Gen ceiling target now shortest UPPER texture
-//
-// Revision 1.34  1998/03/20  00:30:21  phares
-// Changed friction to linedef control
-//
-// Revision 1.33  1998/03/18  23:14:02  jim
-// Deh text additions
-//
-// Revision 1.32  1998/03/16  15:43:33  killough
-// Add accelerative scrollers, merge Jim's changes
-//
-// Revision 1.29  1998/03/13  14:05:44  jim
-// Fixed arith overflow in some linedef types
-//
-// Revision 1.28  1998/03/12  21:54:12  jim
-// Freed up 12 linedefs for use as vectors
-//
-// Revision 1.26  1998/03/09  10:57:55  jim
-// Allowed Lee's change to 0 tag trigger compatibility
-//
-// Revision 1.25  1998/03/09  07:23:43  killough
-// Add generalized scrollers, renumber some linedefs
-//
-// Revision 1.24  1998/03/06  12:34:39  jim
-// Renumbered 300+ linetypes under 256 for DCK
-//
-// Revision 1.23  1998/03/05  16:59:10  jim
-// Fixed inability of monsters/barrels to use new teleports
-//
-// Revision 1.22  1998/03/04  07:33:04  killough
-// Fix infinite loop caused by multiple carrier references
-//
-// Revision 1.21  1998/03/02  15:32:57  jim
-// fixed errors in numeric model sector search and 0 tag trigger defeats
-//
-// Revision 1.20  1998/03/02  12:13:57  killough
-// Add generalized scrolling flats & walls, carrying floors
-//
-// Revision 1.19  1998/02/28  01:24:53  jim
-// Fixed error in 0 tag trigger fix
-//
-// Revision 1.17  1998/02/24  08:46:36  phares
-// Pushers, recoil, new friction, and over/under work
-//
-// Revision 1.16  1998/02/23  23:47:05  jim
-// Compatibility flagged multiple thinker support
-//
-// Revision 1.15  1998/02/23  04:52:33  killough
-// Allow god mode cheat to work on E1M8 unless compatibility
-//
-// Revision 1.14  1998/02/23  00:42:02  jim
-// Implemented elevators
-//
-// Revision 1.12  1998/02/17  05:55:06  killough
-// Add silent teleporters
-// Change RNG calling sequence
-// Cosmetic changes
-//
-// Revision 1.11  1998/02/13  03:28:06  jim
-// Fixed W1,G1 linedefs clearing untriggered special, cosmetic changes
-//
-// Revision 1.10  1998/02/08  05:35:39  jim
-// Added generalized linedef types
-//
-// Revision 1.8  1998/02/02  13:34:26  killough
-// Performance tuning, program beautification
-//
-// Revision 1.7  1998/01/30  14:43:54  jim
-// Added gun exits, right scrolling walls and ceiling mover specials
-//
-// Revision 1.4  1998/01/27  16:19:29  jim
-// Fixed subroutines used by linedef triggers and a NULL ref in Donut
-//
-// Revision 1.3  1998/01/26  19:24:26  phares
-// First rev with no ^Ms
-//
-// Revision 1.2  1998/01/25  20:24:45  jim
-// Fixed crusher floor, lowerandChange floor types, and unknown sector special error
-//
-// Revision 1.1.1.1  1998/01/19  14:03:01  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

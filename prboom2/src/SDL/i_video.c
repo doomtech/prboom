@@ -1,11 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: i_video.c,v 1.1 2000/05/08 23:58:37 jessh Exp $
+ * $Id: i_video.c,v 1.1.1.1 2000/09/20 09:46:40 figgi Exp $
  *
- *  SDL display code for LxDoom. Based on the original linuxdoom i_video.c
- *  Copyright (C) 1993-1996 by id Software
- *  Copyright (C) 1999 by Colin Phipps
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
+ *  based on BOOM, a modified and improved DOOM engine
+ *  Copyright (C) 1999 by
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -29,7 +32,7 @@
  */
 
 static const char
-rcsid[] = "$Id: i_video.c,v 1.1 2000/05/08 23:58:37 jessh Exp $";
+rcsid[] = "$Id: i_video.c,v 1.1.1.1 2000/09/20 09:46:40 figgi Exp $";
 
 #ifdef HAVE_CONFIG_H
 #include "../config.h"
@@ -57,7 +60,6 @@ void (*R_DrawTLColumn)(void);
 #include "r_draw.h"
 #include "d_main.h"
 #include "d_event.h"
-#include "l_video_trans.h"
 #include "i_joy.h"
 #include "i_video.h"
 #include "z_zone.h"
@@ -72,14 +74,12 @@ void (*R_DrawTLColumn)(void);
 extern void M_QuitDOOM(int choice);
 
 int use_vsync = 0; // Included not to break m_misc, but not relevant to SDL
+int use_fullscreen;
 static SDL_Surface *screen;
 
+typedef unsigned char* pval;
 // This is the pointer to the buffer to blit
 pval     *      out_buffer = NULL;
-
-// Common const strings
-static const char lcase_lxdoom[] = { "lsdldoom" };
-static const char ucase_lxdoom[] = { "LSDLDOOM" };
 
 ////////////////////////////////////////////////////////////////////////////
 // Input code 
@@ -148,6 +148,7 @@ static int I_TranslateKey(SDL_keysym* key)
   case SDLK_LMETA:
   case SDLK_RALT:
   case SDLK_RMETA:	rc = KEYD_RALT;		break;
+  case SDLK_CAPSLOCK: rc = KEYD_CAPSLOCK; break;
   default:		rc = key->sym;		break;
   }
 
@@ -168,6 +169,15 @@ int I_ScanCode2DoomCode(int c)
 
 /////////////////////////////////////////////////////////////////////////////////
 // Main input code
+
+/* cph - pulled out common button code logic */
+static int I_SDLtoDoomMouseState(Uint8 buttonstate)
+{
+  return 0
+      | (buttonstate & SDL_BUTTON(1) ? 1 : 0)
+      | (buttonstate & SDL_BUTTON(2) ? 2 : 0)
+      | (buttonstate & SDL_BUTTON(3) ? 4 : 0);
+}
 
 static void I_GetEvent(SDL_Event *Event)
 {
@@ -191,41 +201,68 @@ static void I_GetEvent(SDL_Event *Event)
   case SDL_MOUSEBUTTONDOWN:
   case SDL_MOUSEBUTTONUP:
   if (usemouse)
-  { Uint8 buttonstate;
-    buttonstate = SDL_GetMouseState(NULL, NULL);
+  {
     event.type = ev_mouse;
-    event.data1 = 0
-      | (buttonstate & SDL_BUTTON(1) ? 1 : 0)
-      | (buttonstate & SDL_BUTTON(2) ? 2 : 0)
-      | (buttonstate & SDL_BUTTON(3) ? 4 : 0);
+    event.data1 = I_SDLtoDoomMouseState(SDL_GetMouseState(NULL, NULL));
     event.data2 = event.data3 = 0;
     D_PostEvent(&event);
   }
   break;
 
   case SDL_MOUSEMOTION:
+#ifndef POLL_MOUSE
   /* Ignore mouse warp events */
   if (usemouse &&
       ((Event->motion.x != screen->w/2)||(Event->motion.y != screen->h/2)))
   {
     /* Warp the mouse back to the center */
-    if (grabMouse) {
+    if (grabMouse && !(paused || (gamestate != GS_LEVEL) || demoplayback)) {
       if ( (Event->motion.x < ((screen->w/2)-(screen->w/4))) ||
            (Event->motion.x > ((screen->w/2)+(screen->w/4))) ||
            (Event->motion.y < ((screen->h/2)-(screen->h/4))) ||
            (Event->motion.y > ((screen->h/2)+(screen->h/4))) )
-        SDL_WarpMouse(screen->w/2, screen->h/2);
+        SDL_WarpMouse((Uint16)(screen->w/2), (Uint16)(screen->h/2));
     }
     event.type = ev_mouse;
-    event.data1 = 0
-      | (Event->motion.state & SDL_BUTTON(1) ? 1 : 0)
-      | (Event->motion.state & SDL_BUTTON(2) ? 2 : 0)
-      | (Event->motion.state & SDL_BUTTON(3) ? 4 : 0);
-    event.data2 = Event->motion.xrel << 2;
-    event.data3 = -Event->motion.yrel << 2;
+    event.data1 = I_SDLtoDoomMouseState(Event->motion.state);
+    event.data2 = Event->motion.xrel << 5;
+    event.data3 = -Event->motion.yrel << 5;
     D_PostEvent(&event);
   }
+#else
+  /* cph - under X11 fullscreen, SDL's MOUSEMOTION events are just too
+   *  unreliable. Deja vu, I had similar trouble in the early LxDoom days
+   *  with X11 mouse motion events. Except SDL makes it worse, because
+   *  it feeds SDL_WarpMouse events back to us. */
+  if (usemouse) {
+    static int px,py;
+    static int was_grabbed;
+    int x,y,dx,dy;
+    Uint8 buttonstate = SDL_GetMouseState(&x,&y);
+    if (was_grabbed) { /* Previous position saved */
+      dx = x - px; dy = y - py;
+      if (!(dx | dy)) break; /* No motion, not interesting */
+      event.type = ev_mouse;
+      event.data1 = I_SDLtoDoomMouseState(buttonstate);
+      event.data2 = dx << 5; event.data3 = -dy << 5;
+      D_PostEvent(&event);
+    }
+    /* Warp the mouse back to the center */
+    was_grabbed = 0;
+    if (grabMouse && !(paused || (gamestate != GS_LEVEL) || demoplayback)) {
+      if ( (x < (screen->w/4)) ||
+           (x > (3*screen->w/4)) ||
+           (y < (screen->h/4)) ||
+           (y > (3*screen->h/4)) ) {
+        SDL_WarpMouse((Uint16)(screen->w/2), (Uint16)(screen->h/2));
+      } else {
+        px = x; py = y; was_grabbed = 1;
+      }
+    }
+  }
+#endif
   break;
+
 
   case SDL_QUIT:
     S_StartSound(NULL, sfx_swtchn);
@@ -339,7 +376,7 @@ static void I_UploadNewPalette(int pal)
   }
 
 #ifdef RANGECHECK
-  if (pal >= num_pals) 
+  if ((size_t)pal >= num_pals) 
     I_Error("I_UploadNewPalette: Palette number out of range (%d>=%d)", 
 	    pal, num_pals);
 #endif
@@ -353,12 +390,6 @@ static void I_UploadNewPalette(int pal)
 
 void I_ShutdownGraphics(void)
 {
-  fprintf(stderr, "I_ShutdownGraphics : ");
-
-  // Free internal structures
-  if (pixelvals != NULL) free(pixelvals);
-  I_EndImageTranslation();
-  fprintf(stderr, "\n");
 }
 
 //
@@ -382,10 +413,6 @@ void I_FinishUpdate (void)
 #endif
   
 #ifndef GL_DOOM
-  // scales the screen size before blitting it
-  if (expand_buffer)
-    (*I_ExpandImage)(out_buffer, screens[0]);
-  
   // Update the display buffer (flipping video pages if supported)
   SDL_Flip(screen);
 #else
@@ -407,12 +434,6 @@ void I_ReadScreen (byte* scr)
 //
 void I_SetPalette (int pal)
 {
-  if (true_color) {
-    int            lump = W_GetNumForName("PLAYPAL");
-    const byte *palette = W_CacheLumpNum(lump);
-    I_SetPaletteTranslation(palette + (3*256)*pal);
-    W_UnlockLumpNum(lump);
-  } else
     I_UploadNewPalette(pal);
 }
 
@@ -450,6 +471,7 @@ void I_SetRes(unsigned int width, unsigned int height)
 #endif
     (height+3) & ~3;
 
+#ifndef GL_DOOM
   if (SCREENWIDTH == 320) {
     R_DrawColumn = R_DrawColumn_Normal;
     R_DrawTLColumn = R_DrawTLColumn_Normal;
@@ -457,14 +479,15 @@ void I_SetRes(unsigned int width, unsigned int height)
     R_DrawColumn = R_DrawColumn_HighRes;
     R_DrawTLColumn = R_DrawTLColumn_HighRes;
   }
+#endif
   lprintf(LO_INFO,"I_SetRes: Using resolution %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
 }
 
 void I_InitGraphics(void)
 {
   int           w, h;
-  int		n;
   Uint32        init_flags;
+  char titlebuffer[2048];
   
   {  
     static int		firsttime=1;
@@ -475,17 +498,8 @@ void I_InitGraphics(void)
     firsttime = 0;
   }
 
-  { // Check for screen enlargement
-    char str[3] = { '-', 0, 0 };
-
-    for (n=1; n<4; n++) {
-      str[1] = n + '0';
-      if (M_CheckParm(str)) multiply = n;
-    }
-  }
-  
-  w = SCREENWIDTH * multiply;
-  h = SCREENHEIGHT * multiply;
+  w = SCREENWIDTH;
+  h = SCREENHEIGHT;
   
   // Initialize SDL with this graphics mode
 #ifdef GL_DOOM
@@ -493,7 +507,8 @@ void I_InitGraphics(void)
 #else
   init_flags = SDL_SWSURFACE|SDL_HWPALETTE;
 #endif
-  if ( M_CheckParm("-fullscreen") ) {
+  if ( ((M_CheckParm("-fullscreen")) || (use_fullscreen)) && (!M_CheckParm("-nofullscreen")) )
+  {
     init_flags |= SDL_FULLSCREEN;
   }
 #ifdef GL_DOOM
@@ -502,33 +517,29 @@ void I_InitGraphics(void)
   SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
   screen = SDL_SetVideoMode(w, h, 16, init_flags);
 #else
+#ifdef USE_OWN_TRANSLATION_CODE
   if(SDL_VideoModeOK(w, h, 8, init_flags) == 8) { 
+#endif
     screen = SDL_SetVideoMode(w, h, 8, init_flags);
+#ifdef USE_OWN_TRANSLATION_CODE
   } else {
     screen = SDL_SetVideoMode(w, h, 0, init_flags);
   }
 #endif
-  if(screen == NULL || !I_QueryImageTranslation()) {
+#endif
+  if(screen == NULL) {
     I_Error("Couldn't set %dx%d video mode [%s]", w, h, SDL_GetError());
   }
-  dest_bpp = screen->format->BitsPerPixel;
-  SDL_WM_SetCaption(lcase_lxdoom, ucase_lxdoom);
-
-  I_InitImageTranslation();
-  if (true_color) {
-    // Set up colour shifts
-    I_SetColourShift(screen->format->Rmask, &redshift);
-    I_SetColourShift(screen->format->Gmask, &greenshift);
-    I_SetColourShift(screen->format->Bmask, &blueshift);
-  }
+  strcpy(titlebuffer,PACKAGE);
+  strcat(titlebuffer," ");
+  strcat(titlebuffer,VERSION);
+  SDL_WM_SetCaption(titlebuffer, titlebuffer);
 
   lprintf(LO_INFO,"I_InitGraphics:");
-  lprintf(LO_INFO, " SDL %d bpp %s, scale x%d\n", dest_bpp,
-	  screen->format->palette ? "PseudoColor" : "TrueColor", multiply);
 
   // Get the info needed to render to the display
   out_buffer = (pval *)screen->pixels;
-  if (!expand_buffer) {
+  {
     // Render directly into SDL display memory
     Z_Free(screens[0]);
     screens[0] = (unsigned char *) (screen->pixels); 

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_genlin.c,v 1.1 2000/05/04 08:11:36 proff_fs Exp $
+ * $Id: p_genlin.c,v 1.1.1.2 2000/09/20 09:44:05 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_genlin.c,v 1.1 2000/05/04 08:11:36 proff_fs Exp $";
+rcsid[] = "$Id: p_genlin.c,v 1.1.1.2 2000/09/20 09:44:05 figgi Exp $";
 
 #include "doomstat.h" //jff 6/19/98 for demo_compatibility
 #include "r_main.h"
@@ -112,7 +113,7 @@ manual_floor:
     floor = Z_Malloc (sizeof(*floor), PU_LEVSPEC, 0);
     P_AddThinker (&floor->thinker);
     sec->floordata = floor;
-    floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+    floor->thinker.function = T_MoveFloor;
     floor->crush = Crsh;
     floor->direction = Dirn? 1 : -1;
     floor->sector = sec;
@@ -315,7 +316,7 @@ manual_ceiling:
     ceiling = Z_Malloc (sizeof(*ceiling), PU_LEVSPEC, 0);
     P_AddThinker (&ceiling->thinker);
     sec->ceilingdata = ceiling; //jff 2/22/98
-    ceiling->thinker.function.acp1 = (actionf_p1) T_MoveCeiling;
+    ceiling->thinker.function = T_MoveCeiling;
     ceiling->crush = Crsh;
     ceiling->direction = Dirn? 1 : -1;
     ceiling->sector = sec;
@@ -523,7 +524,7 @@ manual_lift:
               
     plat->sector = sec;
     plat->sector->floordata = plat;
-    plat->thinker.function.acp1 = (actionf_p1) T_PlatRaise;
+    plat->thinker.function = T_PlatRaise;
     plat->crush = false;
     plat->tag = line->tag;
 
@@ -681,7 +682,7 @@ manual_stair:
     floor = Z_Malloc (sizeof(*floor), PU_LEVSPEC, 0);
     P_AddThinker (&floor->thinker);
     sec->floordata = floor;
-    floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+    floor->thinker.function = T_MoveFloor;
     floor->direction = Dirn? 1 : -1;
     floor->sector = sec;
 
@@ -756,6 +757,8 @@ manual_stair:
         if (!Igno && tsec->floorpic != texture)
           continue;
 
+	/* cph - DEMOSYNC - MBF includes a fix here, don't understand it 
+	 * I think it's only for Boom v2.01 demos, worth it? */
         if (demo_compatibility) // jff 6/19/98 prevent double stepsize
           height += floor->direction * stairsize;
 
@@ -781,7 +784,7 @@ manual_stair:
         P_AddThinker (&floor->thinker);
 
         sec->floordata = floor;
-        floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
+        floor->thinker.function = T_MoveFloor;
         floor->direction = Dirn? 1 : -1;
         floor->sector = sec;
         floor->speed = speed;
@@ -863,7 +866,7 @@ manual_crusher:
     ceiling = Z_Malloc (sizeof(*ceiling), PU_LEVSPEC, 0);
     P_AddThinker (&ceiling->thinker);
     sec->ceilingdata = ceiling; //jff 2/22/98
-    ceiling->thinker.function.acp1 = (actionf_p1) T_MoveCeiling;
+    ceiling->thinker.function = T_MoveCeiling;
     ceiling->crush = true;
     ceiling->direction = -1;
     ceiling->sector = sec;
@@ -959,13 +962,18 @@ manual_locked:
     P_AddThinker (&door->thinker);
     sec->ceilingdata = door; //jff 2/22/98
 
-    door->thinker.function.acp1 = (actionf_p1) T_VerticalDoor;
+    door->thinker.function = T_VerticalDoor;
     door->sector = sec;
     door->topwait = VDOORWAIT;
     door->line = line;
     door->topheight = P_FindLowestCeilingSurrounding(sec);
     door->topheight -= 4*FRACUNIT;
     door->direction = 1;
+
+    /* killough 10/98: implement gradual lighting */
+    door->lighttag = !comp[comp_doorlight] && 
+      (line->special&6) == 6 &&
+      line->special > GenLockedBase ? line->tag : 0;
 
     // setup speed of door motion
     switch(Sped)
@@ -1063,7 +1071,7 @@ manual_door:
     P_AddThinker (&door->thinker);
     sec->ceilingdata = door; //jff 2/22/98
 
-    door->thinker.function.acp1 = (actionf_p1) T_VerticalDoor;
+    door->thinker.function = T_VerticalDoor;
     door->sector = sec;
     // setup delay for door remaining open/closed
     switch(Dely)
@@ -1101,6 +1109,11 @@ manual_door:
         break;
     }
     door->line = line; // jff 1/31/98 remember line that triggered us
+
+    /* killough 10/98: implement gradual lighting */
+    door->lighttag = !comp[comp_doorlight] && 
+      (line->special&6) == 6 &&
+      line->special > GenLockedBase ? line->tag : 0;
 
     // set kind of door, whether it opens then close, opens, closes etc.
     // assign target heights accordingly
@@ -1143,75 +1156,3 @@ manual_door:
   }
   return rtn;
 }
-
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_genlin.c,v $
-// Revision 1.1  2000/05/04 08:11:36  proff_fs
-// Initial revision
-//
-// Revision 1.4  1999/10/12 13:01:12  cphipps
-// Changed header to GPL
-//
-// Revision 1.3  1999/01/07 10:39:02  cphipps
-// Fix cryptic line causing compiler warnings in non-gnu compilers
-//
-// Revision 1.2  1998/10/27 18:28:05  cphipps
-// Boom v2.02 source imported
-//
-// Revision 1.19  1998/06/20  09:04:52  jim
-// Fix bug in stairs re moving steps
-//
-// Revision 1.18  1998/05/23  10:23:23  jim
-// Fix numeric changer loop corruption
-//
-// Revision 1.17  1998/05/08  03:34:56  jim
-// formatted/documented p_genlin
-//
-// Revision 1.16  1998/05/03  23:05:56  killough
-// Fix #includes at the top, nothing else
-//
-// Revision 1.15  1998/04/16  06:25:23  killough
-// Fix generalized doors' opening sounds
-//
-// Revision 1.14  1998/04/05  13:54:10  jim
-// fixed switch change on second activation
-//
-// Revision 1.13  1998/03/31  16:52:15  jim
-// Fixed uninited type field in stair builders
-//
-// Revision 1.12  1998/03/20  14:24:28  jim
-// Gen ceiling target now shortest UPPER texture
-//
-// Revision 1.11  1998/03/15  14:40:14  jim
-// added pure texture change linedefs & generalized sector types
-//
-// Revision 1.10  1998/03/13  14:05:56  jim
-// Fixed arith overflow in some linedef types
-//
-// Revision 1.9  1998/03/04  11:56:30  jim
-// Fix multiple sector stair raise
-//
-// Revision 1.8  1998/02/27  11:50:59  jim
-// Fixes for stairs
-//
-// Revision 1.7  1998/02/23  23:46:50  jim
-// Compatibility flagged multiple thinker support
-//
-// Revision 1.6  1998/02/23  00:41:46  jim
-// Implemented elevators
-//
-// Revision 1.4  1998/02/17  06:07:56  killough
-// Change RNG calling sequence
-//
-// Revision 1.3  1998/02/13  03:28:36  jim
-// Fixed W1,G1 linedefs clearing untriggered special, cosmetic changes
-//
-//
-// Revision 1.1.1.1  1998/02/04  09:19:00  jim
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------
-          

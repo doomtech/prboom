@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_lights.c,v 1.1 2000/05/04 08:11:59 proff_fs Exp $
+ * $Id: p_lights.c,v 1.1.1.2 2000/09/20 09:44:15 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -32,7 +33,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_lights.c,v 1.1 2000/05/04 08:11:59 proff_fs Exp $";
+rcsid[] = "$Id: p_lights.c,v 1.1.1.2 2000/09/20 09:44:15 figgi Exp $";
 
 #include "doomstat.h" //jff 5/18/98
 #include "doomdef.h"
@@ -187,7 +188,7 @@ void P_SpawnFireFlicker (sector_t*  sector)
 
   P_AddThinker (&flick->thinker);
 
-  flick->thinker.function.acp1 = (actionf_p1) T_FireFlicker;
+  flick->thinker.function = T_FireFlicker;
   flick->sector = sector;
   flick->maxlight = sector->lightlevel;
   flick->minlight = P_FindMinSurroundingLight(sector,sector->lightlevel)+16;
@@ -213,7 +214,7 @@ void P_SpawnLightFlash (sector_t* sector)
 
   P_AddThinker (&flash->thinker);
 
-  flash->thinker.function.acp1 = (actionf_p1) T_LightFlash;
+  flash->thinker.function = T_LightFlash;
   flash->sector = sector;
   flash->maxlight = sector->lightlevel;
 
@@ -247,7 +248,7 @@ void P_SpawnStrobeFlash
   flash->sector = sector;
   flash->darktime = fastOrSlow;
   flash->brighttime = STROBEBRIGHT;
-  flash->thinker.function.acp1 = (actionf_p1) T_StrobeFlash;
+  flash->thinker.function = T_StrobeFlash;
   flash->maxlight = sector->lightlevel;
   flash->minlight = P_FindMinSurroundingLight(sector, sector->lightlevel);
   
@@ -282,7 +283,7 @@ void P_SpawnGlowingLight(sector_t*  sector)
   g->sector = sector;
   g->minlight = P_FindMinSurroundingLight(sector,sector->lightlevel);
   g->maxlight = sector->lightlevel;
-  g->thinker.function.acp1 = (actionf_p1) T_Glow;
+  g->thinker.function = T_Glow;
   g->direction = -1;
 
   sector->special &= ~31; //jff 3/14/98 clear non-generalized sector type
@@ -389,60 +390,52 @@ int EV_LightTurnOn(line_t *line, int bright)
       
       //jff 5/17/98 unless compatibility optioned 
       //then maximum near ANY tagged sector
-      if (compatibility)
+      if (comp[comp_model])
 	bright = tbright;
     }
   return 1;
 }
 
-//----------------------------------------------------------------------------
-//
-// $Log: p_lights.c,v $
-// Revision 1.1  2000/05/04 08:11:59  proff_fs
-// Initial revision
-//
-// Revision 1.3  1999/10/12 13:01:12  cphipps
-// Changed header to GPL
-//
-// Revision 1.2  1998/12/23 15:37:32  cphipps
-// Imported optimised versions of EV_TurnTagLightsOff and EV_LightTurnOn
-// from MBF
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.11  1998/05/18  09:04:41  jim
-// fix compatibility decl
-//
-// Revision 1.10  1998/05/17  11:31:36  jim
-// fixed bug in lights to max neighbor
-//
-// Revision 1.9  1998/05/09  18:57:50  jim
-// formatted/documented p_lights
-//
-// Revision 1.8  1998/05/03  23:17:23  killough
-// Fix #includes at the top, nothing else
-//
-// Revision 1.7  1998/03/15  14:40:10  jim
-// added pure texture change linedefs & generalized sector types
-//
-// Revision 1.6  1998/02/23  23:46:56  jim
-// Compatibility flagged multiple thinker support
-//
-// Revision 1.5  1998/02/23  00:41:51  jim
-// Implemented elevators
-//
-// Revision 1.4  1998/02/17  06:07:11  killough
-// Change RNG calling sequence
-//
-// Revision 1.3  1998/02/13  03:28:42  jim
-// Fixed W1,G1 linedefs clearing untriggered special, cosmetic changes
-//
-// Revision 1.2  1998/01/26  19:24:07  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:59  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------
+/* killough 10/98:
+ *
+ * EV_LightTurnOnPartway()
+ *
+ * Turn sectors tagged to line lights on to specified or max neighbor level
+ *
+ * Passed the activating line, and a light level fraction between 0 and 1.
+ * Sets the light to min on 0, max on 1, and interpolates in-between.
+ * Used for doors with gradual lighting effects.
+ *
+ * Returns true
+ */
+
+int EV_LightTurnOnPartway(line_t *line, fixed_t level)
+{
+  int i;
+
+  if (level < 0)          // clip at extremes 
+    level = 0;
+  if (level > FRACUNIT)
+    level = FRACUNIT;
+
+  // search all sectors for ones with same tag as activating line
+  for (i = -1; (i = P_FindSectorFromLineTag(line,i)) >= 0;)
+    {
+      sector_t *temp, *sector = sectors+i;
+      int j, bright = 0, min = sector->lightlevel;
+
+      for (j = 0; j < sector->linecount; j++)
+	if ((temp = getNextSector(sector->lines[j],sector)))
+	  {
+	    if (temp->lightlevel > bright)
+	      bright = temp->lightlevel;
+	    if (temp->lightlevel < min)
+	      min = temp->lightlevel;
+	  }
+
+      sector->lightlevel =   // Set level in-between extremes
+	(level * bright + (FRACUNIT-level) * min) >> FRACBITS;
+    }
+  return 1;
+}
+

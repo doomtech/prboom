@@ -1,12 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: qmus2mid.c,v 1.1 2000/05/04 08:15:13 proff_fs Exp $
+ * $Id: qmus2mid.c,v 1.1.1.2 2000/09/20 09:45:16 figgi Exp $
  *
- *  Sound server for LxDoom, based on the sound server sources released
- *   with the original linuxdoom.
- *  Copyright (C) 1993-1996 by id Software
- *  Copyright (C) 1999 by Colin Phipps
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
+ *  based on BOOM, a modified and improved DOOM engine
+ *  Copyright (C) 1999 by
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -51,7 +53,7 @@
 */
 
 static const char 
-rcsid[] = "$Id: qmus2mid.c,v 1.1 2000/05/04 08:15:13 proff_fs Exp $";
+rcsid[] = "$Id: qmus2mid.c,v 1.1.1.2 2000/09/20 09:45:16 figgi Exp $";
 
 #include <ctype.h>
 #include <stdio.h>
@@ -118,7 +120,7 @@ size_t fwrite2(const int2 *ptr, size_t size, FILE *file)
   int4 rev = 0;
   int i;
   
-  for( i = 0 ; i < size ; i++ )
+  for( i = 0 ; (size_t)i < size ; i++ )
     rev = (rev << 8) + (((*ptr) >> (i*8)) & 0xFF) ;
 
   return fwrite( &rev, size, 1, file ) ;
@@ -551,12 +553,3 @@ int qmus2mid( void *mus, size_t len, FILE *file_mid,
 
   return 0 ;
 }
-
-//
-// $Log: qmus2mid.c,v $
-// Revision 1.1  2000/05/04 08:15:13  proff_fs
-// Initial revision
-//
-// Revision 1.1  2000/05/01 15:36:38  Proff
-// initial revision
-//

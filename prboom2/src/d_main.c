@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: d_main.c,v 1.1 2000/05/04 08:00:41 proff_fs Exp $
+ * $Id: d_main.c,v 1.1.1.2 2000/09/20 09:40:06 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -33,7 +34,7 @@
  *-----------------------------------------------------------------------------
  */
 
-static const char rcsid[] = "$Id: d_main.c,v 1.1 2000/05/04 08:00:41 proff_fs Exp $";
+static const char rcsid[] = "$Id: d_main.c,v 1.1.1.2 2000/09/20 09:40:06 figgi Exp $";
 
 #ifdef _MSC_VER
 #define    F_OK    0    /* Check for file existence */
@@ -57,7 +58,9 @@ static const char rcsid[] = "$Id: d_main.c,v 1.1 2000/05/04 08:00:41 proff_fs Ex
 #include "s_sound.h"
 #include "v_video.h"
 #include "f_finale.h"
+#ifndef GL_DOOM
 #include "f_wipe.h"
+#endif /* GL_DOOM */
 #include "m_argv.h"
 #include "m_misc.h"
 #include "m_menu.h"
@@ -77,6 +80,9 @@ static const char rcsid[] = "$Id: d_main.c,v 1.1 2000/05/04 08:00:41 proff_fs Ex
 #include "d_deh.h"  // Ty 04/08/98 - Externalizations
 #include "lprintf.h"  // jff 08/03/98 - declaration of lprintf
 #include "am_map.h"
+#ifdef GL_DOOM
+#include "gl_struct.h"
+#endif
 
 // DEHacked support - Ty 03/09/97 // CPhipps - const char*'s
 void ProcessDehFile(const char *filename, const char *outfilename, int lumpnum);
@@ -184,6 +190,7 @@ void D_ProcessEvents (void)
 // The screens to wipe between are already stored, this just does the timing
 // and screen updating
 
+#ifndef GL_DOOM
 static void D_Wipe(void)
 {
   boolean done;
@@ -194,7 +201,7 @@ static void D_Wipe(void)
       int nowtime, tics;
       do
         {
-	  I_uSleep(10000); // CPhipps - don't thrash cpu in this loop
+	        I_uSleep(5000); // CPhipps - don't thrash cpu in this loop
           nowtime = I_GetTime();
           tics = nowtime - wipestart;
         }
@@ -207,6 +214,7 @@ static void D_Wipe(void)
     }
   while (!done);
 }
+#endif /* GL_DOOM */
 
 //
 // D_Display
@@ -224,14 +232,19 @@ void D_Display (void)
   static boolean isborderstate        = false;
   static boolean borderwillneedredraw = false;
   static gamestate_t oldgamestate = -1;
-  boolean wipe, viewactive = false, isborder = false;
+#ifndef GL_DOOM
+  boolean wipe;
+#endif
+  boolean viewactive = false, isborder = false;
 
   if (nodrawers)                    // for comparative timing / profiling
     return;
 
+#ifndef GL_DOOM
   // save the current screen if about to wipe
   if ((wipe = gamestate != wipegamestate))
     wipe_StartScreen(0, 0, SCREENWIDTH, SCREENHEIGHT);
+#endif /* GL_DOOM */
 
   if (gamestate != GS_LEVEL) { // Not a level
     switch (oldgamestate) {
@@ -281,17 +294,22 @@ void D_Display (void)
       // and there is a menu being displayed
       borderwillneedredraw = menuactive && isborder && viewactive && (viewwidth != SCREENWIDTH);
     }
+#ifdef GL_DOOM
+    R_DrawViewBorder();
+#else
     if (redrawborderstuff)
       R_DrawViewBorder();
+#endif
 
     // Now do the drawing
     if (viewactive)
       R_RenderPlayerView (&players[displayplayer]);
     if (automapmode & am_active)
       AM_Drawer();
-    ST_Drawer(viewheight == SCREENHEIGHT, redrawborderstuff);
+    ST_Drawer((viewheight != SCREENHEIGHT) || ((automapmode & am_active) && !(automapmode & am_overlay)), redrawborderstuff);
+#ifndef GL_DOOM
     R_DrawViewBorder();
-    if (isborder) R_CopyStatusBar();
+#endif
     HU_Drawer();
   }
 
@@ -313,7 +331,7 @@ void D_Display (void)
       // CPhipps - updated for new patch drawing
       V_DrawNamePatch(x, (!(automapmode & am_active) || (automapmode & am_overlay)) 
 		      ? 4+(viewwindowy*200/SCREENHEIGHT) : 4, // cph - Must un-stretch viewwindowy
-		      0, "M_PAUSE", NULL, VPT_STRETCH);
+		      0, "M_PAUSE", CR_DEFAULT, VPT_STRETCH);
   }
 
   // menus go directly to the screen
@@ -324,6 +342,7 @@ void D_Display (void)
   D_BuildNewTiccmds();
 #endif
   
+#ifndef GL_DOOM
   // normal update
   if (!wipe)
     I_FinishUpdate ();              // page flip or blit buffer
@@ -332,6 +351,9 @@ void D_Display (void)
     wipe_EndScreen(0, 0, SCREENWIDTH, SCREENHEIGHT);
     D_Wipe();
   }
+#else
+  I_FinishUpdate ();              // page flip or blit buffer
+#endif /* GL_DOOM */
 }
 
 // CPhipps - Auto screenshot Variables
@@ -354,12 +376,7 @@ extern boolean demorecording;
 
 static void D_DoomLoop(void)
 {
-  if (demorecording)
-    G_BeginRecording ();
-
   basetic = gametic;
-
-  I_InitGraphics ();
 
 #ifdef HAVE_NET 
   atexit(D_QuitNetGame);       // killough
@@ -425,7 +442,13 @@ void D_PageDrawer(void)
 {
   // proff/nicolas 09/14/98 -- now stretchs bitmaps to fullscreen!
   // CPhipps - updated for new patch drawing
-  V_DrawNamePatch(0, 0, 0, pagename, NULL, VPT_STRETCH);
+  // proff - added M_DrawCredits
+  if (pagename)
+  {
+    V_DrawNamePatch(0, 0, 0, pagename, CR_DEFAULT, VPT_STRETCH);
+  }
+  else
+    M_DrawCredits();
 }
 
 //
@@ -482,10 +505,10 @@ static struct
       {G_DeferedPlayDemo, "demo1"},
     },
     {
-      {D_SetPageName, "CREDIT"},
-      {D_SetPageName, "CREDIT"},
-      {D_SetPageName, "CREDIT"},
-      {D_SetPageName, "CREDIT"},
+      {D_SetPageName, NULL},
+      {D_SetPageName, NULL},
+      {D_SetPageName, NULL},
+      {D_SetPageName, NULL},
     },
 
     {
@@ -583,7 +606,7 @@ void D_AddFile (const char *file, wad_source_t source)
 }
 
 // Return the path where the executable lies -- Lee Killough
-#ifdef _MSC_VER
+#ifdef _WIN32
 char *D_DoomExeDir(void)
 {
   static char *base;
@@ -594,13 +617,15 @@ char *D_DoomExeDir(void)
       strcpy(base,*myargv);
       while (p > base && *p!='/' && *p!='\\')
         *p--=0;
+      if (*p=='/' || *p=='\\')
+        *p--=0;
     }
   return base;
 }
 #else
 // cph - V.Aguilar (5/30/99) suggested return ~/.lxdoom/, creating
 //  if non-existant
-static const char lxdoom_dir[] = {"/.lxdoom/"};
+static const char prboom_dir[] = {"/.prboom/"};
 
 char *D_DoomExeDir(void)
 {
@@ -610,11 +635,11 @@ char *D_DoomExeDir(void)
       char *home = getenv("HOME");
       size_t len = strlen(home);
 
-      base = malloc(len + strlen(lxdoom_dir) + 1);
+      base = malloc(len + strlen(prboom_dir) + 1);
       strcpy(base, home);
       // I've had trouble with trailing slashes before...
       if (base[len-1] == '/') base[len-1] = 0;
-      strcat(base, lxdoom_dir);
+      strcat(base, prboom_dir);
       mkdir(base, S_IRUSR | S_IWUSR | S_IXUSR); // Make sure it exists
     }
   return base;
@@ -914,7 +939,6 @@ void IdentifyVersion (void)
   char *iwad;
 
   // get config file from same directory as executable
-
   sprintf(basedefault,"%s/boom.cfg", D_DoomExeDir());  // killough
 
   // set save path to -save parm or current dir
@@ -944,6 +968,19 @@ void IdentifyVersion (void)
   // locate the IWAD and determine game mode from it
 
   iwad = FindIWADFile();
+
+#if (defined(GL_DOOM) && defined(_DEBUG))
+  // proff 11/99: used for debugging
+  {
+    FILE *f;
+    f=fopen("levelinfo.txt","w");
+    if (f)
+    {
+      fprintf(f,"%s\n",iwad);
+      fclose(f);
+    }
+  }
+#endif
 
   if (iwad && *iwad)
   {
@@ -1009,19 +1046,53 @@ void FindResponseFile (void)
         char *file;
         const char **moreargs = malloc(myargc * sizeof(const char*));
         const char **newargv;
+        // proff 04/05/2000: Added for searching responsefile
+        char fname[PATH_MAX+1];
+
+        strcpy(fname,&myargv[i][1]);
+        AddDefaultExtension(fname,".rsp");
 
         // READ THE RESPONSE FILE INTO MEMORY
-        handle = fopen (&myargv[i][1],"rb");
+        //handle = fopen (&myargv[i][1],"rb");
+        // proff 04/05/2000: changed for searching responsefile
+        handle = fopen (fname,"rb");
+        // proff 04/05/2000: Added for searching responsefile
         if (!handle)
-          {
+        {
+          strcat(strcpy(fname,D_DoomExeDir()),&myargv[i][1]);
+          AddDefaultExtension(fname,".rsp");
+          handle = fopen (fname,"rb");
+        }
+        if (!handle)
+        {
             //jff 9/3/98 use logical output routine
-            lprintf(LO_FATAL,"\nNo such response file!\n");
-            exit(1);
-          }
+            // proff 04/05/2000: Changed from LO_FATAL
+            lprintf(LO_ERROR,"\nNo such response file!\n");
+            // proff 04/05/2000: Simply removed the exit(1);
+            //exit(1);
+        }
         //jff 9/3/98 use logical output routine
         lprintf(LO_CONFIRM,"Found response file %s!\n",&myargv[i][1]);
         fseek(handle,0,SEEK_END);
         size = ftell(handle);
+        // proff 04/05/2000: Added check for empty rsp file
+        if (size<=0)
+        {
+          lprintf(LO_ERROR,"\nResponse file empty!\n");
+          fclose(handle);
+	        {
+	          const char *firstargv = myargv[0];
+	          newargv = calloc(sizeof(char *),MAXARGVS);
+	          newargv[0] = firstargv;
+  	      }
+          for (k = 1,index = 1;k < myargc;k++)
+          {
+            if (i!=k)
+              newargv[index++] = myargv[k];
+          }
+          myargc = index; myargv = newargv;
+          return;
+        }
         fseek(handle,0,SEEK_SET);
         file = malloc (size);
         fread(file,size,1,handle);
@@ -1031,11 +1102,11 @@ void FindResponseFile (void)
         for (index = 0,k = i+1; k < myargc; k++)
           moreargs[index++] = myargv[k];
 
-	{
-	  const char *firstargv = myargv[0];
-	  newargv = calloc(sizeof(char *),MAXARGVS);
-	  newargv[0] = firstargv;
-	}
+	      {
+	        const char *firstargv = myargv[0];
+	        newargv = calloc(sizeof(char *),MAXARGVS);
+	        newargv[0] = firstargv;
+	      }
 
         infile = file;
         indexinfile = k = 0;
@@ -1195,8 +1266,8 @@ void DoLooseFiles(void)
   myargc = tmyargc;
 }
 
-// CPhipps - wad autoloading
-const char* auto_load_wads; // Semicolon separated list of wad names to be loaded automatically
+/* cph - MBF-like wad/deh/bex autoload code */
+char *wad_files[MAXLOADFILES], *deh_files[MAXLOADFILES];
 
 // CPhipps - misc screen stuff
 unsigned int desired_screenwidth, desired_screenheight;
@@ -1212,23 +1283,44 @@ void D_DoomMainSetup(void)
   int p,i,slot;
   const char *cena="ICWEFDA",*pos;  //jff 9/3/98 use this for parsing console masks // CPhipps - const char*'s
 
+  // figgi 09/18/00-- added switch to force classic bsp nodes
+#ifdef GL_DOOM
+  if (M_CheckParm ("-forceoldbsp"))
+  {
+	  extern boolean forceOldBsp;
+	  forceOldBsp = true;
+  }
+#endif
+
   //jff 9/3/98 get mask for console output filter
   if ((p = M_CheckParm ("-cout")))
     if (++p != myargc && *myargv[p] != '-')
-      for (i=0,cons_output_mask=0;i<strlen(myargv[p]);i++)
+      for (i=0,cons_output_mask=0;(size_t)i<strlen(myargv[p]);i++)
         if ((pos = strchr(cena,toupper(myargv[p][i]))))
           cons_output_mask |= (1<<(pos-cena));
 
   //jff 9/3/98 get mask for redirected console error filter
   if ((p = M_CheckParm ("-cerr")))
     if (++p != myargc && *myargv[p] != '-')
-      for (i=0,cons_error_mask=0;i<strlen(myargv[p]);i++)
+      for (i=0,cons_error_mask=0;(size_t)i<strlen(myargv[p]);i++)
         if ((pos = strchr(cena,toupper(myargv[p][i]))))
           cons_error_mask |= (1<<(pos-cena));
 
   setbuf(stdout,NULL);
 
-  FindResponseFile();
+  // proff 04/05/2000: Added support for include response files
+  {
+    boolean rsp_found;
+    int i;
+
+    do {
+      rsp_found=false;
+      for (i=0; i<myargc; i++)
+        if (myargv[i][0]=='@')
+          rsp_found=true;
+      FindResponseFile();
+    } while (rsp_found==true);
+  }
   DoLooseFiles();  // Ty 08/29/98 - handle "loose" files on command line
   IdentifyVersion();
 
@@ -1311,8 +1403,8 @@ void D_DoomMainSetup(void)
     }
 
     /* cphipps - the main display. This shows the build date, copyright, and game type */
-    lprintf(LO_ALWAYS,"LxDoom (built %s), playing: %s\n"
-	    "LxDoom is released under the GNU General Public license v2.0.\n"
+    lprintf(LO_ALWAYS,"PrBoom (built %s), playing: %s\n"
+	    "PrBoom is released under the GNU General Public license v2.0.\n"
 	    "You are welcome to redistribute it under certain conditions.\n"
 	    "It comes with ABSOLUTELY NO WARRANTY. See the file COPYING for details.\n",
 	    version_date, doomverstr);
@@ -1320,7 +1412,7 @@ void D_DoomMainSetup(void)
 
   if (devparm)
     //jff 9/3/98 use logical output routine
-    lprintf(LO_CONFIRM,D_DEVSTR);
+    lprintf(LO_CONFIRM,"%s",D_DEVSTR);
 
   // turbo option
   if ((p=M_CheckParm ("-turbo")))
@@ -1418,6 +1510,15 @@ void D_DoomMainSetup(void)
     WritePredefinedLumpWad(myargv[p+1]);
 #endif
 
+  //proff 11/22/98: Added setting of viewangleoffset
+  p = M_CheckParm("-viewangle");
+  if (p)
+  {
+    viewangleoffset = atoi(myargv[p+1]);
+    viewangleoffset = viewangleoffset<0 ? 0 : (viewangleoffset>7 ? 7 : viewangleoffset);
+    viewangleoffset = (8-viewangleoffset) * ANG45;
+  }
+
   // init subsystems
   //jff 9/3/98 use logical output routine
   lprintf(LO_INFO,"M_LoadDefaults: Load system defaults.\n");
@@ -1459,6 +1560,11 @@ void D_DoomMainSetup(void)
     I_SetRes(w, h);
   }
 
+#ifdef GL_DOOM
+  // proff 04/05/2000: for GL-specific switches
+ 	gld_InitCommandLine();
+#endif
+
   //jff 9/3/98 use logical output routine
   lprintf(LO_INFO,"V_Init: allocate screens.\n");
   V_Init();
@@ -1468,35 +1574,20 @@ void D_DoomMainSetup(void)
   // Some people might find this useful
   // cph - support MBF -noload parameter
   if (!M_CheckParm("-noload")) {
-    const char* p = auto_load_wads;
+    int i;
 
-    while (*p) {
-      char	*	fname;
-      char	*	fpath;
-      {
-	const char* q;
-	int len;
-      
-	if ((q=strchr(p, ';')) != NULL)
-	  len = q-p;
-	else len = strlen(p);
-	
-	fname = malloc(len+1);
-	memcpy(fname,p,len);
-	fname[len]=0;
-	p+=len; if (*p) p++;
-      }
+    for (i=0; i<MAXLOADFILES*2; i++) {
+      char *fname = (i < MAXLOADFILES) ? wad_files[i] 
+	: deh_files[i - MAXLOADFILES];
+      char *fpath;
+
+      if (!(fname && *fname)) continue;
       // Filename is now stored as a zero terminated string
-      fpath = FindWADFile(fname, ".wad");
+      fpath = FindWADFile(fname, (i < MAXLOADFILES) ? ".wad" : ".bex");
       if (!fpath)
         lprintf(LO_WARN, "Failed to autoload %s\n", fname);
       else {
-        /* CPhipps - if extension is a standard deh/bex one, assume it's a patch
-         * else assume it's a lump
-         */
-        const char* ext = NULL;
-        if (strlen(fpath)>=4) ext = fpath + strlen(fpath) - 4;
-        if (ext && (!strcasecmp(ext,".deh") || !strcasecmp(ext,".bex"))) 
+        if (i >= MAXLOADFILES) 
           ProcessDehFile(fpath, D_dehout(), 0);
         else {
           D_AddFile(fpath,source_auto_load);
@@ -1504,7 +1595,6 @@ void D_DoomMainSetup(void)
         modifiedgame = true; 
         free(fpath);
       }
-      free(fname);
     }
   }
 
@@ -1542,8 +1632,6 @@ void D_DoomMainSetup(void)
   // internal translucency set to config file value               // phares
   general_translucency = default_translucency;                    // phares
 
-  pitched_sounds = default_pitched_sounds;    // killough 2/21/98
-
   // 1/18/98 killough: Z_Init() call moved to i_main.c
 
   // CPhipps - move up netgame init
@@ -1567,11 +1655,11 @@ void D_DoomMainSetup(void)
   // Ty 04/08/98 - Add 5 lines of misc. data, only if nonblank
   // The expectation is that these will be set in a .bex file
   //jff 9/3/98 use logical output routine
-  if (*startup1) lprintf(LO_INFO,startup1);
-  if (*startup2) lprintf(LO_INFO,startup2);
-  if (*startup3) lprintf(LO_INFO,startup3);
-  if (*startup4) lprintf(LO_INFO,startup4);
-  if (*startup5) lprintf(LO_INFO,startup5);
+  if (*startup1) lprintf(LO_INFO,"%s",startup1);
+  if (*startup2) lprintf(LO_INFO,"%s",startup2);
+  if (*startup3) lprintf(LO_INFO,"%s",startup3);
+  if (*startup4) lprintf(LO_INFO,"%s",startup4);
+  if (*startup5) lprintf(LO_INFO,"%s",startup5);
   // End new startup strings
 
   //jff 9/3/98 use logical output routine
@@ -1602,6 +1690,8 @@ void D_DoomMainSetup(void)
   //jff 9/3/98 use logical output routine
   lprintf(LO_INFO,"HU_Init: Setting up heads up display.\n");
   HU_Init();
+
+  I_InitGraphics();
 
   //jff 9/3/98 use logical output routine
   lprintf(LO_INFO,"ST_Init: Init status bar.\n");
@@ -1674,7 +1764,7 @@ void D_DoomMainSetup(void)
     }
   else
     if (!singledemo) {                  /* killough 12/98 */
-      if (autostart)
+      if (autostart || netgame)
 	{
 	  G_InitNew(startskill, startepisode, startmap);
 	  if (demorecording)
@@ -1772,295 +1862,3 @@ void GetFirstMap(int *ep, int *map)
       newlevel ? "new " : "", name);  // Ty 10/04/98 - new level test
   }
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: d_main.c,v $
-// Revision 1.1  2000/05/04 08:00:41  proff_fs
-// Initial revision
-//
-// Revision 1.48  2000/05/01 17:50:33  Proff
-// made changes to compile with VisualC and SDL
-//
-// Revision 1.47  2000/03/28 08:47:48  cph
-// New free join/parting for network games
-//
-// Revision 1.46  2000/03/27 10:33:49  cph
-// Kludge for game start movement
-//
-// Revision 1.45  1999/12/18 15:17:22  cphipps
-// Completely cleaned up the WAD searching code
-// New function FindWADFile is used for IWAD and autoloading searches
-// FindIWADFile is now very simple, static buffers no longer needed
-// Removed redundant version printouts from IdentifyVersion
-//
-// Revision 1.44  1999/11/01 17:11:59  cphipps
-// Added i_main.h for I_Init
-//
-// Revision 1.43  1999/10/27 07:40:59  cphipps
-// Imported MBF tabularised demo sequence code
-//
-// Revision 1.42  1999/10/17 09:35:15  cphipps
-// Fixed hanging else(s)
-//
-// Revision 1.41  1999/10/15 07:40:40  cphipps
-// Fix bugs in the WAD autoloading code, thanks to a patch from Steve
-// VanDevender
-//
-// Revision 1.40  1999/10/12 16:12:56  cphipps
-// Remove shareware restriction
-//
-// Revision 1.39  1999/10/12 12:59:50  cphipps
-// Change header to GPL
-// Added copyright and disclaimer to normal startup messages
-//
-// Revision 1.38  1999/10/06 07:52:48  cphipps
-// When automap is overlayed on a full-screen view, made sure status bar
-// is not drawn
-//
-// Revision 1.37  1999/09/09 22:23:14  cphipps
-// Reordered IWAD directory checks
-// Added check for wad dir created by the automake install scripts
-//
-// Revision 1.36  1999/09/05 14:06:53  cphipps
-// Removed -cdrom parameter support (config file was already saved
-// in ~/.lxdoom, so changing this to ~/doom was pointless)
-//
-// Revision 1.35  1999/08/31 19:30:39  cphipps
-// Rewrote display logic (decides which drawer functions to call)
-// Removed some prototypes for functions in r_main.c, they belong in r_main.h
-//
-// Revision 1.34  1999/08/30 12:48:01  cphipps
-// Moved screen wipe timing code to a separate function
-//
-// Revision 1.33  1999/06/20 14:35:52  cphipps
-// Redo version string code, more efficient
-//
-// Revision 1.32  1999/06/06 12:30:03  cphipps
-// Now makes a ~/.lxdoom/ where config file, translucency table and save games
-//  are stored by default. Based on a patch from V.Aguilar (5/30/99)
-//
-// Revision 1.31  1999/04/02 10:53:52  cphipps
-// Made D_AddFile non-static
-// Added D_InitNetGame call before W_Init, moved D_CheckNetGame call
-//
-// Revision 1.30  1999/03/25 10:56:01  cphipps
-// Fix position of PAUSE graphic
-//
-// Revision 1.29  1999/03/07 22:16:02  cphipps
-// Automap overlay
-//
-// Revision 1.28  1999/01/23 07:32:58  cphipps
-// Add default DOOMWADDIR
-//
-// Revision 1.27  1999/01/19 22:16:51  cphipps
-// Add sleep in wipe screen loop to reduce cpu load
-// Remove padding on version strings and add at run time
-// Move all startup out of D_DoomMain into a new D_DoomMainStart()
-// Make title string buffer local to D_DoomMainStart()
-//
-// Revision 1.26  1999/01/17 10:42:08  cphipps
-// Handling for -geometry parameter to temporarily override desired screen size
-//
-// Revision 1.25  1999/01/13 07:53:25  cphipps
-// Removed -debugfile file opening (moved to l_net.c by leban)
-//
-// Revision 1.24  1999/01/12 18:58:24  cphipps
-// Auto screenshot facility added
-//
-// Revision 1.23  1999/01/04 19:48:13  cphipps
-// Add support for auto-loaded bex/deh files
-// Add support for -dehout parameter
-// Fix ProcessDehFile prototype
-// Paste in MBF code for game startup type (adds -recordfrom support)
-//
-// Revision 1.22  1998/12/31 20:19:29  cphipps
-// New palette handling
-//
-// Revision 1.21  1998/12/30 22:10:32  cphipps
-// Updated for new patch drawing
-//
-// Revision 1.20  1998/12/22 20:57:30  cphipps
-// Removed old wadfiles array
-// Modified D_AddFile to allocate & use new wadfiles array
-// Modified wad auto-loading to use different source type marker
-//
-// Revision 1.19  1998/12/19 11:46:40  cphipps
-// Modify G_LoadGame call to not pass a savegame filename
-//
-// Revision 1.18  1998/12/18 19:43:14  cphipps
-// Use DOOMSAVEDIR environmental variable to specify save game dir
-//
-// Revision 1.17  1998/12/16 22:34:34  cphipps
-// Add default screen size config vars, controlled via command line params
-// Added I_SetRes call to set screen res before graphics init
-//
-// Revision 1.16  1998/12/16 21:26:48  cphipps
-// Re-ordered cde so wads are added after the config file is read
-// Added auto wad loading, controlled by list in the config file
-//
-// Revision 1.15  1998/12/02 09:14:02  cphipps
-// Fix trailing backslashes in D_DoomExeDir, which were the cause of config
-// save failures.
-//
-// Revision 1.14  1998/12/02 09:04:59  cphipps
-// Fix -cdrom parameter
-//
-// Revision 1.13  1998/11/21 15:21:43  cphipps
-// Make M_PAUSE appear on the left, to avoid problems.
-// Needs fixing properly later.
-//
-// Revision 1.12  1998/11/16 14:05:37  cphipps
-// Hi-res changes from PrBoom v2.02
-//
-// Revision 1.11  1998/11/05 17:23:47  cphipps
-// FreeBSD patching
-//
-// Revision 1.10  1998/11/03 12:21:55  cphipps
-// Check for doomu.wad
-//
-// Revision 1.9  1998/10/27 19:14:21  cphipps
-// Misc minor fixes, finishing previous edits
-//
-// Revision 1.8  1998/10/27 15:18:46  cphipps
-// Substitute Boom v2.02 source file
-// Re-patch const strings stuff
-// Re-do minor fixes, e.g. cdrom_data_dir
-// Modify D_DoomExeDir to not assume path is given
-//
-// Revision 1.54  1998/10/04  13:20:32  thldrmn
-// Fix autowarp message and subscript bug
-//
-// Revision 1.53  1998/09/24  19:02:41  jim
-// Fixed -save parm for x:/
-//
-// Revision 1.52  1998/09/14  01:27:38  thldrmn
-// Fixed autowarp message for DOOM1/UDOOM
-//
-// Revision 1.51  1998/09/07  20:18:09  jim
-// Added logical output routine
-//
-// Revision 1.49  1998/08/29  22:57:45  thldrmn
-// Updates to -warp and switchless filename handling
-//
-// Revision 1.48  1998/08/24  20:28:26  jim
-// gamemission support in IdentifyVersion
-//
-// Revision 1.47  1998/05/16  09:16:51  killough
-// Make loadgame checksum friendlier
-//
-// Revision 1.46  1998/05/12  10:32:42  jim
-// remove LEESFIXES from d_main
-//
-// Revision 1.45  1998/05/06  15:15:46  jim
-// Documented IWAD routines
-//
-// Revision 1.44  1998/05/03  22:26:31  killough
-// beautification, declarations, headers
-//
-// Revision 1.43  1998/04/24  08:08:13  jim
-// Make text translate tables lumps
-//
-// Revision 1.42  1998/04/21  23:46:01  jim
-// Predefined lump dumper option
-//
-// Revision 1.39  1998/04/20  11:06:42  jim
-// Fixed print of IWAD found
-//
-// Revision 1.37  1998/04/19  01:12:19  killough
-// Fix registered check to work with new lump namespaces
-//
-// Revision 1.36  1998/04/16  18:12:50  jim
-// Fixed leak
-//
-// Revision 1.35  1998/04/14  08:14:18  killough
-// Remove obsolete adaptive_gametics code
-//
-// Revision 1.34  1998/04/12  22:54:41  phares
-// Remaining 3 Setup screens
-//
-// Revision 1.33  1998/04/11  14:49:15  thldrmn
-// Allow multiple deh/bex files
-//
-// Revision 1.32  1998/04/10  06:31:50  killough
-// Add adaptive gametic timer
-//
-// Revision 1.31  1998/04/09  09:18:17  thldrmn
-// Added generic startup strings for BEX use
-//
-// Revision 1.30  1998/04/06  04:52:29  killough
-// Allow demo_insurance=2, fix fps regression wrt redrawsbar
-//
-// Revision 1.29  1998/03/31  01:08:11  phares
-// Initial Setup screens and Extended HELP screens
-//
-// Revision 1.28  1998/03/28  15:49:37  jim
-// Fixed merge glitches in d_main.c and g_game.c
-//
-// Revision 1.27  1998/03/27  21:26:16  jim
-// Default save dir offically . now
-//
-// Revision 1.26  1998/03/25  18:14:21  jim
-// Fixed duplicate IWAD search in .
-//
-// Revision 1.25  1998/03/24  16:16:00  jim
-// Fixed looking for wads message
-//
-// Revision 1.23  1998/03/24  03:16:51  jim
-// added -iwad and -save parms to command line
-//
-// Revision 1.22  1998/03/23  03:07:44  killough
-// Use G_SaveGameName, fix some remaining default.cfg's
-//
-// Revision 1.21  1998/03/18  23:13:54  jim
-// Deh text additions
-//
-// Revision 1.19  1998/03/16  12:27:44  killough
-// Remember savegame slot when loading
-//
-// Revision 1.18  1998/03/10  07:14:58  jim
-// Initial DEH support added, minus text
-//
-// Revision 1.17  1998/03/09  07:07:45  killough
-// print newline after wad files
-//
-// Revision 1.16  1998/03/04  08:12:05  killough
-// Correctly set defaults before recording demos
-//
-// Revision 1.15  1998/03/02  11:24:25  killough
-// make -nodraw -noblit work generally, fix ENDOOM
-//
-// Revision 1.14  1998/02/23  04:13:55  killough
-// My own fix for m_misc.c warning, plus lots more (Rand's can wait)
-//
-// Revision 1.11  1998/02/20  21:56:41  phares
-// Preliminarey sprite translucency
-//
-// Revision 1.10  1998/02/20  00:09:00  killough
-// change iwad search path order
-//
-// Revision 1.9  1998/02/17  06:09:35  killough
-// Cache D_DoomExeDir and support basesavegame
-//
-// Revision 1.8  1998/02/02  13:20:03  killough
-// Ultimate Doom, -fastdemo -nodraw -noblit support, default_compatibility
-//
-// Revision 1.7  1998/01/30  18:48:15  phares
-// Changed textspeed and textwait to functions
-//
-// Revision 1.6  1998/01/30  16:08:59  phares
-// Faster end-mission text display
-//
-// Revision 1.5  1998/01/26  19:23:04  phares
-// First rev with no ^Ms
-//
-// Revision 1.4  1998/01/26  05:40:12  killough
-// Fix Doom 1 crashes on -warp with too few args
-//
-// Revision 1.3  1998/01/24  21:03:04  jim
-// Fixed disappearence of nomonsters, respawn, or fast mode after demo play or IDCLEV
-//
-// Revision 1.1.1.1  1998/01/19  14:02:53  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------

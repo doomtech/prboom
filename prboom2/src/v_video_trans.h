@@ -1,12 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: v_video_trans.h,v 1.1 2000/05/09 20:47:07 proff_fs Exp $
+ * $Id: v_video_trans.h,v 1.1.1.1 2000/09/20 09:46:19 figgi Exp $
  *
- *  Video mode translation for LxDoom, 
- *   parts from the original linuxdoom i_video.c
- *  Copyright (C) 1994-1996 by id Software
- *  Copyright (C) 1999 by Colin Phipps
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
+ *  based on BOOM, a modified and improved DOOM engine
+ *  Copyright (C) 1999 by
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,15 +33,15 @@
  * Yes, I'm afraid so, it's another colour remapping layer.
  */
 
-#ifndef _L_VIDEO_TRANS_H_
-#define _L_VIDEO_TRANS_H_
+#ifndef _V_VIDEO_TRANS_H_
+#define _V_VIDEO_TRANS_H_
 
 /* LxDoom may support 24bpp and 32bpp */
 typedef unsigned long pval;
 
 typedef struct {
-  unsigned char pshift; /* Shifts color value to correct place in pixel       */
-  signed   char rshift; /* Shift to desired value to make it fit within range */
+  int pshift; /* Shifts color value to correct place in pixel       */
+  int rshift; /* Shift to desired value to make it fit within range */
 } colourshift_t;
 
 /* Not really part of this API, but put here as common code 
@@ -70,23 +72,3 @@ extern boolean true_color; /* Is this a TrueColor or PseudoColor mode */
 extern pval* pixelvals;
 
 #endif
-
-/*
- * $Log: v_video_trans.h,v $
- * Revision 1.1  2000/05/09 20:47:07  proff_fs
- * renamed
- *
- * Revision 1.1.1.1  2000/05/04 08:08:23  proff_fs
- * initial login on sourceforge as prboom2
- *
- * Revision 1.6  1999/10/12 13:00:57  cphipps
- * Changed header to GPL, converted C++ comments to C
- *
- * Revision 1.5  1999/01/04 19:31:49  cphipps
- * Add RCS log
- * Add extern to I_ExpandImage decl
- *
- */
-
-
-

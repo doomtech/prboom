@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: z_zone.c,v 1.1 2000/05/04 08:19:30 proff_fs Exp $
+ * $Id: z_zone.c,v 1.1.1.2 2000/09/20 09:46:30 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -38,7 +39,7 @@
  *-----------------------------------------------------------------------------
  */
 
-static const char rcsid[] = "$Id: z_zone.c,v 1.1 2000/05/04 08:19:30 proff_fs Exp $";
+static const char rcsid[] = "$Id: z_zone.c,v 1.1.1.2 2000/09/20 09:46:30 figgi Exp $";
 
 // use config.h if autoconf made one -- josh
 #ifdef HAVE_CONFIG_H
@@ -244,11 +245,10 @@ void Z_Init(void)
 #ifdef DJGPP
   size_t size = _go32_dpmi_remaining_physical_memory();    // Get free RAM
 #else
-  // CPhipps - allow -heapsize or -heapkb parameters
-  size_t size = (MIN_RAM*3)/2; // CPhipps - 6 Mb is enough for 
-  // the original Doom ][ levels at high-res, if people want to run 
-  // something massive like SIMPEVIL they'll need more
-  {
+  /* cph - Select zone size. 6megs is usable, but with the SDL version 
+   * storing sounds in the zone, 8 is more sensible */
+  size_t size = MIN_RAM*2; 
+  {  /* cph - allow -heapsize or -heapkb parameters */
     int p;
     if ((p=M_CheckParm("-heapsize")))
       if (++p < myargc) {
@@ -285,7 +285,7 @@ void Z_Init(void)
     else
       size -= RETRY_AMOUNT;
 
-  printf("Z_Init : Allocated %luKb zone memory\n", (long unsigned)size >> 10);
+  lprintf(LO_INFO,"Z_Init : Allocated %luKb zone memory\n", (long unsigned)size >> 10);
 
   // Align on cache boundary
 
@@ -309,8 +309,17 @@ void Z_Init(void)
 #endif
 }
 
-// Z_Malloc
-// You can pass a NULL user if the tag is < PU_PURGELEVEL.
+/* Z_Malloc
+ * You can pass a NULL user if the tag is < PU_PURGELEVEL.
+ *
+ * cph - the algorithm here was a very simple first-fit round-robin 
+ *  one - just keep looping around, freeing everything we can until 
+ *  we get a large enough space
+ *
+ * This has been changed now; we still do the round-robin first-fit, 
+ * but we only free the blocks we actually end up using; we don't 
+ * free all the stuff we just pass on the way.
+ */
 
 void *(Z_Malloc)(size_t size, int tag, void **user
 #ifdef INSTRUMENTED
@@ -319,7 +328,8 @@ void *(Z_Malloc)(size_t size, int tag, void **user
 		 )
 {
   register memblock_t *block;
-  memblock_t *start;
+  memblock_t *start, *first_of_free;
+  register size_t contig_free;
 
 #ifdef INSTRUMENTED
   size_t size_orig = size;
@@ -352,81 +362,87 @@ void *(Z_Malloc)(size_t size, int tag, void **user
     block = block->prev;
 
   start = block;
+  first_of_free = NULL; contig_free = 0;
 
-  do
-    {
-      if (block->tag >= PU_PURGELEVEL)      // Free purgable blocks
-        {                                   // replacement is roughly FIFO
-          start = block->prev;
-          Z_Free((char *) block + HEADER_SIZE);
-          block = start = start->next;      // Important: resets start
-        }
+  do {
+    /* If we just wrapped, we're not contiguous with the previous block */
+    if (block == zone) contig_free = 0;
 
-      if (block->tag == PU_FREE && block->size >= size)   // First-fit
-        {
-          size_t extra = block->size - size;
-          if (extra >= MIN_BLOCK_SPLIT + HEADER_SIZE)
-            {
-              memblock_t *newb = (memblock_t *)((char *) block +
-                                                HEADER_SIZE + size);
+    if (block->tag < PU_PURGELEVEL && block->tag != PU_FREE) {
+      /* Not free(able), so no free space here */
+      contig_free = 0;
+    } else {
+      /* Add to contiguous chunk of free space */
+      if (!contig_free) first_of_free = block;
+      contig_free += block->size;
 
-              (newb->next = block->next)->prev = newb;
-              (newb->prev = block)->next = newb;          // Split up block
-              block->size = size;
-              newb->size = extra - HEADER_SIZE;
-              newb->tag = PU_FREE;
-              newb->vm = 0;
-
-#ifdef INSTRUMENTED
-              inactive_memory += HEADER_SIZE;
-              free_memory -= HEADER_SIZE;
-#endif
-            }
-
-          rover = block->next;           // set roving pointer for next search
-
-#ifdef INSTRUMENTED
-          inactive_memory += block->extra = block->size - size_orig;
-          if (tag >= PU_PURGELEVEL)
-            purgable_memory += size_orig;
-          else
-            active_memory += size_orig;
-          free_memory -= block->size;
-#endif
-
-allocated:
-
-#ifdef INSTRUMENTED
-          block->file = file;
-          block->line = line;
-#endif
-
-#ifdef ZONEIDCHECK
-          block->id = ZONEID;         // signature required in block header
-#endif
-          block->tag = tag;           // tag
-          block->user = user;         // user
-          block = (memblock_t *)((char *) block + HEADER_SIZE);
-          if (user)                   // if there is a user
-            *user = block;            // set user to point to new block
-
-#ifdef INSTRUMENTED
-          Z_PrintStats();           // print memory allocation stats
-          // scramble memory -- weed out any bugs
-          memset(block, gametic & 0xff, size);
-#endif
-          return block;
-        }
+      /* First fit */
+      if (contig_free >= size)
+	break;
     }
+  }
   while ((block = block->next) != start);   // detect cycles as failure
 
-  // We've run out of physical memory, or so we think.
-  // Although less efficient, we'll just use ordinary malloc.
-  // This will squeeze the remaining juice out of this machine
-  // and start cutting into virtual memory if it has it.
+  if (contig_free >= size) {
+    /* We have a block of free(able) memory on the heap which will suffice */
+    block = first_of_free;
 
-  while (!(block = (malloc)(size + HEADER_SIZE)))
+    /* If the previous block is adjacent and free, step back and include it */
+    if (block != zone && block->prev->tag == PU_FREE) 
+      block = block->prev;
+
+    /* Free current block if needed */
+    if (block->tag != PU_FREE) Z_Free((char *) block + HEADER_SIZE);
+
+    /* Note: guaranteed that block->prev is either 
+     * not free or not contiguous 
+     *
+     * At every step, block->next must be not free, else it would 
+     *  have been merged with our block 
+     * No range check needed because we know it works by the previous loop */
+    while (block->size < size)
+      Z_Free((char *)(block->next) + HEADER_SIZE);
+
+    /* Now, carve up the block */
     {
+      size_t extra = block->size - size;
+      if (extra >= MIN_BLOCK_SPLIT + HEADER_SIZE) {
+	memblock_t *newb = (memblock_t *)((char *) block +
+					  HEADER_SIZE + size);
+	
+	(newb->next = block->next)->prev = newb;
+	(newb->prev = block)->next = newb;          // Split up block
+	block->size = size;
+	newb->size = extra - HEADER_SIZE;
+	newb->tag = PU_FREE;
+	newb->vm = 0;
+	
+#ifdef INSTRUMENTED
+	inactive_memory += HEADER_SIZE;
+	free_memory -= HEADER_SIZE;
+#endif
+      }
+      
+      rover = block->next;           // set roving pointer for next search
+      
+#ifdef INSTRUMENTED
+      inactive_memory += block->extra = block->size - size_orig;
+      if (tag >= PU_PURGELEVEL)
+	purgable_memory += size_orig;
+      else
+	active_memory += size_orig;
+      free_memory -= block->size;
+#endif
+    }
+  } else {
+    /* Allocate a vm block * 
+     * We've run out of physical memory, or so we think.
+     * Although less efficient, we'll just use ordinary malloc.
+     * This will squeeze the remaining juice out of this machine
+     * and start cutting into virtual memory if it has it.
+     */
+    
+    while (!(block = (malloc)(size + HEADER_SIZE))) {
       if (!blockbytag[PU_CACHE])
         I_Error ("Z_Malloc: Failure trying to allocate %lu bytes"
 #ifdef INSTRUMENTED
@@ -440,20 +456,40 @@ allocated:
       Z_FreeTags(PU_CACHE,PU_CACHE);
     }
 
-  if ((block->next = blockbytag[tag]))
-    block->next->prev = (memblock_t *) &block->next;
-  blockbytag[tag] = block;
-  block->prev = (memblock_t *) &blockbytag[tag];
-  block->vm = 1;
+    if ((block->next = blockbytag[tag]))
+      block->next->prev = (memblock_t *) &block->next;
+    blockbytag[tag] = block;
+    block->prev = (memblock_t *) &blockbytag[tag];
+    block->vm = 1;
+    
+#ifdef INSTRUMENTED
+    virtual_memory += size + HEADER_SIZE;
+#endif
+    /* cph - the next line was lost in the #ifdef above, and also added an 
+     *  extra HEADER_SIZE to block->size, which was incorrect */
+    block->size = size; 
+  }
 
 #ifdef INSTRUMENTED
-  virtual_memory += size + HEADER_SIZE;
+  block->file = file;
+  block->line = line;
 #endif
-  /* cph - the next line was lost in the #ifdef above, and also added an 
-   *  extra HEADER_SIZE to block->size, which was incorrect */
-  block->size = size; 
-
-  goto allocated;
+  
+#ifdef ZONEIDCHECK
+  block->id = ZONEID;         // signature required in block header
+#endif
+  block->tag = tag;           // tag
+  block->user = user;         // user
+  block = (memblock_t *)((char *) block + HEADER_SIZE);
+  if (user)                   // if there is a user
+    *user = block;            // set user to point to new block
+  
+#ifdef INSTRUMENTED
+  Z_PrintStats();           // print memory allocation stats
+  // scramble memory -- weed out any bugs
+  memset(block, gametic & 0xff, size);
+#endif
+  return block;
 }
 
 void (Z_Free)(void *p
@@ -564,7 +600,14 @@ void (Z_FreeTags)(int lowtag, int hightag
 #endif
 		  )
 {
-  memblock_t *block = zone;
+  /* cph - move rover to start of zone; we like to encourage static 
+   * data to stay in one place, at the start of the heap
+   */
+  memblock_t *block = rover = zone;
+
+#ifdef HEAPDUMP
+  Z_DumpMemory();
+#endif
 
   if (lowtag <= PU_FREE)
     lowtag = PU_FREE+1;
@@ -622,10 +665,6 @@ void (Z_FreeTags)(int lowtag, int hightag
 
         block = next;               // Advance to next block
       }
-
-#ifdef HEAPDUMP
-  Z_DumpMemory();
-#endif
 }
 
 void (Z_ChangeTag)(void *ptr, int tag
@@ -748,92 +787,3 @@ void (Z_CheckHeap)(
               );
   while ((block=block->next) != zone);
 }
-
-//-----------------------------------------------------------------------------
-//
-// $Log: z_zone.c,v $
-// Revision 1.1  2000/05/04 08:19:30  proff_fs
-// Initial revision
-//
-// Revision 1.13  2000/04/10 17:19:21  cph
-// Remove file & line debugging from z_zone.* when not debugging
-//
-// Revision 1.12  2000/04/09 13:39:46  cph
-// Get ./configure heap dumping option working
-// Fix w_wad.c check
-//
-// Revision 1.11  2000/04/09 10:30:37  cph
-// Fix Z_FreeTags logic so it doesn't skip blocks
-// Fix vm blocks block->size (again)
-// Add new heap dumping function
-// Fix virtual_memory accounting
-// Make memory scrambling scramble the whole block rather than just the
-//  allocated part
-//
-// Revision 1.10  1999/10/31 12:49:44  cphipps
-// Use lprintf.h for I_Error
-//
-// Revision 1.9  1999/10/12 13:01:15  cphipps
-// Changed header to GPL
-//
-// Revision 1.8  1999/10/02 11:59:50  cphipps
-// Diagnostics options now set in config.h
-//
-// Revision 1.7  1999/03/26 11:52:26  cphipps
-// Make INSTRUMENTED compile without warnings
-//
-// Revision 1.6  1999/02/09 20:57:58  cphipps
-// Fix VM code lost in INSTRUMENTED define
-//
-// Revision 1.5  1998/12/20 14:35:19  cphipps
-// Increase default RAM usage to 6 Mb
-//
-// Revision 1.4  1998/10/20 07:03:39  cphipps
-// dprintf -> doom_printf
-//
-// Revision 1.3  1998/10/01 08:23:05  cphipps
-// Fixed warning due to size_t arg of printf
-//
-// Revision 1.2  1998/09/23 09:39:32  cphipps
-// Add support for -heapsize and -heapkb for non-DJGPP versions.
-// Print out the allocated memory.
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.13  1998/05/12  06:11:55  killough
-// Improve memory-related error messages
-//
-// Revision 1.12  1998/05/03  22:37:45  killough
-// beautification
-//
-// Revision 1.11  1998/04/27  01:49:39  killough
-// Add history of malloc/free and scrambler (INSTRUMENTED only)
-//
-// Revision 1.10  1998/03/28  18:10:33  killough
-// Add memory scrambler for debugging
-//
-// Revision 1.9  1998/03/23  03:43:56  killough
-// Make Z_CheckHeap() more diagnostic
-//
-// Revision 1.8  1998/03/02  11:40:02  killough
-// Put #ifdef CHECKHEAP around slow heap checks (debug)
-//
-// Revision 1.7  1998/02/02  13:27:45  killough
-// Additional debug info turned on with #defines
-//
-// Revision 1.6  1998/01/26  19:25:15  phares
-// First rev with no ^Ms
-//
-// Revision 1.5  1998/01/26  07:15:43  phares
-// Added rcsid
-//
-// Revision 1.4  1998/01/26  06:12:30  killough
-// Fix memory usage problems and improve debug stat display
-//
-// Revision 1.3  1998/01/22  05:57:20  killough
-// Allow use of virtual memory when physical memory runs out
-//
-// ???
-//
-//-----------------------------------------------------------------------------

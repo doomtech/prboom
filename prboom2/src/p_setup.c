@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: p_setup.c,v 1.1 2000/05/04 08:13:41 proff_fs Exp $
+ * $Id: p_setup.c,v 1.1.1.2 2000/09/20 09:44:59 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: p_setup.c,v 1.1 2000/05/04 08:13:41 proff_fs Exp $";
+rcsid[] = "$Id: p_setup.c,v 1.1.1.2 2000/09/20 09:44:59 figgi Exp $";
 
 #include <math.h>
 
@@ -50,6 +51,9 @@ rcsid[] = "$Id: p_setup.c,v 1.1 2000/05/04 08:13:41 proff_fs Exp $";
 #include "p_enemy.h"
 #include "s_sound.h"
 #include "lprintf.h" //jff 10/6/98 for debug outputs
+#ifdef GL_DOOM
+#include "gl_struct.h"
+#endif
 
 //
 // MAP related Lookup tables.
@@ -76,6 +80,43 @@ line_t   *lines;
 
 int      numsides;
 side_t   *sides;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// figgi 08/21/00 -- constants and globals for glBsp support
+#define gNd2            0x32644E67  // figgi -- suppport for new GL_VERT format v2.0
+#define GL_VERT_OFFSET  4
+
+int	    firstglvertex = 0;
+boolean usingGLNodes  = false;
+boolean forceOldBsp   = false;
+
+// figgi 08/21/00 -- glSegs 
+typedef struct
+{
+	unsigned short	v1;		 // start vertex		(16 bit)
+	unsigned short	v2;		 // end vertex			(16 bit)
+	short			linedef; // linedef, or -1 for minisegs
+	short			side;	 // side on linedef: 0 for right, 1 for left
+	short			partner; // corresponding partner seg, or -1 on one-sided walls
+}glseg_t;
+
+// fixed 32 bit gl_vert format v2.0+ (glBsp 1.91)
+typedef struct
+{
+  fixed_t x,y;
+} mapglvertex_t;
+
+enum
+{
+   ML_GL_LABEL=0,  // A separator name, GL_ExMx or GL_MAPxx
+   ML_GL_VERTS,     // Extra Vertices
+   ML_GL_SEGS,     // Segs, from linedefs & minisegs
+   ML_GL_SSECT,    // SubSectors, list of segs
+   ML_GL_NODES     // GL BSP nodes
+};
+////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // BLOCKMAP
 // Created from axis aligned bounding box
@@ -123,8 +164,8 @@ mapthing_t playerstarts[MAXPLAYERS];
 // P_LoadVertexes
 //
 // killough 5/3/98: reformatted, cleaned up
-
-static void P_LoadVertexes (int lump)
+//
+static void P_LoadVertexes (int lump, int gllump)
 {
   const byte *data; // cph - const
   int i;
@@ -151,6 +192,106 @@ static void P_LoadVertexes (int lump)
   W_UnlockLumpNum(lump);
 }
 
+/*******************************************
+ * Name     : P_LoadVertexes2			   *
+ * modified : 09/18/00, adapted for PrBoom *
+ * author   : figgi						   *
+ * what		: support for gl nodes		   *
+ *******************************************/
+
+// figgi -- FIXME: Automap showes wrong zoom boundaries when starting game
+//				   when P_LoadVertexes2 is used with classic BSP nodes.
+
+static void P_LoadVertexes2(int lump, int gllump)
+{
+	const byte			*data, *gldata;
+	int                 i;
+	mapvertex_t*        ml;
+
+	firstglvertex = W_LumpLength(lump) / sizeof(mapvertex_t);
+	numvertexes   = W_LumpLength(lump) / sizeof(mapvertex_t);
+	data		  = W_CacheLumpNum(lump);
+	
+	if (gllump >= 0)  // check for glVertices
+	{
+		gldata = W_CacheLumpNum(gllump);
+
+		if (*(int *)gldata == gNd2) // 32 bit GL_VERT format (16.16 fixed)
+		{
+			mapglvertex_t*	mgl;
+
+			numvertexes += (W_LumpLength(gllump) - GL_VERT_OFFSET)/sizeof(mapglvertex_t);
+			vertexes	 = Z_Malloc (numvertexes*sizeof(vertex_t),PU_LEVEL,0);
+			mgl			 = (mapglvertex_t *) (gldata + GL_VERT_OFFSET);	
+
+			for (i = firstglvertex; i < numvertexes; i++)
+			{
+				vertexes[i].x = mgl->x;
+				vertexes[i].y = mgl->y;
+				mgl++;
+			}
+		}
+		else
+		{
+			numvertexes += W_LumpLength(gllump)/sizeof(mapvertex_t);
+			vertexes     = Z_Malloc (numvertexes*sizeof(vertex_t),PU_LEVEL,0);
+			ml			 = (mapvertex_t *)gldata;
+
+			for (i = firstglvertex; i < numvertexes; i++)
+			{
+				vertexes[i].x = SHORT(ml->x)<<FRACBITS; 
+				vertexes[i].y = SHORT(ml->y)<<FRACBITS;
+				ml++;
+			}
+		}
+		W_UnlockLumpNum(gllump);
+	}
+
+	ml = (mapvertex_t*)data;
+
+	for (i=0; i < firstglvertex; i++)
+	{
+		vertexes[i].x = SHORT(ml->x)<<FRACBITS;
+		vertexes[i].y = SHORT(ml->y)<<FRACBITS;
+		ml++;
+	}
+	W_UnlockLumpNum(lump);
+}
+
+
+/*******************************************
+ * created  : 08/13/00					   *
+ * modified : 09/18/00, adapted for PrBoom *
+ * author   : figgi						   *
+ * what		: basic functions needed for   *
+ *            computing  gl nodes		   *
+ *******************************************/
+
+static int checkGLVertex(int num)
+{
+	if (num & 0x8000)
+		num = (num&0x7FFF)+firstglvertex;
+	return num;
+}
+
+
+static float GetDistance(int dx, int dy)
+{
+	float fx = (float)(dx)/FRACUNIT, fy = (float)(dy)/FRACUNIT;
+	return (float)sqrt(fx*fx + fy*fy);
+}
+
+
+static int GetOffset(vertex_t *v1, vertex_t *v2)
+{
+	int	a, b;
+	a = (int)(v1->x - v2->x) / FRACUNIT;
+	b = (int)(v1->y - v2->y) / FRACUNIT;
+	a = (int) sqrt(a*a+b*b)* FRACUNIT;
+	return a;
+}
+
+
 
 //
 // P_LoadSegs
@@ -174,11 +315,17 @@ static void P_LoadSegs (int lump)
       int side, linedef;
       line_t *ldef;
 
+#ifdef GL_DOOM
+      li->iSegID = i; // proff 11/05/2000: needed for OpenGL
+#endif
+
       li->v1 = &vertexes[SHORT(ml->v1)];
       li->v2 = &vertexes[SHORT(ml->v2)];
 
+	  li->miniseg = false; // figgi -- there are no minisegs in classic BSP nodes
+      li->length  = GetDistance(li->v2->x - li->v1->x, li->v2->y - li->v1->y);
       li->angle = (SHORT(ml->angle))<<16;
-      li->offset = (SHORT(ml->offset))<<16;
+      li->offset =(SHORT(ml->offset))<<16;
       linedef = SHORT(ml->linedef);
       ldef = &lines[linedef];
       li->linedef = ldef;
@@ -197,6 +344,67 @@ static void P_LoadSegs (int lump)
 }
 
 
+
+/*******************************************
+ * Name     : P_LoadGLSegs				   *
+ * created  : 08/13/00					   *
+ * modified : 09/18/00, adapted for PrBoom *
+ * author   : figgi						   *
+ * what		: support for gl nodes		   *
+ *******************************************/
+static void P_LoadGLSegs(int lump)
+{
+	const byte	*data;
+	int			i;
+	glseg_t		*ml;
+	line_t		*ldef;
+
+	numsegs = W_LumpLength(lump) / sizeof(glseg_t);
+	segs = Z_Malloc(numsegs * sizeof(seg_t), PU_LEVEL, 0);
+	memset(segs, 0, numsegs * sizeof(seg_t));	
+	data = W_CacheLumpNum(lump);
+
+	ml = (glseg_t*) data;
+	for(i = 0; i < numsegs; i++)
+	{							// check for gl-vertices
+		segs[i].v1 = &vertexes[SHORT(checkGLVertex(ml->v1))];
+		segs[i].v2 = &vertexes[SHORT(checkGLVertex(ml->v2))];
+		segs[i].iSegID  = i;   
+		segs[i].angle  = 0;   // we don´t need this 8)
+							
+		if(ml->linedef != -1) // skip minisegs 
+		{
+			ldef = &lines[ml->linedef];
+			segs[i].linedef = ldef;
+			segs[i].miniseg = false;
+
+			segs[i].sidedef = &sides[ldef->sidenum[ml->side]];
+			segs[i].length  = GetDistance(segs[i].v2->x - segs[i].v1->x, segs[i].v2->y - segs[i].v1->y);
+			segs[i].frontsector = sides[ldef->sidenum[ml->side]].sector;
+			if (ldef->flags & ML_TWOSIDED)
+				segs[i].backsector = sides[ldef->sidenum[ml->side^1]].sector;
+			else
+				segs[i].backsector = 0;
+
+			if (ml->side)
+				segs[i].offset = SHORT(GetOffset(segs[i].v1, ldef->v2));
+			else
+				segs[i].offset = SHORT(GetOffset(segs[i].v1, ldef->v1));
+		}
+		else
+		{
+			segs[i].miniseg = true;
+			segs[i].offset  = 0;
+			segs[i].linedef = NULL;
+			segs[i].sidedef = NULL;
+			segs[i].frontsector = NULL;
+			segs[i].backsector  = NULL;
+		}
+		ml++;		
+	}
+	W_UnlockLumpNum(lump);
+}
+
 //
 // P_LoadSubsectors
 //
@@ -213,8 +421,21 @@ static void P_LoadSubsectors (int lump)
 
   for (i=0; i<numsubsectors; i++)
     {
+	  int j;
+	  subsector_t* ss;
+
       subsectors[i].numlines  = SHORT(((mapsubsector_t *) data)[i].numsegs );
       subsectors[i].firstline = SHORT(((mapsubsector_t *) data)[i].firstseg);
+
+	   // figgi -- fix for glBsp rendering
+#ifdef GL_DOOM
+	  ss = &subsectors[i];
+	  ss->segs = Z_Malloc(ss->numlines*sizeof(seg_t), PU_LEVEL, 0);
+
+      for (j = 0; j < ss->numlines; j++)
+		   ss->segs[j] = segs[ss->firstline+j];
+#endif
+
     }
 
   W_UnlockLumpNum(lump); // cph - release the data
@@ -239,6 +460,9 @@ static void P_LoadSectors (int lump)
       sector_t *ss = sectors + i;
       const mapsector_t *ms = (mapsector_t *) data + i;
 
+#ifdef GL_DOOM
+  		ss->iSectorID=i; // proff 04/05/2000: needed for OpenGL
+#endif
       ss->floorheight = SHORT(ms->floorheight)<<FRACBITS;
       ss->ceilingheight = SHORT(ms->ceilingheight)<<FRACBITS;
       ss->floorpic = R_FlatNumForName(ms->floorpic);
@@ -419,6 +643,9 @@ static void P_LoadLineDefs (int lump)
           ld->bbox[BOXTOP] = v1->y;
         }
 
+#ifdef GL_DOOM
+  		ld->iLineID=i; // proff 04/05/2000: needed for OpenGL
+#endif
       ld->sidenum[0] = SHORT(mld->sidenum[0]);
       ld->sidenum[1] = SHORT(mld->sidenum[1]);
 
@@ -919,6 +1146,7 @@ static void P_LoadBlockMap (int lump)
 // killough 5/3/98: reformatted, cleaned up
 // cph 18/8/99: rewritten to avoid O(numlines * numsectors) section
 // It makes things more complicated, but saves seconds on big levels
+// figgi 09/18/00 -- adapted for gl-nodes
 
 // cph - convenient sub-function
 static void P_AddLineToSector(line_t* li, sector_t* sector)
@@ -932,13 +1160,28 @@ static void P_AddLineToSector(line_t* li, sector_t* sector)
 
 void P_GroupLines (void)
 {
-  register line_t *li;
-  register sector_t* sector;
-  int i, total = numlines;
-
-  // look up sector number for each subsector
-  for (i=0; i<numsubsectors; i++)
-    subsectors[i].sector = segs[subsectors[i].firstline].sidedef->sector;
+  register line_t	*li;
+  register sector_t *sector;
+  register seg_t    *seg;
+  int				i,j, total = numlines;
+	
+	// figgi
+    for (i=0 ; i<numsubsectors ; i++)
+    {
+		seg = &segs[subsectors[i].firstline];
+		subsectors[i].sector = NULL;
+		for(j=0; j< subsectors[i].numlines; j++)
+		{
+			if(seg->sidedef)
+			{
+				subsectors[i].sector = seg->sidedef->sector;
+				break;
+			}
+			seg++;
+		}
+		if(subsectors[i].sector == NULL)
+			I_Error("P_GroupLines: Subsector a part of no sector!\n");
+    }
 
   // count number of lines in each sector
   for (i=0,li=lines; i<numlines; i++, li++)
@@ -954,7 +1197,8 @@ void P_GroupLines (void)
   {  // allocate line tables for each sector
     line_t **linebuffer = Z_Malloc(total*4, PU_LEVEL, 0);
 
-    for (i=0, sector = sectors; i<numsectors; i++, sector++) {
+    for (i=0, sector = sectors; i<numsectors; i++, sector++) 
+	{
       sector->lines = linebuffer;
       linebuffer += sector->linecount;
       sector->linecount = 0;
@@ -963,13 +1207,15 @@ void P_GroupLines (void)
   }
 
   // Enter those lines
-  for (i=0,li=lines; i<numlines; i++, li++) {
+  for (i=0,li=lines; i<numlines; i++, li++)
+  {
     P_AddLineToSector(li, li->frontsector);
     if (li->backsector && li->backsector != li->frontsector)
       P_AddLineToSector(li, li->backsector);
   }
-  
-  for (i=0, sector = sectors; i<numsectors; i++, sector++) {
+
+  for (i=0, sector = sectors; i<numsectors; i++, sector++) 
+  {
     fixed_t *bbox = (void*)sector->blockbox; // cph - For convenience, so
                                   // I can sue the old code unchanged
     int block;
@@ -995,6 +1241,7 @@ void P_GroupLines (void)
     block = block < 0 ? 0 : block;
     sector->blockbox[BOXLEFT]=block;
   }
+
 }
 
 //
@@ -1049,9 +1296,14 @@ void P_RemoveSlimeTrails(void)                // killough 10/98
   int i;
   for (i=0; i<numsegs; i++)                   // Go through each seg
     {
-      const line_t *l = segs[i].linedef;      // The parent linedef
+     const line_t *l;
+	 
+	 if (segs[i].miniseg == true)			  //figgi -- skip minisegs
+		 return;
+
+	  l = segs[i].linedef;					  // The parent linedef
       if (l->dx && l->dy)                     // We can ignore orthogonal lines
-	{
+	  {
 	  vertex_t *v = segs[i].v1;
 	  do
 	    if (!hit[v - vertexes])           // If we haven't processed vertex
@@ -1064,8 +1316,8 @@ void P_RemoveSlimeTrails(void)                // killough 10/98
 		    int_64_t dxy = (l->dx >> FRACBITS) * (l->dy >> FRACBITS);
 		    int_64_t s = dx2 + dy2;
 		    int x0 = v->x, y0 = v->y, x1 = l->v1->x, y1 = l->v1->y;
-		    v->x = (dx2 * x0 + dy2 * x1 + dxy * (y0 - y1)) / s;
-		    v->y = (dy2 * y0 + dx2 * y1 + dxy * (x0 - x1)) / s;
+		    v->x = (int)((dx2 * x0 + dy2 * x1 + dxy * (y0 - y1)) / s);
+		    v->y = (int)((dy2 * y0 + dx2 * y1 + dxy * (x0 - x1)) / s);
 		  }
 	      }  // Obsfucated C contest entry:   :)
 	  while ((v != segs[i].v2) && (v = segs[i].v2));
@@ -1085,8 +1337,13 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   char  lumpname[9];
   int   lumpnum;
 
+  char  gl_lumpname[9];
+  int   gl_lumpnum;
+
+
   totalkills = totalitems = totalsecret = wminfo.maxfrags = 0;
   wminfo.partime = 180;
+
   for (i=0; i<MAXPLAYERS; i++)
     players[i].killcount = players[i].secretcount = players[i].itemcount = 0;
 
@@ -1102,6 +1359,11 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
     rejectlump = -1;
   }
 
+#ifdef GL_DOOM
+// proff 11/99: clean the memory from textures etc.
+  gld_CleanMemory();
+#endif	
+
   P_InitThinkers();
 
   // if working with a devlopment map, reload it
@@ -1109,11 +1371,18 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
 
   // find map name
   if (gamemode == commercial)
+  {
     sprintf(lumpname, "map%02d", map);           // killough 1/24/98: simplify
+	sprintf(gl_lumpname, "gl_map%02d", map);    // figgi
+  }
   else
+  {
     sprintf(lumpname, "E%dM%d", episode, map);   // killough 1/24/98: simplify
+	sprintf(gl_lumpname, "GL_E%iM%i", episode, map); // figgi
+  }
 
   lumpnum = W_GetNumForName(lumpname);
+  gl_lumpnum = W_CheckNumForName(gl_lumpname); // figgi
 
   leveltime = 0;
 
@@ -1123,7 +1392,39 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   // killough 4/4/98: split load of sidedefs into two parts,
   // to allow texture names to be used in special linedefs
 
-  P_LoadVertexes  (lumpnum+ML_VERTEXES);
+#ifdef GL_DOOM
+  // figgi 10/19/00 -- check for gl lumps and load them
+  P_LoadBlockMap  (lumpnum+ML_BLOCKMAP);             
+  if (gl_lumpnum > lumpnum && forceOldBsp == false)
+	P_LoadVertexes2(lumpnum+ML_VERTEXES,gl_lumpnum+ML_GL_VERTS);
+  else
+	P_LoadVertexes (lumpnum+ML_VERTEXES,-1);
+  P_LoadSectors   (lumpnum+ML_SECTORS);
+  P_LoadSideDefs  (lumpnum+ML_SIDEDEFS);             
+  P_LoadSideDefs2 (lumpnum+ML_SIDEDEFS);             
+  P_LoadLineDefs  (lumpnum+ML_LINEDEFS);             
+  P_LoadLineDefs2 (lumpnum+ML_LINEDEFS);             
+
+  if (gl_lumpnum > lumpnum && forceOldBsp == false)
+  { 
+    usingGLNodes = true;
+    P_LoadNodes(gl_lumpnum + ML_GL_NODES);
+    P_LoadGLSegs(gl_lumpnum + ML_GL_SEGS);
+	P_LoadSubsectors(gl_lumpnum + ML_GL_SSECT);
+	lprintf(LO_INFO,"Using GL BSP NODES!!!\n");
+  }
+  else
+  {
+	usingGLNodes = false;
+	P_LoadNodes(lumpnum + ML_NODES);
+	P_LoadSegs(lumpnum + ML_SEGS);
+	P_LoadSubsectors(lumpnum + ML_SSECTORS);
+	lprintf(LO_INFO,"Using classic BSP NODES!!!\n");
+  }
+
+#else
+
+  P_LoadVertexes  (lumpnum+ML_VERTEXES, -1);
   P_LoadSectors   (lumpnum+ML_SECTORS);
   P_LoadSideDefs  (lumpnum+ML_SIDEDEFS);             // killough 4/4/98
   P_LoadLineDefs  (lumpnum+ML_LINEDEFS);             //       |
@@ -1133,6 +1434,8 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   P_LoadSubsectors(lumpnum+ML_SSECTORS);
   P_LoadNodes     (lumpnum+ML_NODES);
   P_LoadSegs      (lumpnum+ML_SEGS);
+
+#endif
 
   if (rejectlump != -1)
     W_UnlockLumpNum(rejectlump);
@@ -1176,6 +1479,12 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   // preload graphics
   if (precache)
     R_PrecacheLevel();
+
+#ifdef GL_DOOM
+ // proff 11/99: calculate all OpenGL specific tables etc.
+  gld_PreprocessLevel();
+#endif	
+
 }
 
 //
@@ -1187,111 +1496,3 @@ void P_Init (void)
   P_InitPicAnims();
   R_InitSprites(sprnames);
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: p_setup.c,v $
-// Revision 1.1  2000/05/04 08:13:41  proff_fs
-// Initial revision
-//
-// Revision 1.15  2000/05/01 14:39:44  Proff
-// changed long long to int_64_t for portability
-//
-// Revision 1.14  1999/11/04 12:33:38  cphipps
-// Switch from the Boom fireline-recuding code to the MBF fireline code.
-//
-// Revision 1.13  1999/10/12 13:01:13  cphipps
-// Changed header to GPL
-//
-// Revision 1.12  1999/09/05 13:42:50  cphipps
-// Print warnings when fixing errors in wad files
-//
-// Revision 1.11  1999/08/18 22:17:43  cphipps
-// Partly rewrote P_GroupLines, to eliminate a bad algorithm causing
-// big levels to take seconds to load.
-//
-// Revision 1.10  1999/02/02 09:18:37  cphipps
-// Enhanced skies stuff from MBF
-//
-// Revision 1.9  1999/01/25 16:17:31  cphipps
-// Include math.h
-//
-// Revision 1.8  1999/01/01 16:12:51  cphipps
-// Fix erroneous release of lump 0 in first level load
-//
-// Revision 1.7  1998/12/31 20:53:04  cphipps
-// New wad lump handling changes
-// rejectmatrix made const*
-//
-// Revision 1.6  1998/12/27 15:19:17  cphipps
-// Use memset to clear body queue
-//
-// Revision 1.5  1998/12/26 20:09:21  cphipps
-// Compatibility option the 'fix common wad errors' code
-//
-// Revision 1.4  1998/12/23 16:16:11  cphipps
-// Fix common wad errors - MBF code imported
-// Made P_Load* funcs static
-// Replaced a lot of malloc,memset pairs by calloc
-//
-// Revision 1.3  1998/10/27 18:36:01  cphipps
-// Boom v2.02 updated source imported
-//
-// Revision 1.21  1998/10/13  03:19:21  jim
-// Rand's segadjust chosen, Blockmap tweak
-//
-// Revision 1.18  1998/10/05  21:29:21  phares
-// Fixed firelines
-//
-// Revision 1.17  1998/08/11  19:32:07  phares
-// DM Weapon bug fix
-//
-// Revision 1.16  1998/05/07  00:56:49  killough
-// Ignore translucency lumps that are not exactly 64K long
-//
-// Revision 1.15  1998/05/03  23:04:01  killough
-// beautification
-//
-// Revision 1.14  1998/04/12  02:06:46  killough
-// Improve 242 colomap handling, add translucent walls
-//
-// Revision 1.13  1998/04/06  04:47:05  killough
-// Add support for overloading sidedefs for special uses
-//
-// Revision 1.12  1998/03/31  10:40:42  killough
-// Remove blockmap limit
-//
-// Revision 1.11  1998/03/28  18:02:51  killough
-// Fix boss spawner savegame crash bug
-//
-// Revision 1.10  1998/03/20  00:30:17  phares
-// Changed friction to linedef control
-//
-// Revision 1.9  1998/03/16  12:35:36  killough
-// Default floor light level is sector's
-//
-// Revision 1.8  1998/03/09  07:21:48  killough
-// Remove use of FP for point/line queries and add new sector fields
-//
-// Revision 1.7  1998/03/02  11:46:10  killough
-// Double blockmap limit, prepare for when it's unlimited
-//
-// Revision 1.6  1998/02/27  11:51:05  jim
-// Fixes for stairs
-//
-// Revision 1.5  1998/02/17  22:58:35  jim
-// Fixed bug of vanishinb secret sectors in automap
-//
-// Revision 1.4  1998/02/02  13:38:48  killough
-// Comment out obsolete reload hack
-//
-// Revision 1.3  1998/01/26  19:24:22  phares
-// First rev with no ^Ms
-//
-// Revision 1.2  1998/01/26  05:02:21  killough
-// Generalize and simplify level name generation
-//
-// Revision 1.1.1.1  1998/01/19  14:03:00  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------

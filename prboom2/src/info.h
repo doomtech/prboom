@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: info.h,v 1.1 2000/05/04 08:07:12 proff_fs Exp $
+ * $Id: info.h,v 1.1.1.2 2000/09/20 09:43:05 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -181,6 +182,10 @@ typedef enum
   SPR_TLMP,
   SPR_TLP2,
   SPR_TNT1, /* add invisible sprite              phares 3/8/98 */
+
+#ifdef DOGS
+  SPR_DOGS, /* killough 7/19/98: Marine's best friend :) */
+#endif
 
   NUMSPRITES  /* counter of how many there are */
 
@@ -1161,6 +1166,43 @@ typedef enum
   S_TECH2LAMP4,
   S_TNT1, /* add state for invisible sprite          phares 3/8/98  */
 
+  S_GRENADE,   /* killough 8/9/98: grenade launcher */
+  S_DETONATE,  /* killough 8/9/98: detonation of objects */
+  S_DETONATE2,
+  S_DETONATE3, 
+
+#ifdef DOGS
+  S_DOGS_STND,      /* killough 7/19/98: Marine's best friend :) */
+  S_DOGS_STND2,
+  S_DOGS_RUN1,
+  S_DOGS_RUN2,
+  S_DOGS_RUN3,
+  S_DOGS_RUN4,
+  S_DOGS_RUN5,
+  S_DOGS_RUN6,
+  S_DOGS_RUN7,
+  S_DOGS_RUN8,
+  S_DOGS_ATK1,
+  S_DOGS_ATK2,
+  S_DOGS_ATK3,
+  S_DOGS_PAIN,
+  S_DOGS_PAIN2,
+  S_DOGS_DIE1,
+  S_DOGS_DIE2,
+  S_DOGS_DIE3,
+  S_DOGS_DIE4,
+  S_DOGS_DIE5,
+  S_DOGS_DIE6,
+  S_DOGS_RAISE1,
+  S_DOGS_RAISE2,
+  S_DOGS_RAISE3,
+  S_DOGS_RAISE4,
+  S_DOGS_RAISE5,
+  S_DOGS_RAISE6,
+#endif
+
+  S_MUSHROOM,  /* killough 10/98: mushroom explosion effect */
+
   NUMSTATES  /* Counter of how many there are */
 
 } statenum_t;
@@ -1174,7 +1216,6 @@ typedef struct
   spritenum_t sprite;       /* sprite number to show                       */
   long        frame;        /* which frame/subframe of the sprite is shown */
   long        tics;         /* number of gametics this frame should last   */
-  /* void     (*action) ();    this is what an actionf_t really is         */
   actionf_t   action;       /* code pointer to function for action if any  */
   statenum_t  nextstate;    /* linked list pointer to next state or zero   */
   long        misc1, misc2; /* apparently never used in DOOM               */
@@ -1328,11 +1369,29 @@ typedef enum {
   MT_MISC84,
   MT_MISC85,
   MT_MISC86,
-  MT_PUSH,    /* controls push source                      phares         */
-  MT_PULL,    /* controls pull source                      phares 3/20/98 */
+  MT_PUSH,    /* controls push source - phares */
+  MT_PULL,    /* controls pull source - phares 3/20/98 */
 
-  NUMMOBJTYPES  /* Counter of how many there are */
+#ifdef DOGS
+  MT_DOGS,    /* killough 7/19/98: Marine's best friend */
+#endif
 
+  /* proff 11/22/98: Andy Baker's stealth monsters (next 12)
+   * cph - moved below the MBF stuff, no need to displace them */
+  MT_STEALTHBABY,
+  MT_STEALTHVILE,
+  MT_STEALTHBRUISER,
+  MT_STEALTHHEAD,
+  MT_STEALTHCHAINGUY,
+  MT_STEALTHSERGEANT,
+  MT_STEALTHKNIGHT,
+  MT_STEALTHIMP,
+  MT_STEALTHFATSO,
+  MT_STEALTHUNDEAD,
+  MT_STEALTHSHOTGUY,
+  MT_STEALTHZOMBIE,
+
+  NUMMOBJTYPES  // Counter of how many there are
 } mobjtype_t;
 
 /********************************************************************
@@ -1384,7 +1443,7 @@ typedef struct
   int damage;       /* If this is a missile, how much does it hurt? */
   int activesound;  /* What sound it makes wandering around, once
 		       in a while.  Chance is 3/256 it will. */
-  int flags;        /* Bit masks for lots of things.  See p_mobj.h */
+  uint_64_t flags;  /* Bit masks for lots of things.  See p_mobj.h */
   int raisestate;   /* The first state for an Archvile or respawn
 		       resurrection.  Zero means it won't come
 		       back to life. */
@@ -1394,51 +1453,3 @@ typedef struct
 extern mobjinfo_t mobjinfo[NUMMOBJTYPES];
 
 #endif
-
-/*----------------------------------------------------------------------------
- *
- * $Log: info.h,v $
- * Revision 1.1  2000/05/04 08:07:12  proff_fs
- * Initial revision
- *
- * Revision 1.3  1999/10/12 13:00:57  cphipps
- * Changed header to GPL, converted C++ comments to C
- *
- * Revision 1.2  1998/10/16 23:05:47  cphipps
- * Added const specifiers to data structs where relevant
- *
- * Revision 1.1  1998/09/13 16:49:50  cphipps
- * Initial revision
- *
- * Revision 1.10  1998/05/12  12:47:31  phares
- * Removed OVER_UNDER code
- *
- * Revision 1.9  1998/05/06  11:31:53  jim
- * Moved predefined lump writer info->w_wad
- *
- * Revision 1.8  1998/05/04  21:35:54  thldrmn
- * commenting and reformatting
- *
- * Revision 1.7  1998/04/22  06:33:58  killough
- * Add const to WritePredefinedLumpWad() parm
- *
- * Revision 1.6  1998/04/21  23:47:10  jim
- * Predefined lump dumper option
- *
- * Revision 1.5  1998/03/23  15:24:09  phares
- * Changed pushers to linedef control
- *
- * Revision 1.4  1998/03/09  18:30:43  phares
- * Added invisible sprite for MT_PUSH
- *
- * Revision 1.3  1998/02/24  08:45:53  phares
- * Pushers, recoil, new friction, and over/under work
- *
- * Revision 1.2  1998/01/26  19:27:02  phares
- * First rev with no ^Ms
- *
- * Revision 1.1.1.1  1998/01/19  14:02:57  rand
- * Lee's Jan 19 sources
- *
- *
- *----------------------------------------------------------------------------*/

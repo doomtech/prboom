@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: r_bsp.c,v 1.1 2000/05/04 08:15:25 proff_fs Exp $
+ * $Id: r_bsp.c,v 1.1.1.2 2000/09/20 09:45:19 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -30,7 +31,7 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: r_bsp.c,v 1.1 2000/05/04 08:15:25 proff_fs Exp $";
+rcsid[] = "$Id: r_bsp.c,v 1.1.1.2 2000/09/20 09:45:19 figgi Exp $";
 
 #include "doomstat.h"
 #include "m_bbox.h"
@@ -40,6 +41,10 @@ rcsid[] = "$Id: r_bsp.c,v 1.1 2000/05/04 08:15:25 proff_fs Exp $";
 #include "r_plane.h"
 #include "r_things.h"
 #include "r_bsp.h" // cph - sanity checking
+#include "lprintf.h"
+#ifdef GL_DOOM
+#include "gl_struct.h"
+#endif
 
 seg_t     *curline;
 side_t    *sidedef;
@@ -91,10 +96,7 @@ void R_ClipWallSegment(int first, int last, boolean solid)
       R_StoreWallRange(first, to-1);
       if (solid) {
 	memset(solidcol+first,1,to-first);
-      } /*else do {
-	if (floorclip[first] <= ceilingclip[first] + 1)
-	  solidcol[first] = 1;
-	  } while (++first < to);*/
+      }
 	first = to;
     }
   }
@@ -343,7 +345,7 @@ static void R_AddLine (seg_t *line)
       // Totally off the left edge?
       if (tspan >= span)
         return;
-      angle2 = -clipangle;
+      angle2 = 0-clipangle;
     }
 
   // The seg is in the view range,
@@ -356,23 +358,48 @@ static void R_AddLine (seg_t *line)
   x1 = viewangletox[angle1];
   x2 = viewangletox[angle2];
 
+#ifdef GL_DOOM
+  {
+    // proff 11/99: we have to add these segs to avoid gaps in OpenGL
+    if (x1 >= x2)       // killough 1/31/98 -- change == to >= for robustness
+    {
+      if (ds_p == drawsegs+maxdrawsegs)   // killough 1/98 -- fix 2s line HOM
+      {
+        unsigned pos = ds_p - drawsegs; // jff 8/9/98 fix from ZDOOM1.14a
+        unsigned newmax = maxdrawsegs ? maxdrawsegs*2 : 128; // killough
+        drawsegs = realloc(drawsegs,newmax*sizeof(*drawsegs));
+        //ds_p = drawsegs+maxdrawsegs;
+        ds_p = drawsegs + pos;          // jff 8/9/98 fix from ZDOOM1.14a
+        maxdrawsegs = newmax;
+      }
+      ds_p->curline = curline;
+      ds_p++;
+      return;
+    }
+  }
+#else
   // Does not cross a pixel?
   if (x1 >= x2)       // killough 1/31/98 -- change == to >= for robustness
     return;
+#endif
 
   backsector = line->backsector;
-
-  /* cph - roll up linedef properties in flags */
-  if ((linedef = curline->linedef)->r_validcount != gametic) 
-    R_RecalcLineFlags();
 
   // Single sided line?
   if (backsector)
     // killough 3/8/98, 4/4/98: hack for invisible ceilings / deep water
     backsector = R_FakeFlat(backsector, &tempsec, NULL, NULL, true);
 
-  if (linedef->r_flags & RF_IGNORE) return;
-  else R_ClipWallSegment (x1, x2, linedef->r_flags & RF_CLOSED);
+  /* cph - roll up linedef properties in flags */
+  if ((linedef = curline->linedef)->r_validcount != gametic) 
+    R_RecalcLineFlags();
+
+  if (linedef->r_flags & RF_IGNORE)
+  {
+    return;
+  }
+  else
+    R_ClipWallSegment (x1, x2, linedef->r_flags & RF_CLOSED);
 }
 
 //
@@ -434,7 +461,7 @@ static boolean R_CheckBBox(const fixed_t *bspcoord)
   if ((signed)angle2 >= (signed)clipangle) return false; // Both off left edge
   if ((signed)angle1 <= -(signed)clipangle) return false; // Both off right edge
   if ((signed)angle1 >= (signed)clipangle) angle1 = clipangle; // Clip at left edge
-  if ((signed)angle2 <= -(signed)clipangle) angle2 = -clipangle; // Clip at right edge
+  if ((signed)angle2 <= -(signed)clipangle) angle2 = 0-clipangle; // Clip at right edge
 
   // Find the first clippost
   //  that touches the source post
@@ -467,12 +494,16 @@ static boolean R_CheckBBox(const fixed_t *bspcoord)
 
 static void R_Subsector(int num)
 {
-  int         count;
+  int         count, i;
   seg_t       *line;
   subsector_t *sub;
   sector_t    tempsec;              // killough 3/7/98: deep water hack
   int         floorlightlevel;      // killough 3/16/98: set floor lightlevel
   int         ceilinglightlevel;    // killough 4/11/98
+#ifdef GL_DOOM
+  visplane_t dummyfloorplane;
+  visplane_t dummyceilingplane;
+#endif
 
 #ifdef RANGECHECK
   if (num>=numsubsectors)
@@ -490,13 +521,14 @@ static void R_Subsector(int num)
 
   // killough 3/7/98: Add (x,y) offsets to flats, add deep water check
   // killough 3/16/98: add floorlightlevel
+  // killough 10/98: add support for skies transferred from sidedefs
 
   floorplane = frontsector->floorheight < viewz || // killough 3/7/98
     (frontsector->heightsec != -1 &&
      sectors[frontsector->heightsec].ceilingpic == skyflatnum) ?
     R_FindPlane(frontsector->floorheight,
-		frontsector->floorpic == skyflatnum &&  // kilough 10/98
-		frontsector->sky & PL_SKYFLAT ? frontsector->sky :
+            		frontsector->floorpic == skyflatnum &&  // kilough 10/98
+		            frontsector->sky & PL_SKYFLAT ? frontsector->sky :
                 frontsector->floorpic,
                 floorlightlevel,                // killough 3/16/98
                 frontsector->floor_xoffs,       // killough 3/7/98
@@ -508,13 +540,74 @@ static void R_Subsector(int num)
     (frontsector->heightsec != -1 &&
      sectors[frontsector->heightsec].floorpic == skyflatnum) ?
     R_FindPlane(frontsector->ceilingheight,     // killough 3/8/98
-		frontsector->ceilingpic == skyflatnum &&  // kilough 10/98
-		frontsector->sky & PL_SKYFLAT ? frontsector->sky :
+            		frontsector->ceilingpic == skyflatnum &&  // kilough 10/98
+            		frontsector->sky & PL_SKYFLAT ? frontsector->sky :
                 frontsector->ceilingpic,
                 ceilinglightlevel,              // killough 4/11/98
                 frontsector->ceiling_xoffs,     // killough 3/7/98
                 frontsector->ceiling_yoffs
                 ) : NULL;
+#ifdef GL_DOOM
+  // check if the sector is faked
+  if (frontsector==sub->sector)
+  {
+    // if the sector has bottomtextures, then the floorheight will be set to the
+    // highest surounding floorheight
+    if ((frontsector->no_bottomtextures) || (!floorplane))
+    {
+      int i=frontsector->linecount;
+
+      dummyfloorplane.height=INT_MIN;
+      while (i--)
+      {
+        line_t *tmpline=frontsector->lines[i];
+        if (tmpline->backsector)
+          if (tmpline->backsector != frontsector)
+            if (tmpline->backsector->floorheight>dummyfloorplane.height)
+            {
+              dummyfloorplane.height=tmpline->backsector->floorheight;
+              dummyfloorplane.lightlevel=tmpline->backsector->lightlevel;
+            }
+        if (tmpline->frontsector)
+          if (tmpline->frontsector != frontsector)
+            if (tmpline->frontsector->floorheight>dummyfloorplane.height)
+            {
+              dummyfloorplane.height=tmpline->frontsector->floorheight;
+              dummyfloorplane.lightlevel=tmpline->frontsector->lightlevel;
+            }
+      }
+      if (dummyfloorplane.height!=INT_MIN)
+        floorplane=&dummyfloorplane;
+    }
+    // the same for ceilings. they will be set to the lowest ceilingheight
+    if ((frontsector->no_toptextures) || (!ceilingplane))
+    {
+      int i=frontsector->linecount;
+
+      dummyceilingplane.height=INT_MAX;
+      while (i--)
+      {
+        line_t *tmpline=frontsector->lines[i];
+        if (tmpline->backsector)
+          if (tmpline->backsector != frontsector)
+            if (tmpline->backsector->ceilingheight<dummyceilingplane.height)
+            {
+              dummyceilingplane.height=tmpline->backsector->ceilingheight;
+              dummyceilingplane.lightlevel=tmpline->backsector->lightlevel;
+            }
+        if (tmpline->frontsector)
+          if (tmpline->frontsector != frontsector)
+            if (tmpline->frontsector->ceilingheight<dummyceilingplane.height)
+            {
+              dummyceilingplane.height=tmpline->frontsector->ceilingheight;
+              dummyceilingplane.lightlevel=tmpline->frontsector->lightlevel;
+            }
+      }
+      if (dummyceilingplane.height!=INT_MAX)
+        ceilingplane=&dummyceilingplane;
+    }
+  }
+#endif
 
   // killough 9/18/98: Fix underwater slowdown, by passing real sector 
   // instead of fake one. Improve sprite lighting by basing sprite
@@ -531,8 +624,21 @@ static void R_Subsector(int num)
 
   R_AddSprites(sub->sector, (floorlightlevel+ceilinglightlevel)/2);
 
+#ifdef GL_DOOM
+   // figgi -- fix for glBsp 
+ for (i = 0; i < sub->numlines; i++)
+ {
+	if (sub->segs[i].miniseg == false)
+		R_AddLine (&sub->segs[i]);
+ }
+#else
   while (count--)
     R_AddLine (line++);
+#endif
+
+#ifdef GL_DOOM
+  gld_DrawPlane(sub->sector, floorplane, ceilingplane);
+#endif
 }
 
 //
@@ -551,7 +657,6 @@ void R_RenderBSPNode(int bspnum)
 
       // Decide which side the view point is on.
       int side = R_PointOnSide(viewx, viewy, bsp);
-
       // Recursively divide front space.
       R_RenderBSPNode(bsp->children[side]);
 
@@ -564,110 +669,3 @@ void R_RenderBSPNode(int bspnum)
     }
   R_Subsector(bspnum == -1 ? 0 : bspnum & ~NF_SUBSECTOR);
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: r_bsp.c,v $
-// Revision 1.1  2000/05/04 08:15:25  proff_fs
-// Initial revision
-//
-// Revision 1.13  1999/10/17 09:35:14  cphipps
-// Fixed hanging else(s)
-//
-// Revision 1.12  1999/10/12 13:01:14  cphipps
-// Changed header to GPL
-//
-// Revision 1.11  1999/10/08 07:17:33  cphipps
-// Change problematic angle sign correction code in R_CheckBBox,
-// to fix HOM when standing exactly on the edge of a BBox
-//
-// Revision 1.10  1999/10/03 17:13:54  cphipps
-// Remove "further reduce tail recursion" change 1.1->1.2, since it meant
-//  R_CheckBBox was being called before walls were rendered in the nearer
-//  subsector, so wasn't able to reject sectors which would have been concealed
-//  by those walls. D'oh!
-// Added code to deal with the case of a BBox "behind" us in R_CheckBBox
-//
-// Revision 1.9  1999/09/19 10:31:46  cphipps
-// Linedef based rendering flags used to store info like closure and invisibility
-//
-// Revision 1.8  1999/09/05 10:18:37  cphipps
-// New code to handle solid columns (replacing clipsegs). Fixes bugs with
-// the automap showing rooms up/down a vertical shaft, saves the renderer
-// visiting such rooms, and solves a crash with out-of-range y coordinates
-// in drawcol.s. Slight performance loss in unaffected areas though.
-//
-// Revision 1.7  1999/08/16 21:38:55  cphipps
-// Further optimising to R_CheckBBox
-//
-// Revision 1.6  1999/02/08 20:17:39  cphipps
-// Faster line sector testing in R_AddLine()
-//
-// Revision 1.5  1999/02/02 09:18:21  cphipps
-// Enhanced skies stuff from MBF
-//
-// Revision 1.4  1998/12/24 10:09:15  cphipps
-// Imported underwater sprite lighting fixes from MBF
-//
-// Revision 1.3  1998/10/27 18:47:06  cphipps
-// Add Boom v2.02 underwater fireball fix
-//
-// Revision 1.2  1998/10/16 21:38:01  cphipps
-// Reformatted R_CheckBBox, added const static stuff to it
-// Further reduced tail recursion in R_RenderBSPNode, and reformatted and added const
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.17  1998/05/03  22:47:33  killough
-// beautification
-//
-// Revision 1.16  1998/04/23  12:19:50  killough
-// Testing untabify feature
-//
-// Revision 1.15  1998/04/17  10:22:22  killough
-// Fix 213, 261 (floor/ceiling lighting)
-//
-// Revision 1.14  1998/04/14  08:15:55  killough
-// Fix light levels on 2s textures
-//
-// Revision 1.13  1998/04/13  09:44:40  killough
-// Fix head-over ceiling effects
-//
-// Revision 1.12  1998/04/12  01:57:18  killough
-// Fix deep water effects
-//
-// Revision 1.11  1998/04/07  06:41:14  killough
-// Fix disappearing things, AASHITTY sky wall HOM, remove obsolete HOM detector
-//
-// Revision 1.10  1998/04/06  04:37:48  killough
-// Make deep water / fake ceiling handling more consistent
-//
-// Revision 1.9  1998/03/28  18:14:27  killough
-// Improve underwater support
-//
-// Revision 1.8  1998/03/16  12:40:11  killough
-// Fix underwater effects, floor light levels from other sectors
-//
-// Revision 1.7  1998/03/09  07:22:41  killough
-// Add primitive underwater support
-//
-// Revision 1.6  1998/03/02  11:50:53  killough
-// Add support for scrolling flats
-//
-// Revision 1.5  1998/02/17  06:21:57  killough
-// Change commented-out code to #if'ed out code
-//
-// Revision 1.4  1998/02/09  03:14:55  killough
-// Make HOM detector under control of TNTHOM cheat
-//
-// Revision 1.3  1998/02/02  13:31:23  killough
-// Performance tuning, add HOM detector
-//
-// Revision 1.2  1998/01/26  19:24:36  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:02  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------

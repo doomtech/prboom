@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: d_client.c,v 1.1 2000/05/04 07:58:46 proff_fs Exp $
+ * $Id: d_client.c,v 1.1.1.2 2000/09/20 09:39:36 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *  Copyright (C) 1999-2000 by Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -49,13 +50,16 @@
 #include "i_main.h"
 #include "i_video.h"
 #include "m_argv.h"
-
 #include "lprintf.h"
-#ifdef HAVE_UNISTD
-#include <unistd.h>
+
+#ifdef HAVE_CONFIG_H
+#include "../config.h"
 #endif
 #include <sys/types.h>
-#ifdef HAVE_SYS_WAIT
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
 
@@ -84,18 +88,28 @@ void D_InitNetGame (void)
   i = M_CheckParm("-net");
   if (i && i < myargc-1) i++;
 
-  if (!(server =  !!i)) {
+  if (!(netgame = server =  !!i)) {
     playeringame[consoleplayer = 0] = true;
   } else {
     // Get game info from server
     packet_header_t *packet = Z_Malloc(1000, PU_STATIC, NULL);
     struct setup_packet_s *sinfo = (void*)(packet+1);
+  struct { packet_header_t head; short pn; char myaddr[200]; } initpacket;
 
-    I_InitNetwork(myargv[i], wanted_player_number);
+    I_InitNetwork();
+  udp_socket = I_Socket(0);
+  I_ConnectToServer(myargv[i]);
+  // Send init packet
+  initpacket.pn = doom_htons(wanted_player_number);
+  initpacket.head.type = PKT_INIT; initpacket.head.tic = 0;
+  I_SendPacket(&initpacket.head, sizeof(initpacket));
 
-    do {
-      while (!I_GetPacket(packet, 1000)) 
-	I_uSleep(10000);
+    do
+    {
+      do { I_WaitForPacket(); } while (!I_GetPacket(packet, 1000));
+      {
+        printf("type: %d\n",packet->type);
+      }
     } while (packet->type != PKT_SETUP);
 
     // Get info from the setup packet
@@ -108,7 +122,6 @@ void D_InitNetGame (void)
     ticdup = sinfo->ticdup;
     xtratics = sinfo->extratic;
     G_ReadOptions(sinfo->game_options);
-    Z_Free(packet);
 
     lprintf(LO_INFO, "\tjoined game as player %d/%d; %d WADs specified\n", 
 	    consoleplayer+1, numplayers = sinfo->players, sinfo->numwads);
@@ -121,6 +134,7 @@ void D_InitNetGame (void)
 	p += strlen(p) + 1;
       }
     }
+    Z_Free(packet);
   }
   localcmds = netcmds[displayplayer = consoleplayer];
   for (i=0; i<numplayers; i++)
@@ -155,10 +169,10 @@ void D_CheckNetGame(void)
   if (server) {
     lprintf(LO_INFO, "D_CheckNetGame: waiting for server to signal game start\n");
     do {
-      while (!I_GetPacket(packet, sizeof *packet)) {
+      while (!I_GetPacket(packet, sizeof(packet_header_t)+1)) {
 	packet->tic = 0; packet->type = PKT_GO; 
 	*(byte*)(packet+1) = consoleplayer;
-	I_SendPacket(packet, 1 + sizeof *packet);
+	I_SendPacket(packet, sizeof(packet_header_t)+1);
 	I_uSleep(100000);
       }
     } while (packet->type != PKT_GO);
@@ -463,75 +477,3 @@ void D_QuitNetGame (void)
   }
 }
 #endif
-
-//
-// $Log: d_client.c,v $
-// Revision 1.1  2000/05/04 07:58:46  proff_fs
-// Initial revision
-//
-// Revision 1.18  2000/05/01 17:50:33  Proff
-// made changes to compile with VisualC and SDL
-//
-// Revision 1.17  2000/04/29 16:15:00  cph
-// Revert new netgame stuff
-//
-// Revision 1.16  2000/04/06 10:48:54  cph
-// Some code rearrangement
-// Get rid of doomcom
-//
-// Revision 1.15  2000/04/03 17:06:10  cph
-// Split client specific stuff from l_udp.c to new l_network.c
-// Move server specific stuff from l_udp.c to d_server.c
-// Update copyright notices
-// Restructure ready for IPv6 support
-// Use fcntl instead of ioctl to set socket non-blocking
-//
-// Revision 1.14  2000/03/28 10:42:29  cph
-// Send and receive using the same socket
-// Do not transmit port with init packet, server determines it
-// Client searches for a free port instead of needing -port
-// Transmit player number wanted to server and act on it
-// Remove more diagnostics
-//
-// Revision 1.11  2000/02/26 19:23:58  cph
-// Don't trust server path data, avoid system(3) calls with it
-//
-// Revision 1.10  1999/11/01 17:12:28  cphipps
-// Added i_main.h
-//
-// Revision 1.9  1999/10/31 16:36:06  cphipps
-// Update include files for i_* changes
-//
-// Revision 1.8  1999/10/12 13:01:09  cphipps
-// Changed header to GPL
-//
-// Revision 1.7  1999/10/03 06:40:33  cphipps
-// Improved D_NetGetWad
-// - retransmits the packet to the server until it gets a reply
-// - used wget(1) to do the download, which supports http in addition to ftp
-//
-// Revision 1.6  1999/08/21 09:17:44  cphipps
-// Reduced time delay in TryRunTics
-//
-// Revision 1.5  1999/04/02 11:21:34  cphipps
-// Send PKT_GO to server saying when we are ready
-//
-// Revision 1.4  1999/04/02 10:54:45  cphipps
-// Split netgame startup between 2 functions:
-// D_InitNetGame gets the startup packet and wad list
-// D_CheckNetGame waits for the game to start
-//
-// Revision 1.3  1999/04/01 22:19:43  cphipps
-// Working PKT_WAD implementation, adds wad files to the game and downloads them as
-// specified by the server, as needed
-//
-// Revision 1.2  1999/04/01 10:12:57  cphipps
-// Fix a couple of memory leaks (d'oh)
-// Fix PKT_DOWN handling
-// Call NetUpdate() more regularly
-// Rearrange packet-waiting loop
-//
-// Revision 1.1  1999/03/29 11:54:47  cphipps
-// Initial revision
-//
-//

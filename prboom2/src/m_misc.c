@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: m_misc.c,v 1.1 2000/05/04 08:10:26 proff_fs Exp $
+ * $Id: m_misc.c,v 1.1.1.2 2000/09/20 09:43:49 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -32,9 +33,13 @@
  *-----------------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: m_misc.c,v 1.1 2000/05/04 08:10:26 proff_fs Exp $";
+rcsid[] = "$Id: m_misc.c,v 1.1.1.2 2000/09/20 09:43:49 figgi Exp $";
 
-#ifdef HAVE_UNISTD
+#ifdef HAVE_CONFIG_H
+#include "../config.h"
+#endif
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 #ifdef _MSC_VER
@@ -60,13 +65,14 @@ rcsid[] = "$Id: m_misc.c,v 1.1 2000/05/04 08:10:26 proff_fs Exp $";
 #include "sounds.h"
 #include "i_joy.h"
 #include "lprintf.h"
+#include "d_main.h"
 
 //
 // M_DrawText
 // Returns the final X coordinate
 // HU_Init must have been called to init the font
 //
-extern patch_t* hu_font[HU_FONTSIZE];
+extern patchnum_t hu_font[HU_FONTSIZE];
 
 int M_DrawText(int x,int y,boolean direct,char* string)
 {
@@ -81,13 +87,13 @@ int M_DrawText(int x,int y,boolean direct,char* string)
       continue;
     }
     
-    w = SHORT (hu_font[c]->width);
+    w = SHORT (hu_font[c].width);
     if (x+w > SCREENWIDTH)
       break;
 
     // proff/nicolas 09/20/98 -- changed for hi-res
     // CPhipps - patch drawing updated, reformatted
-    V_DrawMemPatch(x, y, 0, hu_font[c], NULL, VPT_STRETCH);
+    V_DrawNumPatch(x, y, 0, hu_font[c].lumpnum, CR_DEFAULT, VPT_STRETCH);
     x+=w;
   }
 
@@ -182,26 +188,26 @@ int         mus_pause_opt; // 0 = kill music, 1 = pause, 2 = continue
 
 extern const char* chat_macros[];
 
-// CPhipps - new stuff. Autoloaded wads, and endoom and misc X options
-extern const char* auto_load_wads;
 extern int endoom_mode;
 int X_opt;
 
-#define UL (-123456789) /* magic number for no min or max for parameter */
+/* cph - Some MBF stuff parked here for now
+ * killough 10/98
+ */
+int map_point_coordinates;
 
-//jff 3/3/98 added min, max, and help string to all entries
-//jff 4/10/98 added isstr field to specify whether value is string or int
-// CPhipps - const
-const default_t defaults[] =
+default_t defaults[] =
 {
   {"Misc settings",{NULL},{0},UL,UL,def_none,ss_none},
-  {"compatibility_level",{&default_compatibility_level},
-   {MAX_COMPATIBILITY_LEVEL-1},0,MAX_COMPATIBILITY_LEVEL-1,
+  {"default_compatibility_level",{&default_compatibility_level},
+   {-1},-1,MAX_COMPATIBILITY_LEVEL-1,
    def_int,ss_none}, // compatibility level" - CPhipps  
   {"realtic_clock_rate",{&realtic_clock_rate},{100},0,UL,
    def_int,ss_none}, // percentage of normal speed (35 fps) realtic clock runs at
   {"max_player_corpse", {&bodyquesize}, {32},-1,UL,   // killough 2/8/98
    def_int,ss_none}, // number of dead bodies in view supported (-1 = no limit)
+  {"flashing_hom",{&flashing_hom},{0},0,1,
+   def_bool,ss_none}, // killough 10/98 - enable flashing HOM indicator
   {"demo_insurance",{&default_demo_insurance},{2},0,2,  // killough 3/31/98
    def_int,ss_none}, // 1=take special steps ensuring demo sync, 2=only during recordings
   {"endoom_mode", {&endoom_mode},{5},0,7, // CPhipps - endoom flags
@@ -210,19 +216,53 @@ const default_t defaults[] =
    def_bool,ss_none}, // precache level data?
   
   {"Files",{NULL},{0},UL,UL,def_none,ss_none},
-  // jff 3/30/98 add ability to take screenshots in BMP format
-  {"auto_load",{NULL,&auto_load_wads},{0,"boomlump.wad"},UL,UL, 
-   def_str,ss_none}, // files to load automatically, separated by ;'s
+  /* cph - MBF-like wad/deh/bex autoload code 
+   * POSIX targets need to get lumps from prboom.wad */
+  {"wadfile_1",{NULL,&wad_files[0]},{0,
+#ifdef ALL_IN_ONE
+				     ""
+#else
+				     "prboom.wad"
+#endif
+                                         },UL,UL,def_str,ss_none},
+  {"wadfile_2",{NULL,&wad_files[1]},{0,""},UL,UL,def_str,ss_none},
+  {"dehfile_1",{NULL,&deh_files[0]},{0,""},UL,UL,def_str,ss_none},
+  {"dehfile_2",{NULL,&deh_files[1]},{0,""},UL,UL,def_str,ss_none},
   
   {"Game settings",{NULL},{0},UL,UL,def_none,ss_none},
   {"default_skill",{&defaultskill},{3},1,5, // jff 3/24/98 allow default skill setting
    def_int,ss_none}, // selects default skill 1=TYTD 2=NTR 3=HMP 4=UV 5=NM
   {"weapon_recoil",{&default_weapon_recoil},{1},0,1,
-   def_bool,ss_weap}, // enables recoil from weapon fire   // phares
+   def_bool,ss_weap, &weapon_recoil}, 
+  /* killough 10/98 - toggle between SG/SSG and Fist/Chainsaw */
+  {"doom_weapon_toggles",{&doom_weapon_toggles}, {1}, 0, 1, 
+   def_bool, ss_weap }, 
   {"player_bobbing",{&default_player_bobbing},{1},0,1,         // phares 2/25/98
-   def_bool,ss_weap}, // enables player bobbing (view randomly moving up/down slightly)
+   def_bool,ss_weap, &player_bobbing},
   {"monsters_remember",{&default_monsters_remember},{1},0,1,   // killough 3/1/98
-   def_bool,ss_enem}, // enables monsters remembering enemies after killing others
+   def_bool,ss_enem, &monsters_remember},
+   /* MBF AI enhancement options */
+  {"monster_infighting",{&default_monster_infighting}, {1}, 0, 1, 
+   def_bool, ss_enem, &monster_infighting}, 
+  {"monster_backing",{&default_monster_backing}, {1}, 0, 1, 
+   def_bool, ss_enem, &monster_backing}, 
+  {"monster_avoid_hazards",{&default_monster_avoid_hazards}, {1}, 0, 1, 
+   def_bool, ss_enem, &monster_avoid_hazards}, 
+  {"monkeys",{&default_monkeys}, {1}, 0, 1, 
+   def_bool, ss_enem, &monkeys}, 
+  {"monster_friction",{&default_monster_friction}, {1}, 0, 1, 
+   def_bool, ss_enem, &monster_friction}, 
+  {"help_friends",{&default_help_friends}, {1}, 0, 1, 
+   def_bool, ss_enem, &help_friends}, 
+#ifdef DOGS
+  {"player_helpers",{&default_dogs}, {0}, 0, 3, 
+   def_bool, ss_enem }, 
+  {"friend_distance",{&default_distfriend}, {128}, 0, 999, 
+   def_int, ss_enem, &distfriend}, 
+  {"dog_jumping",{&default_dog_jumping}, {1}, 0, 1, 
+   def_bool, ss_enem, &dog_jumping}, 
+#endif
+   /* End of MBF AI extras */
   {"sts_always_red",{&sts_always_red},{0},0,1, // no color changes on status bar
    def_bool,ss_stat},
   {"sts_pct_always_gray",{&sts_pct_always_gray},{1},0,1, // 2/23/98 chg default
@@ -236,18 +276,40 @@ const default_t defaults[] =
   {"autorun",{&autorun},{0},0,1,  // killough 3/6/98: preserve autorun across games
    def_bool,ss_none},
 
+  {"Compatibility settings",{NULL},{0},UL,UL,def_none,ss_none},
+  {"comp_zombie",{&default_comp[comp_zombie]},{0},0,1,def_bool,ss_comp,&comp[comp_zombie]},
+  {"comp_infcheat",{&default_comp[comp_infcheat]},{0},0,1,def_bool,ss_comp,&comp[comp_infcheat]},
+  {"comp_stairs",{&default_comp[comp_stairs]},{0},0,1,def_bool,ss_comp,&comp[comp_stairs]},
+  {"comp_telefrag",{&default_comp[comp_telefrag]},{0},0,1,def_bool,ss_comp,&comp[comp_telefrag]},
+  {"comp_dropoff",{&default_comp[comp_dropoff]},{0},0,1,def_bool,ss_comp,&comp[comp_dropoff]},
+  {"comp_falloff",{&default_comp[comp_falloff]},{0},0,1,def_bool,ss_comp,&comp[comp_falloff]},
+  {"comp_staylift",{&default_comp[comp_staylift]},{0},0,1,def_bool,ss_comp,&comp[comp_staylift]},
+  {"comp_doorstuck",{&default_comp[comp_doorstuck]},{0},0,1,def_bool,ss_comp,&comp[comp_doorstuck]},
+  {"comp_pursuit",{&default_comp[comp_pursuit]},{0},0,1,def_bool,ss_comp,&comp[comp_pursuit]},
+  {"comp_vile",{&default_comp[comp_vile]},{0},0,1,def_bool,ss_comp,&comp[comp_vile]},
+  {"comp_pain",{&default_comp[comp_pain]},{0},0,1,def_bool,ss_comp,&comp[comp_pain]},
+  {"comp_skull",{&default_comp[comp_skull]},{0},0,1,def_bool,ss_comp,&comp[comp_skull]},
+  {"comp_blazing",{&default_comp[comp_blazing]},{0},0,1,def_bool,ss_comp,&comp[comp_blazing]},
+  {"comp_doorlight",{&default_comp[comp_doorlight]},{0},0,1,def_bool,ss_comp,&comp[comp_doorlight]},
+  {"comp_god",{&default_comp[comp_god]},{0},0,1,def_bool,ss_comp,&comp[comp_god]},
+  {"comp_skymap",{&default_comp[comp_skymap]},{0},0,1,def_bool,ss_comp,&comp[comp_skymap]},
+  {"comp_floors",{&default_comp[comp_floors]},{0},0,1,def_bool,ss_comp,&comp[comp_floors]},
+  {"comp_model",{&default_comp[comp_model]},{0},0,1,def_bool,ss_comp,&comp[comp_model]},
+  {"comp_zerotags",{&default_comp[comp_zerotags]},{0},0,1,def_bool,ss_comp,&comp[comp_zerotags]},
+  {"comp_moveblock",{&default_comp[comp_moveblock]},{0},0,1,def_bool,ss_comp,&comp[comp_moveblock]},
+
   {"Sound settings",{NULL},{0},UL,UL,def_none,ss_none},
   {"sound_card",{&snd_card},{-1},-1,7,       // jff 1/18/98 allow Allegro drivers
    def_int,ss_none}, // select sounds driver (DOS), -1 is autodetect, 0 is none; in Linux, non-zero enables sound 
   {"music_card",{&mus_card},{-1},-1,9,       //  to be set,  -1 = autodetect
    def_int,ss_none}, // select music driver (DOS), -1 is autodetect, 0 is none"; in Linux, non-zero enables music
-  {"pitched_sounds",{&default_pitched_sounds},{0},0,1, // killough 2/21/98
+  {"pitched_sounds",{&pitched_sounds},{0},0,1, // killough 2/21/98
    def_bool,ss_none}, // enables variable pitch in sound effects (from id's original code)
   {"sfx_volume",{&snd_SfxVolume},{8},0,15, def_int,ss_none}, 
   {"music_volume",{&snd_MusicVolume},{8},0,15, def_int,ss_none},
   {"mus_pause_opt",{&mus_pause_opt},{0},0,2, // CPhipps - music pausing
    def_int, ss_none}, // 0 = kill music when paused, 1 = pause music, 2 = let music continue
-#ifndef _MSC_VER
+#ifndef _WIN32
   {"soundsrv", {NULL,&sndserver_filename}, {0,SNDSERV_PATH},UL,UL,
    def_str,ss_none}, // path to sound server (UNIX)
   {"musicsrv", {NULL,&musserver_filename}, {0,MUSSERV_PATH},UL,UL,
@@ -266,6 +328,8 @@ const default_t defaults[] =
    def_int,ss_none},  
   {"fake_contrast",{&fake_contrast},{1},0,1,
    def_bool,ss_none}, /* cph - allow crappy fake contrast to be disabled */
+  {"use_fullscreen",{&use_fullscreen},{1},0,1, /* proff 21/05/2000 */
+   def_bool,ss_none},
   {"use_vsync",{&use_vsync},{1},0,1,             // killough 2/8/98
    def_bool,ss_none}, // enable wait for vsync to avoid display tearing (fullscreen)
   {"translucency",{&default_translucency},{1},0,1,   // phares
@@ -522,9 +586,13 @@ const default_t defaults[] =
    def_colour,ss_auto}, // color used for the single player arrow
   {"mapcolor_me",   {&mapcolor_me}, {112},0,255, // green
    def_colour,ss_auto}, // your (player) colour
+  {"mapcolor_frnd",   {&mapcolor_frnd}, {112},0,255,
+   def_colour,ss_auto},
   //jff 3/9/98 add option to not show secrets til after found
   {"map_secret_after", {&map_secret_after}, {0},0,1, // show secret after gotten
    def_bool,ss_auto}, // prevents showing secret sectors till after entered
+  {"map_point_coord", {&map_point_coordinates}, {0},0,1,
+   def_bool,ss_auto},
   //jff 1/7/98 end additions for automap
   {"automapmode", {(int*)&automapmode}, {0}, 0, 31, // CPhipps - remember automap mode
    def_hex,ss_none}, // automap mode
@@ -642,6 +710,20 @@ void M_SaveDefaults (void)
   fclose (f);
   }
 
+/*
+ * M_LookupDefault
+ *
+ * cph - mimic MBF function for now. Yes it's crap.
+ */
+
+struct default_s *M_LookupDefault(const char *name)
+{
+  int i;
+  for (i = 0 ; i < numdefaults ; i++)
+    if ((defaults[i].type != def_none) && !strcmp(name, defaults[i].name))
+      return &defaults[i];
+  I_Error("M_LookupDefault: %s not found",name);
+}
 
 //
 // M_LoadDefaults
@@ -834,6 +916,7 @@ static void SafeWrite(const void *data, size_t size, size_t number, FILE *st)
     screenshot_write_error = true; // CPhipps - made non-fatal
 }
 
+#ifndef GL_DOOM
 //
 // WriteBMPfile
 // jff 3/30/98 Add capability to write a .BMP file (256 color uncompressed)
@@ -841,7 +924,7 @@ static void SafeWrite(const void *data, size_t size, size_t number, FILE *st)
 
 // CPhipps - static, const on parameters
 static void WriteBMPfile(const char* filename, const byte* data, 
-			 int width, int height, const byte* palette)
+			 const int width, const int height, const byte* palette)
 {
   int i,wid;
   BITMAPFILEHEADER bmfh;
@@ -912,6 +995,62 @@ static void WriteBMPfile(const char* filename, const byte* data,
   }
 }
 
+#else /* GL_DOOM */
+
+//
+// WriteTGAfile
+// proff 05/15/2000 Add capability to write a .TGA file (24bit color uncompressed)
+//
+
+// CPhipps - static, const on parameters
+static void WriteTGAfile(const char* filename, const byte* data, 
+			 const int width, const int height)
+{
+  unsigned char c;
+  unsigned short s;
+  int i;
+  FILE *st;
+
+  st = fopen(filename,"wb");
+  if (st!=NULL) {
+    // write the header
+    // id_length
+    c=0; SafeWrite(&c,sizeof(c),1,st);
+    // colormap_type
+    c=0; SafeWrite(&c,sizeof(c),1,st);
+    // image_type
+    c=2; SafeWrite(&c,sizeof(c),1,st);
+    // colormap_index
+    s=0; SafeWrite(&s,sizeof(s),1,st);
+    // colormap_length
+    s=0; SafeWrite(&s,sizeof(s),1,st);
+    // colormap_size
+    c=0; SafeWrite(&c,sizeof(c),1,st);
+    // x_origin
+    s=0; SafeWrite(&s,sizeof(s),1,st);
+    // y_origin
+    s=0; SafeWrite(&s,sizeof(s),1,st);
+    // width
+    s=SHORT(width); SafeWrite(&s,sizeof(s),1,st);
+    // height
+    s=SHORT(height); SafeWrite(&s,sizeof(s),1,st);
+    // bits_per_pixel
+    c=24; SafeWrite(&c,sizeof(c),1,st);
+    // attributes
+    c=0; SafeWrite(&c,sizeof(c),1,st);
+
+    for (i=0; i<width*height*3; i+=3)
+    {
+      SafeWrite(&data[i+2],sizeof(byte),1,st);
+      SafeWrite(&data[i+1],sizeof(byte),1,st);
+      SafeWrite(&data[i+0],sizeof(byte),1,st);
+    }
+
+    fclose(st);
+  }
+}
+#endif /* GL_DOOM */
+
 //
 // M_ScreenShot
 //
@@ -930,11 +1069,23 @@ static void WriteBMPfile(const char* filename, const byte* data,
 void M_DoScreenShot (const char* fname)
 {
   byte       *linear;
+#ifndef GL_DOOM
   const byte *pal;
   int        pplump = W_GetNumForName("PLAYPAL");
+#endif
 
   screenshot_write_error = false;
 
+#ifdef GL_DOOM
+  // munge planar buffer to linear
+  // CPhipps - use a malloc()ed buffer instead of screens[2]
+  gld_ReadScreen(linear = malloc(SCREENWIDTH * SCREENHEIGHT * 3));
+
+  // save the bmp file
+
+  WriteTGAfile
+    (fname, linear, SCREENWIDTH, SCREENHEIGHT);
+#else
   // munge planar buffer to linear
   // CPhipps - use a malloc()ed buffer instead of screens[2]
   I_ReadScreen(linear = malloc(SCREENWIDTH * SCREENHEIGHT));
@@ -942,16 +1093,15 @@ void M_DoScreenShot (const char* fname)
   // killough 4/18/98: make palette stay around (PU_CACHE could cause crash)
   pal = W_CacheLumpNum (pplump);
     
-  // save the pcx file
-  //jff 3/30/98 write pcx or bmp depending on mode
+  // save the bmp file
 
   WriteBMPfile
     (fname, linear, SCREENWIDTH, SCREENHEIGHT, pal);
 
   // cph - free the palette
   W_UnlockLumpNum(pplump);
+#endif
   free(linear);
-
   // 1/18/98 killough: replace "SCREEN SHOT" acknowledgement with sfx
 
   if (screenshot_write_error)
@@ -970,14 +1120,22 @@ void M_ScreenShot(void)
 
   startshot = shot; // CPhipps - prevent infinite loop
     
-  do                                         //jff 3/30/98 pcx or bmp?  
+  do
+#ifdef GL_DOOM
+    sprintf(lbmname,"DOOM%02d.TGA", shot++);
+#else
     sprintf(lbmname,"DOOM%02d.BMP", shot++);
+#endif
   while (!access(lbmname,0) && (shot != startshot) && (shot < 10000));
 
   if (!access(lbmname,0)) screenshot_write_error = true;
 
   if (screenshot_write_error) {
-    doom_printf ("M_ScreenShot: Couldn't create a PCX"); 
+#ifdef GL_DOOM
+    doom_printf ("M_ScreenShot: Couldn't create a TGA"); 
+#else
+    doom_printf ("M_ScreenShot: Couldn't create a BMP"); 
+#endif
     // killough 4/18/98
     return;
   }
@@ -986,343 +1144,3 @@ void M_ScreenShot(void)
 
   S_StartSound(NULL,gamemode==commercial ? sfx_radio : sfx_tink); 
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: m_misc.c,v $
-// Revision 1.1  2000/05/04 08:10:26  proff_fs
-// Initial revision
-//
-// Revision 1.46  2000/05/01 17:50:36  Proff
-// made changes to compile with VisualC and SDL
-//
-// Revision 1.45  2000/04/27 14:15:33  cph
-// Allow lousy fake contrast to be disabled
-//
-// Revision 1.44  2000/04/09 13:23:24  cph
-// Remove PCX screenshot support
-// Remove DOS-specific config file options
-// Add level_precache option
-//
-// Revision 1.43  2000/03/17 20:50:30  cph
-// Commit mead's improved mouse stuff
-//
-// Revision 1.42  1999/11/01 00:13:44  cphipps
-// Remove uint_t bizarreness
-//
-// Revision 1.41  1999/10/27 18:35:50  cphipps
-// Made W_CacheLump* return a const pointer
-//
-// Revision 1.40  1999/10/12 13:01:12  cphipps
-// Changed header to GPL
-//
-// Revision 1.39  1999/09/06 19:41:53  cphipps
-// Use macros set by autoconf setup for default locations of sound and music servers
-//
-// Revision 1.38  1999/09/05 20:12:51  cphipps
-// Removed help strings from the config file (depreciated, help goes in boom.cfg.5 now)
-// Removed help strings from the defaults array, turned them into comments instead
-//
-// Revision 1.37  1999/05/16 08:47:16  cphipps
-// Minor change to ease compiling on Solaris
-//
-// Revision 1.36  1999/04/01 14:29:19  cphipps
-// Add Xwindows options variable to config file
-//
-// Revision 1.35  1999/03/26 11:08:57  cphipps
-// Store full automap mode in config file instead of just follow mode
-// Remove unneeded extern decls
-//
-// Revision 1.34  1999/03/24 09:47:04  cphipps
-// Remove multiplayer colours variables, added single mapcolor_me variable instead
-//
-// Revision 1.33  1999/03/22 17:11:25  cphipps
-// Remove player colour config options
-//
-// Revision 1.32  1999/03/13 10:17:46  cphipps
-// Add the new automap keys to config file
-//
-// Revision 1.31  1999/01/25 22:33:25  cphipps
-// Fix type in default sound server
-//
-// Revision 1.30  1999/01/23 16:37:58  cphipps
-// Change sound/music servers to be in /usr/local/games explicitely
-// by default.
-//
-// Revision 1.29  1999/01/23 07:44:35  cphipps
-// Make default sound/music server path not start with ./, so they
-// can be found via path too.
-//
-// Revision 1.28  1999/01/12 18:58:38  cphipps
-// Screenshot handling broken up into 2 functions
-//
-// Revision 1.27  1999/01/07 10:34:23  cphipps
-// Alignment options for Metrowerks compiler
-//
-// Revision 1.26  1999/01/01 16:53:54  cphipps
-// Add variable to control aspects of ENDOOM display
-//
-// Revision 1.25  1999/01/01 16:14:56  cphipps
-// Free the screenshot buffer
-//
-// Revision 1.25  1999/01/01 16:01:18  cphipps
-// Revision 1.24  1998/12/31 20:27:59  cphipps
-// New wad lump handling
-//
-// Revision 1.23  1998/12/31 11:09:01  cphipps
-// Patch drawing updated
-//
-// Revision 1.22  1998/12/28 21:26:22  cphipps
-// Reformat M_ScreenShot
-// Make it allocate memory for the image on its own, instead of using spare screens
-// Error handling improved some more
-//
-// Revision 1.21  1998/12/28 13:13:10  cphipps
-// Add multiplayer colours variable to config file
-// Fix upper limit of compatibilit_level variable
-//
-// Revision 1.20  1998/12/26 11:55:48  cphipps
-// Modified for new default_compatibility variable
-//
-// Revision 1.19  1998/12/25 18:40:14  cphipps
-// Fix i/b chat keys reversal, thanks to MBF
-//
-// Revision 1.18  1998/12/24 17:45:25  cphipps
-// Overhaul defaults[] table for new default_t struct
-// Reorder defaults[] array, add section headers
-// Modify M_LoadDefaults and M_SaveDefaults for the new struct
-// Add ability to read/write ints in hex
-// Preserve automap follow mode in config file
-// Change auto_load_wads to auto_load, since deh/bex files will also be supported
-//
-// Revision 1.17  1998/12/19 20:44:06  cphipps
-// Report error on failed screenshots
-//
-// Revision 1.16  1998/12/16 22:34:55  cphipps
-// Added default screen size vars to config file
-//
-// Revision 1.15  1998/12/16 21:24:40  cphipps
-// Fix joystick parameters comments to be clearly comments
-// Add auto_load_wads variable
-//
-// Revision 1.14  1998/12/07 09:57:18  cphipps
-// Add option so player can control what happens to the music when the game
-// is paused
-//
-// Revision 1.13  1998/12/02 09:14:26  cphipps
-// Print config file name if devparm
-//
-// Revision 1.12  1998/11/17 07:47:06  cphipps
-// Hi-res changes
-//
-// Revision 1.11  1998/11/03 12:15:06  cphipps
-// Fixed bad example sound device string
-//
-// Revision 1.10  1998/10/27 18:14:15  cphipps
-// Boom v2.02 updates - logical console output stuff
-//
-// Revision 1.9  1998/10/20 18:13:00  cphipps
-// Add music server to config file
-//
-// Revision 1.8  1998/10/20 06:58:37  cphipps
-// dprintf -> doom_printf
-//
-// Revision 1.7  1998/10/16 23:08:05  cphipps
-// Release a variable so m_menu.c can see it
-//
-// Revision 1.6  1998/10/16 20:56:14  cphipps
-// Added const, static to some variables
-//
-// Revision 1.5  1998/10/16 20:27:32  cphipps
-// Made defaults table const
-// Added some static's and const's o the screenshot code
-//
-// Revision 1.4  1998/10/15 18:48:52  cphipps
-// Remove redundant linux mouse type/device vars
-//
-// Revision 1.3  1998/10/10 20:30:46  cphipps
-// Added sound device to config file
-//
-// Revision 1.2  1998/09/19 11:05:21  cphipps
-// Added joystick calibration variables
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.4  1998/09/13 15:46:20  cphipps
-// *** empty log message ***
-//
-// Revision 1.3  1998/09/13 15:31:16  cphipps
-// Added soundserver path to config file
-//
-// Revision 1.2  1998/09/12 19:31:17  cphipps
-// Removed ^M's
-//
-// Revision 1.60  1998/06/03  20:32:12  jim
-// Fixed mispelling of key_chat string
-//
-// Revision 1.59  1998/05/21  12:12:28  jim
-// Removed conditional from net code
-//
-// Revision 1.58  1998/05/16  09:41:15  jim
-// formatted net files, installed temp switch for testing Stan/Lee's version
-//
-// Revision 1.57  1998/05/12  12:47:04  phares
-// Removed OVER_UNDER code
-//
-// Revision 1.56  1998/05/05  19:56:01  phares
-// Formatting and Doc changes
-//
-// Revision 1.55  1998/05/05  16:29:12  phares
-// Removed RECOIL and OPT_BOBBING defines
-//
-// Revision 1.54  1998/05/03  23:05:19  killough
-// Fix #includes, remove external decls duplicated elsewhere, fix LONG() conflict
-//
-// Revision 1.53  1998/04/23  13:07:27  jim
-// Add exit line to automap
-//
-// Revision 1.51  1998/04/22  13:46:12  phares
-// Added Setup screen Reset to Defaults
-//
-// Revision 1.50  1998/04/19  01:13:50  killough
-// Fix freeing memory before use in savegame code
-//
-// Revision 1.49  1998/04/17  10:35:50  killough
-// Add traditional_menu option for main menu
-//
-// Revision 1.48  1998/04/14  08:18:11  killough
-// replace obsolete adaptive_gametic with realtic_clock_rate
-//
-// Revision 1.47  1998/04/13  21:36:33  phares
-// Cemented ESC and F1 in place
-//
-// Revision 1.46  1998/04/13  12:30:02  phares
-// Resolved Z_Free error msg when no boom.cfg file
-//
-// Revision 1.45  1998/04/12  22:55:33  phares
-// Remaining 3 Setup screens
-//
-// Revision 1.44  1998/04/10  23:21:41  jim
-// fixed string/int differentiation by value
-//
-// Revision 1.43  1998/04/10  06:37:54  killough
-// Add adaptive gametic timer option
-//
-// Revision 1.42  1998/04/06  11:05:00  jim
-// Remove LEESFIXES, AMAP bdg->247
-//
-// Revision 1.41  1998/04/06  04:50:00  killough
-// Support demo_insurance=2
-//
-// Revision 1.40  1998/04/05  00:51:13  phares
-// Joystick support, Main Menu re-ordering
-//
-// Revision 1.39  1998/04/03  14:45:49  jim
-// Fixed automap disables at 0, mouse sens unbounded
-//
-// Revision 1.38  1998/03/31  10:44:31  killough
-// Add demo insurance option
-//
-// Revision 1.37  1998/03/31  00:39:44  jim
-// Screenshots in BMP format added
-//
-// Revision 1.36  1998/03/25  16:31:23  jim
-// Fixed bad default value for defaultskill
-//
-// Revision 1.34  1998/03/23  15:24:17  phares
-// Changed pushers to linedef control
-//
-// Revision 1.33  1998/03/20  00:29:47  phares
-// Changed friction to linedef control
-//
-// Revision 1.32  1998/03/11  17:48:16  phares
-// New cheats, clean help code, friction fix
-//
-// Revision 1.31  1998/03/10  07:06:30  jim
-// Added secrets on automap after found only option
-//
-// Revision 1.30  1998/03/09  18:29:12  phares
-// Created separately bound automap and menu keys
-//
-// Revision 1.29  1998/03/09  11:00:20  jim
-// allowed -1 in mouse bindings and map functions
-//
-// Revision 1.28  1998/03/09  07:35:18  killough
-// Rearrange order of cfg options, add capslock options
-//
-// Revision 1.27  1998/03/06  21:41:04  jim
-// fixed erroneous range for gamma in config
-//
-// Revision 1.26  1998/03/05  00:57:47  jim
-// Scattered HUD
-//
-// Revision 1.25  1998/03/04  11:55:42  jim
-// Add range checking, help strings to BOOM.CFG
-//
-// Revision 1.24  1998/03/02  15:34:15  jim
-// Added Rand's HELP screen as lump and loaded and displayed it
-//
-// Revision 1.23  1998/03/02  11:36:44  killough
-// clone defaults, add sts_traditional_keys
-//
-// Revision 1.22  1998/02/27  19:22:05  jim
-// Range checked hud/sound card variables
-//
-// Revision 1.21  1998/02/27  08:10:02  phares
-// Added optional player bobbing
-//
-// Revision 1.20  1998/02/26  22:58:39  jim
-// Added message review display to HUD
-//
-// Revision 1.19  1998/02/24  22:00:57  killough
-// turn translucency back on by default
-//
-// Revision 1.18  1998/02/24  08:46:05  phares
-// Pushers, recoil, new friction, and over/under work
-//
-// Revision 1.17  1998/02/23  14:21:14  jim
-// Merged HUD stuff, fixed p_plats.c to support elevators again
-//
-// Revision 1.16  1998/02/23  04:40:48  killough
-// Lots of new options
-//
-// Revision 1.14  1998/02/20  21:57:00  phares
-// Preliminarey sprite translucency
-//
-// Revision 1.13  1998/02/20  18:46:58  jim
-// cleanup of HUD control
-//
-// Revision 1.12  1998/02/19  16:54:33  jim
-// Optimized HUD and made more configurable
-//
-// Revision 1.11  1998/02/18  11:56:11  jim
-// Fixed issues with HUD and reduced screen size
-//
-// Revision 1.9  1998/02/15  03:21:20  phares
-// Jim's comment: Fixed bug in automap from mistaking framebuffer index for mark color
-//
-// Revision 1.8  1998/02/15  03:17:56  phares
-// User-defined keys
-//
-// Revision 1.6  1998/02/09  03:04:12  killough
-// Add weapon preferences, player corpse, vsync options
-//
-// Revision 1.5  1998/02/02  13:37:26  killough
-// Clone compatibility flag, for TNTCOMP to work
-//
-// Revision 1.4  1998/01/26  19:23:49  phares
-// First rev with no ^Ms
-//
-// Revision 1.3  1998/01/26  04:59:07  killough
-// Fix DOOM 1 screenshot acknowledgement
-//
-// Revision 1.2  1998/01/21  16:56:16  jim
-// Music fixed, defaults for cards added
-//
-// Revision 1.1.1.1  1998/01/19  14:02:57  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------
-

@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: doomstat.c,v 1.1 2000/05/04 08:01:05 proff_fs Exp $
+ * $Id: doomstat.c,v 1.1.1.2 2000/09/20 09:40:14 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  */
 
 static const char
-rcsid[] = "$Id: doomstat.c,v 1.1 2000/05/04 08:01:05 proff_fs Exp $";
+rcsid[] = "$Id: doomstat.c,v 1.1.1.2 2000/09/20 09:40:14 figgi Exp $";
 
 #ifdef __GNUG__
 #pragma implementation "doomstat.h"
@@ -53,8 +54,10 @@ boolean modifiedgame;
 // CPhipps - compatibility vars
 int compatibility_level, default_compatibility_level;
 
+int comp[COMP_TOTAL], default_comp[COMP_TOTAL];    // killough 10/98
+
 // v1.1-like pitched sounds
-int pitched_sounds, default_pitched_sounds;        // killough
+int pitched_sounds;        // killough
 
 int     default_translucency; // config file says           // phares
 boolean general_translucency; // true if translucency is ok // phares
@@ -76,34 +79,32 @@ int default_player_bobbing;  // killough 3/1/98: make local to each game
 int monsters_remember;          // killough 3/1/98
 int default_monsters_remember;
 
-//----------------------------------------------------------------------------
-//
-// $Log: doomstat.c,v $
-// Revision 1.1  2000/05/04 08:01:05  proff_fs
-// Initial revision
-//
-// Revision 1.3  1999/10/12 13:01:09  cphipps
-// Changed header to GPL
-//
-// Revision 1.2  1998/12/26 11:55:13  cphipps
-// New compatibility variables
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.5  1998/05/12  12:46:12  phares
-// Removed OVER_UNDER code
-//
-// Revision 1.4  1998/05/05  16:29:01  phares
-// Removed RECOIL and OPT_BOBBING defines
-//
-// Revision 1.3  1998/05/03  23:12:13  killough
-// beautify, move most global switch variables here
-//
-// Revision 1.2  1998/01/26  19:23:10  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:06  rand
-// Lee's Jan 19 sources
-//
-//----------------------------------------------------------------------------
+int monster_infighting=1;       // killough 7/19/98: monster<=>monster attacks
+int default_monster_infighting=1;
+
+int monster_friction=1;       // killough 10/98: monsters affected by friction 
+int default_monster_friction=1;
+
+#ifdef DOGS
+int dogs, default_dogs;         // killough 7/19/98: Marine's best friend :)
+int dog_jumping, default_dog_jumping;   // killough 10/98
+#endif
+
+// killough 8/8/98: distance friends tend to move towards players
+int distfriend = 128, default_distfriend = 128;
+
+// killough 9/8/98: whether monsters are allowed to strafe or retreat
+int monster_backing, default_monster_backing;
+
+// killough 9/9/98: whether monsters are able to avoid hazards (e.g. crushers)
+int monster_avoid_hazards, default_monster_avoid_hazards;
+
+// killough 9/9/98: whether monsters help friends
+int help_friends, default_help_friends;
+
+int flashing_hom;     // killough 10/98
+
+int doom_weapon_toggles; // killough 10/98
+
+int monkeys, default_monkeys;
+

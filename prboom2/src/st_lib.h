@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: st_lib.h,v 1.1 2000/05/04 08:17:16 proff_fs Exp $
+ * $Id: st_lib.h,v 1.1.1.2 2000/09/20 09:45:52 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -40,7 +41,7 @@
 // Background and foreground screen numbers
 //
 #define BG 4
-#define FG st_fgscreen
+#define FG 0
 
 //
 // Typedefs of widgets
@@ -69,7 +70,7 @@ typedef struct
   boolean*  on;
 
   // list of patches for 0-9
-  const patch_t** p;
+  const patchnum_t* p;
 
   // user data
   int data;
@@ -83,7 +84,7 @@ typedef struct
   st_number_t   n;
 
   // percent sign graphic
-  const patch_t*    p;
+  const patchnum_t*    p;
 } st_percent_t;
 
 // Multiple Icon widget
@@ -104,7 +105,7 @@ typedef struct
   boolean*    on;
 
   // list of icons
-  const patch_t**   p;
+  const patchnum_t*   p;
   
   // user data
   int     data;
@@ -129,7 +130,7 @@ typedef struct
   //  stating whether to update icon
   boolean*    on;  
 
-  const patch_t*    p;  // icon
+  const patchnum_t*    p;  // icon
   int     data;   // user data
 } st_binicon_t;
 
@@ -148,14 +149,14 @@ void STlib_initNum
 ( st_number_t* n,
   int x,
   int y,
-  const patch_t** pl,
+  const patchnum_t* pl,
   int* num,
   boolean* on,
   int width );
 
 void STlib_updateNum
 ( st_number_t* n,
-  const byte *outrng,
+  int cm,
   boolean refresh );
 
 
@@ -164,15 +165,15 @@ void STlib_initPercent
 ( st_percent_t* p,
   int x,
   int y,
-  const patch_t** pl,
+  const patchnum_t* pl,
   int* num,
   boolean* on,
-  const patch_t* percent );
+  const patchnum_t* percent );
 
 
 void STlib_updatePercent
 ( st_percent_t* per,
-  const byte *outrng,
+  int cm,
   int refresh );
 
 
@@ -181,7 +182,7 @@ void STlib_initMultIcon
 ( st_multicon_t* mi,
   int x,
   int y,
-  const patch_t**   il,
+  const patchnum_t*   il,
   int* inum,
   boolean* on );
 
@@ -196,7 +197,7 @@ void STlib_initBinIcon
 ( st_binicon_t* b,
   int x,
   int y,
-  const patch_t* i,
+  const patchnum_t* i,
   boolean* val,
   boolean* on );
 
@@ -205,46 +206,3 @@ void STlib_updateBinIcon
   boolean refresh );
 
 #endif
-
-
-//----------------------------------------------------------------------------
-//
-// $Log: st_lib.h,v $
-// Revision 1.1  2000/05/04 08:17:16  proff_fs
-// Initial revision
-//
-// Revision 1.5  1999/10/27 18:38:03  cphipps
-// Updated for W_Cache'd lumps being properly const
-// Made colour translation tables be referenced by const byte*'s
-// Updated various V_* functions for this change
-//
-// Revision 1.4  1999/10/12 13:01:16  cphipps
-// Changed header to GPL
-//
-// Revision 1.3  1999/02/08 08:48:03  cphipps
-// Modified for status bar scaling
-//
-// Revision 1.2  1998/12/31 12:46:24  cphipps
-// Made all patch_t's const
-//
-// Revision 1.1  1998/09/13 16:49:50  cphipps
-// Initial revision
-//
-// Revision 1.5  1998/05/11  10:44:46  jim
-// formatted/documented st_lib
-//
-// Revision 1.4  1998/02/19  16:55:12  jim
-// Optimized HUD and made more configurable
-//
-// Revision 1.3  1998/02/18  00:59:16  jim
-// Addition of HUD
-//
-// Revision 1.2  1998/01/26  19:27:55  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:03  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------
-

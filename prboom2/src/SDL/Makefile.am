@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.1 2000/05/08 23:58:37 jessh Exp $
+# $Id: Makefile.am,v 1.1.1.1 2000/09/20 09:46:38 figgi Exp $
 #
 # Copyright (C) 2000 by Colin Phipps (cph@lxdoom.linuxgames.com)
 # License: GPL

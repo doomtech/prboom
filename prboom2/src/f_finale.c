@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: f_finale.c,v 1.1 2000/05/04 08:01:30 proff_fs Exp $
+ * $Id: f_finale.c,v 1.1.1.2 2000/09/20 09:40:21 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  */
 
 static const char
-rcsid[] = "$Id: f_finale.c,v 1.1 2000/05/04 08:01:30 proff_fs Exp $";
+rcsid[] = "$Id: f_finale.c,v 1.1.1.2 2000/09/20 09:40:21 figgi Exp $";
 
 #include "doomstat.h"
 #include "d_event.h"
@@ -53,7 +54,7 @@ static const char*   finaleflat; // made static const
 
 #define TEXTSPEED    3     // original value                    // phares
 #define TEXTWAIT     250   // original value                    // phares
-#define NEWTEXTSPEED 0.01  // new value                         // phares
+#define NEWTEXTSPEED 0.01f  // new value                         // phares
 #define NEWTEXTWAIT  1000  // new value                         // phares
 
 // CPhipps - removed the old finale screen text message strings;
@@ -268,17 +269,17 @@ void F_Ticker(void)
 // CPhipps - reformatted
 
 #include "hu_stuff.h"
-extern  patch_t *hu_font[HU_FONTSIZE];
+extern patchnum_t hu_font[HU_FONTSIZE];
 
 
 void F_TextWrite (void)
 {
-  V_DrawBackground(finaleflat);
+  V_DrawBackground(finaleflat, 0);
   { // draw some of the text onto the screen
     int         cx = 10;
     int         cy = 10;
     const char* ch = finaletext; // CPhipps - const
-    int         count = (finalecount - 10)/Get_TextSpeed();                 // phares
+    int         count = (int)((float)(finalecount - 10)/Get_TextSpeed()); // phares
     int         w;
     
     if (count < 0)
@@ -301,11 +302,11 @@ void F_TextWrite (void)
 	continue;
       }
       
-      w = SHORT (hu_font[c]->width);
+      w = SHORT (hu_font[c].width);
       if (cx+w > SCREENWIDTH)
 	break;
       // CPhipps - patch drawing updated
-      V_DrawMemPatch(cx, cy, 0, hu_font[c], NULL, VPT_STRETCH);
+      V_DrawNumPatch(cx, cy, 0, hu_font[c].lumpnum, CR_DEFAULT, VPT_STRETCH);
       cx+=w;
     }
   }
@@ -528,7 +529,7 @@ static void F_CastPrint (const char* text) // CPhipps - static, const char*
       continue;
     }
             
-    w = SHORT (hu_font[c]->width);
+    w = SHORT (hu_font[c].width);
     width += w;
   }
   
@@ -547,9 +548,9 @@ static void F_CastPrint (const char* text) // CPhipps - static, const char*
       continue;
     }
               
-    w = SHORT (hu_font[c]->width);
+    w = SHORT (hu_font[c].width);
     // CPhipps - patch drawing updated
-    V_DrawMemPatch(cx, 180, 0, hu_font[c], NULL, VPT_STRETCH);
+    V_DrawNumPatch(cx, 180, 0, hu_font[c].lumpnum, CR_DEFAULT, VPT_STRETCH);
     cx+=w;
   }
 }
@@ -568,7 +569,7 @@ void F_CastDrawer (void)
     
   // erase the entire screen to a background
   // CPhipps - patch drawing updated
-  V_DrawNamePatch(0,0,0, bgcastcall, NULL, VPT_STRETCH); // Ty 03/30/98 bg texture extern
+  V_DrawNamePatch(0,0,0, bgcastcall, CR_DEFAULT, VPT_STRETCH); // Ty 03/30/98 bg texture extern
 
   F_CastPrint (*(castorder[castnum].name));
     
@@ -579,7 +580,7 @@ void F_CastDrawer (void)
   flip = (boolean)sprframe->flip[0];
 
   // CPhipps - patch drawing updated
-  V_DrawNumPatch(160, 170, 0, lump+firstspritelump, NULL, 
+  V_DrawNumPatch(160, 170, 0, lump+firstspritelump, CR_DEFAULT, 
 		 VPT_STRETCH | (flip ? VPT_FLIP : 0));
 }
 
@@ -597,21 +598,27 @@ static void F_BunnyScroll (void)
 
   V_MarkRect (0, 0, SCREENWIDTH, SCREENHEIGHT);
   {
-    int scrolled = (finalecount-230)/2;
+    int scrolled = 320 - (finalecount-230)/2;
     if (scrolled <= 0) {
-      V_DrawNamePatch(0, 0, 0, pfub2, NULL, VPT_STRETCH);
+      V_DrawNamePatch(0, 0, 0, pfub2, CR_DEFAULT, VPT_STRETCH);
     } else if (scrolled >= 320) {
-      V_DrawNamePatch(0, 0, 0, pfub1, NULL, VPT_STRETCH);
+      V_DrawNamePatch(0, 0, 0, pfub1, CR_DEFAULT, VPT_STRETCH);
     } else {
 #define SCRN 2
+
+#ifdef GL_DOOM
+      V_DrawNamePatch(320-scrolled, 0, SCRN, pfub1, CR_DEFAULT, VPT_STRETCH);
+      V_DrawNamePatch(-scrolled, 0, SCRN, pfub2, CR_DEFAULT, VPT_STRETCH);
+#else
       int realscrolled = (SCREENWIDTH * scrolled) / 320;
 
       V_AllocScreen(SCRN);
-      V_DrawNamePatch(0, 0, SCRN, pfub2, NULL, VPT_STRETCH);
-      V_CopyRect(realscrolled, 0, SCRN, SCREENWIDTH-realscrolled, SCREENHEIGHT, 0, 0, 0);
-      V_DrawNamePatch(0, 0, SCRN, pfub1, NULL, VPT_STRETCH);
-      V_CopyRect(0, 0, SCRN, realscrolled, SCREENHEIGHT, SCREENWIDTH-realscrolled, 0, 0);
+      V_DrawNamePatch(0, 0, SCRN, pfub2, CR_DEFAULT, VPT_STRETCH);
+      V_CopyRect(realscrolled, 0, SCRN, SCREENWIDTH-realscrolled, SCREENHEIGHT, 0, 0, 0, VPT_NONE);
+      V_DrawNamePatch(0, 0, SCRN, pfub1, CR_DEFAULT, VPT_STRETCH);
+      V_CopyRect(0, 0, SCRN, realscrolled, SCREENHEIGHT, SCREENWIDTH-realscrolled, 0, 0, VPT_NONE);
       V_FreeScreen(SCRN);
+#endif
     }
   }
 
@@ -620,7 +627,7 @@ static void F_BunnyScroll (void)
   if (finalecount < 1180)
   {
     // CPhipps - patch drawing updated
-    V_DrawNamePatch((320-13*8)/2, (200-8*8)/2,0, "END0", NULL, VPT_STRETCH);
+    V_DrawNamePatch((320-13*8)/2, (200-8*8)/2,0, "END0", CR_DEFAULT, VPT_STRETCH);
     laststage = 0;
     return;
   }
@@ -636,7 +643,7 @@ static void F_BunnyScroll (void)
       
   sprintf (name,"END%i",stage);
   // CPhipps - patch drawing updated
-  V_DrawNamePatch((320-13*8)/2, (200-8*8)/2, 0, name, NULL, VPT_STRETCH);
+  V_DrawNamePatch((320-13*8)/2, (200-8*8)/2, 0, name, CR_DEFAULT, VPT_STRETCH);
 }
 
 
@@ -660,117 +667,19 @@ void F_Drawer (void)
       // CPhipps - patch drawing updated
       case 1:
            if ( gamemode == retail )
-             V_DrawNamePatch(0, 0, 0, "CREDIT", NULL, VPT_STRETCH);
+             V_DrawNamePatch(0, 0, 0, "CREDIT", CR_DEFAULT, VPT_STRETCH);
            else
-             V_DrawNamePatch(0, 0, 0, "HELP2", NULL, VPT_STRETCH);
+             V_DrawNamePatch(0, 0, 0, "HELP2", CR_DEFAULT, VPT_STRETCH);
            break;
       case 2:
-           V_DrawNamePatch(0, 0, 0, "VICTORY2", NULL, VPT_STRETCH);
+           V_DrawNamePatch(0, 0, 0, "VICTORY2", CR_DEFAULT, VPT_STRETCH);
            break;
       case 3:
            F_BunnyScroll ();
            break;
       case 4:
-           V_DrawNamePatch(0, 0, 0, "ENDPIC", NULL, VPT_STRETCH);
+           V_DrawNamePatch(0, 0, 0, "ENDPIC", CR_DEFAULT, VPT_STRETCH);
            break;
     }
   }
 }
-
-//----------------------------------------------------------------------------
-//
-// $Log: f_finale.c,v $
-// Revision 1.1  2000/05/04 08:01:30  proff_fs
-// Initial revision
-//
-// Revision 1.14  1999/10/27 12:01:44  cphipps
-// Moved flat background tiling code to V_DrawBackground in v_video.c
-//
-// Revision 1.13  1999/10/17 09:35:15  cphipps
-// Fixed hanging else(s)
-//
-// Revision 1.12  1999/10/12 13:01:09  cphipps
-// Changed header to GPL
-//
-// Revision 1.11  1999/08/31 19:47:23  cphipps
-// Removed old comments at the top regarding the old variables to hold the intermission
-// text messages
-// Removed old viewactive variable references
-//
-// Revision 1.10  1999/08/30 14:46:45  cphipps
-// Removed direct screen accesses, use V_* stuff instead
-// Removed F_DrawPatchCol*, use V_DrawPatch instead
-//
-// Revision 1.9  1999/03/07 22:22:09  cphipps
-// Changed for new automap mode variable
-//
-// Revision 1.8  1998/12/31 20:10:40  cphipps
-// Updated wad lump handling
-// Reformatting and beautifying
-//
-// Revision 1.7  1998/12/30 22:06:36  cphipps
-// Updated for new patch drawing
-//
-// Revision 1.6  1998/12/28 20:41:32  cphipps
-// Make castorder[] a static const structure, initialised directly instead of in code
-//
-// Revision 1.5  1998/11/16 21:38:42  cphipps
-// Hi-res updates
-//
-// Revision 1.4  1998/10/27 15:39:34  cphipps
-// Patched in Boom v2.02 version
-// Added various const's where needed
-//
-// Revision 1.17  1998/08/29  23:00:55  thldrmn
-// Gamemission fixes for TNT and Plutonia
-//
-// Revision 1.16  1998/05/10  23:39:25  killough
-// Restore v1.9 demo sync on text intermission screens
-//
-// Revision 1.15  1998/05/04  21:34:30  thldrmn
-// commenting and reformatting
-//
-// Revision 1.14  1998/05/03  23:25:05  killough
-// Fix #includes at the top, nothing else
-//
-// Revision 1.13  1998/04/19  01:17:18  killough
-// Tidy up last fix's code
-//
-// Revision 1.12  1998/04/17  15:14:10  killough
-// Fix showstopper flat bug
-//
-// Revision 1.11  1998/03/31  16:19:25  killough
-// Fix minor merge glitch
-//
-// Revision 1.10  1998/03/31  11:41:21  jim
-// Fix merge glitch in f_finale.c
-//
-// Revision 1.9  1998/03/31  00:37:56  jim
-// Ty's finale.c fixes
-//
-// Revision 1.8  1998/03/28  17:51:33  killough
-// Allow use/fire to accelerate teletype messages
-//
-// Revision 1.7  1998/02/05  12:15:06  phares
-// cleaned up comments
-//
-// Revision 1.6  1998/02/02  13:43:30  killough
-// Relax endgame message speed to demo_compatibility
-//
-// Revision 1.5  1998/01/31  01:47:39  phares
-// Removed textspeed and textwait externs
-//
-// Revision 1.4  1998/01/30  18:48:18  phares
-// Changed textspeed and textwait to functions
-//
-// Revision 1.3  1998/01/30  16:08:56  phares
-// Faster end-mission text display
-//
-// Revision 1.2  1998/01/26  19:23:14  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:02:54  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------

@@ -1,12 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: d_deh.c,v 1.1 2000/05/04 07:59:43 proff_fs Exp $
+ * $Id: d_deh.c,v 1.1.1.2 2000/09/20 09:39:49 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
- *  Ty Halderman, Lee Killough, Colin Phipps
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -32,7 +34,7 @@
  *--------------------------------------------------------------------*/
 
 static const char
-rcsid[] = "$Id: d_deh.c,v 1.1 2000/05/04 07:59:43 proff_fs Exp $";
+rcsid[] = "$Id: d_deh.c,v 1.1.1.2 2000/09/20 09:39:49 figgi Exp $";
 
 // killough 5/2/98: fixed headers, removed rendunant external declarations:
 #include "doomdef.h"
@@ -52,7 +54,7 @@ rcsid[] = "$Id: d_deh.c,v 1.1 2000/05/04 07:59:43 proff_fs Exp $";
 #define TRUE 1
 #define FALSE 0
 
-#ifndef DJGPP
+#if ((!defined DJGPP) && (!defined _MSC_VER))
 // CPhipps - hmm, odd...
 #include <ctype.h>
 
@@ -441,8 +443,9 @@ const char *startup3     = "";
 const char *startup4     = "";
 const char *startup5     = "";
 
-// Ty 05/03/98 - externalized
-const char *savegamename = "BOOMSAV";
+/* Ty 05/03/98 - externalized
+ * cph - updated for prboom */
+const char *savegamename = "prbmsav";
 
 // end d_deh.h variable declarations
 // ====================================================================
@@ -469,8 +472,9 @@ static const deh_strs deh_strlookup[] = {
   {&s_QUITMSG,"QUITMSG"},
   {&s_QSAVESPOT,"QSAVESPOT"},
   {&s_SAVEDEAD,"SAVEDEAD"},
+  /* cph - disabled to prevent format string attacks in WAD files
   {&s_QSPROMPT,"QSPROMPT"},
-  {&s_QLPROMPT,"QLPROMPT"},
+  {&s_QLPROMPT,"QLPROMPT"},*/
   {&s_NEWGAME,"NEWGAME"},
   {&s_RESTARTLEVEL,"RESTARTLEVEL"},
   {&s_NIGHTMARE,"NIGHTMARE"},
@@ -959,7 +963,7 @@ const char **const mapnamest[] = // TNT WAD map names.
 void    lfstrip(char *);     // strip the \r and/or \n off of a line
 void    rstrip(char *);      // strip trailing whitespace
 char *  ptr_lstrip(char *);  // point past leading whitespace
-boolean deh_GetData(char *, char *, long *, char **, FILE *);
+boolean deh_GetData(char *, char *, uint_64_t *, char **, FILE *);
 boolean deh_procStringSub(char *, char *, char *, FILE *);
 char *  dehReformatStr(char *);
 
@@ -1069,51 +1073,55 @@ static const char *deh_mobjinfo[DEH_MOBJINFOMAX] =
 
 struct deh_mobjflags_s { 
   const char *name; // CPhipps - const*
-  long value;
+  uint_64_t value;
 };
 
 // CPhipps - static const
 static const struct deh_mobjflags_s deh_mobjflags[] = {
-  {"SPECIAL",      0x00000001}, // call  P_Specialthing when touched
-  {"SOLID",        0x00000002}, // block movement
-  {"SHOOTABLE",    0x00000004}, // can be hit
-  {"NOSECTOR",     0x00000008}, // invisible but touchable
-  {"NOBLOCKMAP",   0x00000010}, // inert but displayable
-  {"AMBUSH",       0x00000020}, // deaf monster
-  {"JUSTHIT",      0x00000040}, // will try to attack right back
-  {"JUSTATTACKED", 0x00000080}, // take at least 1 step before attacking
-  {"SPAWNCEILING", 0x00000100}, // initially hang from ceiling
-  {"NOGRAVITY",    0x00000200}, // don't apply gravity during play
-  {"DROPOFF",      0x00000400}, // can jump from high places
-  {"PICKUP",       0x00000800}, // will pick up items
-  {"NOCLIP",       0x00001000}, // goes through walls
-  {"SLIDE",        0x00002000}, // keep info about sliding along walls
-  {"FLOAT",        0x00004000}, // allow movement to any height
-  {"TELEPORT",     0x00008000}, // don't cross lines or look at heights
-  {"MISSILE",      0x00010000}, // don't hit same species, explode on block
-  {"DROPPED",      0x00020000}, // dropped, not spawned (like ammo clip)
-  {"SHADOW",       0x00040000}, // use fuzzy draw like spectres
-  {"NOBLOOD",      0x00080000}, // puffs instead of blood when shot
-  {"CORPSE",       0x00100000}, // so it will slide down steps when dead
-  {"INFLOAT",      0x00200000}, // float but not to target height
-  {"COUNTKILL",    0x00400000}, // count toward the kills total
-  {"COUNTITEM",    0x00800000}, // count toward the items total
-  {"SKULLFLY",     0x01000000}, // special handling for flying skulls
-  {"NOTDMATCH",    0x02000000}, // do not spawn in deathmatch
+  {"SPECIAL",      MF_SPECIAL}, // call  P_Specialthing when touched
+  {"SOLID",        MF_SOLID}, // block movement
+  {"SHOOTABLE",    MF_SHOOTABLE}, // can be hit
+  {"NOSECTOR",     MF_NOSECTOR}, // invisible but touchable
+  {"NOBLOCKMAP",   MF_NOBLOCKMAP}, // inert but displayable
+  {"AMBUSH",       MF_AMBUSH}, // deaf monster
+  {"JUSTHIT",      MF_JUSTHIT}, // will try to attack right back
+  {"JUSTATTACKED", MF_JUSTATTACKED}, // take at least 1 step before attacking
+  {"SPAWNCEILING", MF_SPAWNCEILING}, // initially hang from ceiling
+  {"NOGRAVITY",    MF_NOGRAVITY}, // don't apply gravity during play
+  {"DROPOFF",      MF_DROPOFF}, // can jump from high places
+  {"PICKUP",       MF_PICKUP}, // will pick up items
+  {"NOCLIP",       MF_NOCLIP}, // goes through walls
+  {"SLIDE",        MF_SLIDE}, // keep info about sliding along walls
+  {"FLOAT",        MF_FLOAT}, // allow movement to any height
+  {"TELEPORT",     MF_TELEPORT}, // don't cross lines or look at heights
+  {"MISSILE",      MF_MISSILE}, // don't hit same species, explode on block
+  {"DROPPED",      MF_DROPPED}, // dropped, not spawned (like ammo clip)
+  {"SHADOW",       MF_SHADOW}, // use fuzzy draw like spectres
+  {"NOBLOOD",      MF_NOBLOOD}, // puffs instead of blood when shot
+  {"CORPSE",       MF_CORPSE}, // so it will slide down steps when dead
+  {"INFLOAT",      MF_INFLOAT}, // float but not to target height
+  {"COUNTKILL",    MF_COUNTKILL}, // count toward the kills total
+  {"COUNTITEM",    MF_COUNTITEM}, // count toward the items total
+  {"SKULLFLY",     MF_SKULLFLY}, // special handling for flying skulls
+  {"NOTDMATCH",    MF_NOTDMATCH}, // do not spawn in deathmatch
   
   // killough 10/98: TRANSLATION consists of 2 bits, not 1:
 
-  {"TRANSLATION",  0x04000000}, // for Boom bug-compatibility
-  {"TRANSLATION1", 0x04000000}, // use translation table for color (players)
-  {"TRANSLATION2", 0x08000000}, // use translation table for color (players)
-  {"UNUSED1",      0x08000000}, // unused bit # 1 -- For Boom bug-compatibility
-  {"UNUSED2",      0x10000000}, // unused bit # 2 -- For Boom compatibility
-  {"UNUSED3",      0x20000000}, // unused bit # 3 -- For Boom compatibility
-  {"UNUSED4",      0x40000000}, // unused bit # 4 -- For Boom compatibility
-  {"TOUCHY",       0x10000000}, // dies on contact with solid objects (MBF)
-  {"BOUNCES",      0x20000000}, // bounces off floors, ceilings and maybe walls
-  {"FRIEND",       0x40000000}, // a friend of the player(s) (MBF)
-  {"TRANSLUCENT",  0x80000000}, // apply translucency to sprite (BOOM)
+  {"TRANSLATION",  MF_TRANSLATION1}, // for Boom bug-compatibility
+  {"TRANSLATION1", MF_TRANSLATION1}, // use translation table for color (players)
+  {"TRANSLATION2", MF_TRANSLATION2}, // use translation table for color (players)
+  {"UNUSED1",      MF_TRANSLATION2}, // unused bit # 1 -- For Boom bug-compatibility
+  {"UNUSED2",      MF_STEALTH}, // unused bit # 2 -- For Boom compatibility
+  {"STEALTH",      MF_STEALTH}, // for stealth monsters
+  {"UNUSED3",      MF_TRANSLUC25}, // unused bit # 3 -- For Boom compatibility
+  {"UNUSED4",      MF_TRANSLUC50}, // unused bit # 4 -- For Boom compatibility
+  {"TRANSLUC25",   MF_TRANSLUC25}, // Translucency 25%
+  {"TRANSLUC50",   MF_TRANSLUC50}, // Translucency 50%
+  {"TRANSLUC75",   MF_TRANSLUC75}, // Translucency 25% + Translucency 50% = 75%
+  {"TRANSLUCENT",  MF_TRANSLUCENT}, // apply translucency to sprite (BOOM)
+  {"TOUCHY",       MF_TOUCHY},// dies on contact with solid objects (MBF)
+  {"BOUNCES",      MF_BOUNCES},// bounces off floors, ceilings and maybe walls
+  {"FRIEND",       MF_FRIEND},// a friend of the player(s) (MBF)
 };
 
 // STATE - Dehacked block name = "Frame" and "Pointer"
@@ -1336,93 +1344,93 @@ typedef struct {
 
 static const deh_bexptr deh_bexptrs[] = // CPhipps - static const
 {
-  {{A_Light0},         "A_Light0"},
-  {{A_WeaponReady},    "A_WeaponReady"},
-  {{A_Lower},          "A_Lower"},
-  {{A_Raise},          "A_Raise"},
-  {{A_Punch},          "A_Punch"},
-  {{A_ReFire},         "A_ReFire"},
-  {{A_FirePistol},     "A_FirePistol"},
-  {{A_Light1},         "A_Light1"},
-  {{A_FireShotgun},    "A_FireShotgun"},
-  {{A_Light2},         "A_Light2"},
-  {{A_FireShotgun2},   "A_FireShotgun2"},
-  {{A_CheckReload},    "A_CheckReload"},
-  {{A_OpenShotgun2},   "A_OpenShotgun2"},
-  {{A_LoadShotgun2},   "A_LoadShotgun2"},
-  {{A_CloseShotgun2},  "A_CloseShotgun2"},
-  {{A_FireCGun},       "A_FireCGun"},
-  {{A_GunFlash},       "A_GunFlash"},
-  {{A_FireMissile},    "A_FireMissile"},
-  {{A_Saw},            "A_Saw"},
-  {{A_FirePlasma},     "A_FirePlasma"},
-  {{A_BFGsound},       "A_BFGsound"},
-  {{A_FireBFG},        "A_FireBFG"},
-  {{A_BFGSpray},       "A_BFGSpray"},
-  {{A_Explode},        "A_Explode"},
-  {{A_Pain},           "A_Pain"},
-  {{A_PlayerScream},   "A_PlayerScream"},
-  {{A_Fall},           "A_Fall"},
-  {{A_XScream},        "A_XScream"},
-  {{A_Look},           "A_Look"},
-  {{A_Chase},          "A_Chase"},
-  {{A_FaceTarget},     "A_FaceTarget"},
-  {{A_PosAttack},      "A_PosAttack"},
-  {{A_Scream},         "A_Scream"},
-  {{A_SPosAttack},     "A_SPosAttack"},
-  {{A_VileChase},      "A_VileChase"},
-  {{A_VileStart},      "A_VileStart"},
-  {{A_VileTarget},     "A_VileTarget"},
-  {{A_VileAttack},     "A_VileAttack"},
-  {{A_StartFire},      "A_StartFire"},
-  {{A_Fire},           "A_Fire"},
-  {{A_FireCrackle},    "A_FireCrackle"},
-  {{A_Tracer},         "A_Tracer"},
-  {{A_SkelWhoosh},     "A_SkelWhoosh"},
-  {{A_SkelFist},       "A_SkelFist"},
-  {{A_SkelMissile},    "A_SkelMissile"},
-  {{A_FatRaise},       "A_FatRaise"},
-  {{A_FatAttack1},     "A_FatAttack1"},
-  {{A_FatAttack2},     "A_FatAttack2"},
-  {{A_FatAttack3},     "A_FatAttack3"},
-  {{A_BossDeath},      "A_BossDeath"},
-  {{A_CPosAttack},     "A_CPosAttack"},
-  {{A_CPosRefire},     "A_CPosRefire"},
-  {{A_TroopAttack},    "A_TroopAttack"},
-  {{A_SargAttack},     "A_SargAttack"},
-  {{A_HeadAttack},     "A_HeadAttack"},
-  {{A_BruisAttack},    "A_BruisAttack"},
-  {{A_SkullAttack},    "A_SkullAttack"},
-  {{A_Metal},          "A_Metal"},
-  {{A_SpidRefire},     "A_SpidRefire"},
-  {{A_BabyMetal},      "A_BabyMetal"},
-  {{A_BspiAttack},     "A_BspiAttack"},
-  {{A_Hoof},           "A_Hoof"},
-  {{A_CyberAttack},    "A_CyberAttack"},
-  {{A_PainAttack},     "A_PainAttack"},
-  {{A_PainDie},        "A_PainDie"},
-  {{A_KeenDie},        "A_KeenDie"},
-  {{A_BrainPain},      "A_BrainPain"},
-  {{A_BrainScream},    "A_BrainScream"},
-  {{A_BrainDie},       "A_BrainDie"},
-  {{A_BrainAwake},     "A_BrainAwake"},
-  {{A_BrainSpit},      "A_BrainSpit"},
-  {{A_SpawnSound},     "A_SpawnSound"},
-  {{A_SpawnFly},       "A_SpawnFly"},
-  {{A_BrainExplode},   "A_BrainExplode"},
-  {{A_Detonate},       "A_Detonate"},       // killough 8/9/98
-  {{A_Mushroom},       "A_Mushroom"},       // killough 10/98
-  {{A_Die},            "A_Die"},            // killough 11/98
-  {{A_Spawn},          "A_Spawn"},          // killough 11/98
-  {{A_Turn},           "A_Turn"},           // killough 11/98
-  {{A_Face},           "A_Face"},           // killough 11/98
-  {{A_Scratch},        "A_Scratch"},        // killough 11/98
-  {{A_PlaySound},      "A_PlaySound"},      // killough 11/98
-  {{A_RandomJump},     "A_RandomJump"},     // killough 11/98
-  {{A_LineEffect},     "A_LineEffect"},     // killough 11/98
+  {A_Light0,          "A_Light0"},
+  {A_WeaponReady,     "A_WeaponReady"},
+  {A_Lower,           "A_Lower"},
+  {A_Raise,           "A_Raise"},
+  {A_Punch,           "A_Punch"},
+  {A_ReFire,          "A_ReFire"},
+  {A_FirePistol,      "A_FirePistol"},
+  {A_Light1,          "A_Light1"},
+  {A_FireShotgun,     "A_FireShotgun"},
+  {A_Light2,          "A_Light2"},
+  {A_FireShotgun2,    "A_FireShotgun2"},
+  {A_CheckReload,     "A_CheckReload"},
+  {A_OpenShotgun2,    "A_OpenShotgun2"},
+  {A_LoadShotgun2,    "A_LoadShotgun2"},
+  {A_CloseShotgun2,   "A_CloseShotgun2"},
+  {A_FireCGun,        "A_FireCGun"},
+  {A_GunFlash,        "A_GunFlash"},
+  {A_FireMissile,     "A_FireMissile"},
+  {A_Saw,             "A_Saw"},
+  {A_FirePlasma,      "A_FirePlasma"},
+  {A_BFGsound,        "A_BFGsound"},
+  {A_FireBFG,         "A_FireBFG"},
+  {A_BFGSpray,        "A_BFGSpray"},
+  {A_Explode,         "A_Explode"},
+  {A_Pain,            "A_Pain"},
+  {A_PlayerScream,    "A_PlayerScream"},
+  {A_Fall,            "A_Fall"},
+  {A_XScream,         "A_XScream"},
+  {A_Look,            "A_Look"},
+  {A_Chase,           "A_Chase"},
+  {A_FaceTarget,      "A_FaceTarget"},
+  {A_PosAttack,       "A_PosAttack"},
+  {A_Scream,          "A_Scream"},
+  {A_SPosAttack,      "A_SPosAttack"},
+  {A_VileChase,       "A_VileChase"},
+  {A_VileStart,       "A_VileStart"},
+  {A_VileTarget,      "A_VileTarget"},
+  {A_VileAttack,      "A_VileAttack"},
+  {A_StartFire,       "A_StartFire"},
+  {A_Fire,            "A_Fire"},
+  {A_FireCrackle,     "A_FireCrackle"},
+  {A_Tracer,          "A_Tracer"},
+  {A_SkelWhoosh,      "A_SkelWhoosh"},
+  {A_SkelFist,        "A_SkelFist"},
+  {A_SkelMissile,     "A_SkelMissile"},
+  {A_FatRaise,        "A_FatRaise"},
+  {A_FatAttack1,      "A_FatAttack1"},
+  {A_FatAttack2,      "A_FatAttack2"},
+  {A_FatAttack3,      "A_FatAttack3"},
+  {A_BossDeath,       "A_BossDeath"},
+  {A_CPosAttack,      "A_CPosAttack"},
+  {A_CPosRefire,      "A_CPosRefire"},
+  {A_TroopAttack,     "A_TroopAttack"},
+  {A_SargAttack,      "A_SargAttack"},
+  {A_HeadAttack,      "A_HeadAttack"},
+  {A_BruisAttack,     "A_BruisAttack"},
+  {A_SkullAttack,     "A_SkullAttack"},
+  {A_Metal,           "A_Metal"},
+  {A_SpidRefire,      "A_SpidRefire"},
+  {A_BabyMetal,       "A_BabyMetal"},
+  {A_BspiAttack,      "A_BspiAttack"},
+  {A_Hoof,            "A_Hoof"},
+  {A_CyberAttack,     "A_CyberAttack"},
+  {A_PainAttack,      "A_PainAttack"},
+  {A_PainDie,         "A_PainDie"},
+  {A_KeenDie,         "A_KeenDie"},
+  {A_BrainPain,       "A_BrainPain"},
+  {A_BrainScream,     "A_BrainScream"},
+  {A_BrainDie,        "A_BrainDie"},
+  {A_BrainAwake,      "A_BrainAwake"},
+  {A_BrainSpit,       "A_BrainSpit"},
+  {A_SpawnSound,      "A_SpawnSound"},
+  {A_SpawnFly,        "A_SpawnFly"},
+  {A_BrainExplode,    "A_BrainExplode"},
+  {A_Detonate,        "A_Detonate"},       // killough 8/9/98
+  {A_Mushroom,        "A_Mushroom"},       // killough 10/98
+  {A_Die,             "A_Die"},            // killough 11/98
+  {A_Spawn,           "A_Spawn"},          // killough 11/98
+  {A_Turn,            "A_Turn"},           // killough 11/98
+  {A_Face,            "A_Face"},           // killough 11/98
+  {A_Scratch,         "A_Scratch"},        // killough 11/98
+  {A_PlaySound,       "A_PlaySound"},      // killough 11/98
+  {A_RandomJump,      "A_RandomJump"},     // killough 11/98
+  {A_LineEffect,      "A_LineEffect"},     // killough 11/98
 
   // This NULL entry must be the last in the list
-  {{NULL},             "A_NULL"},  // Ty 05/16/98
+  {NULL,              "A_NULL"},  // Ty 05/16/98
 };
 
 // to hold startup code pointers from INFO.C
@@ -1651,11 +1659,11 @@ void deh_procBexCodePointers(DEHFILE *fpin, FILE* fpout, char *line)
 // bit masks for monster attributes
 //
 
-void deh_procThing(DEHFILE *fpin, FILE* fpout, char *line)
+static void deh_procThing(DEHFILE *fpin, FILE* fpout, char *line)
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
   int indexnum;
   int ix;
   int *pix;  // Ptr to int, since all Thing structure entries are ints
@@ -1711,8 +1719,8 @@ void deh_procThing(DEHFILE *fpin, FILE* fpout, char *line)
                         if (!strcasecmp(strval,deh_mobjflags[iy].name))
                           {
                             if (fpout)
-                              fprintf(fpout, "ORed value 0x%08lx %s\n",
-                                      deh_mobjflags[iy].value, strval);
+                              fprintf(fpout, "ORed value 0x%08lX%08lX %s\n",
+                                      (unsigned int)(deh_mobjflags[iy].value>>32) & 0xffffffff, (unsigned int)deh_mobjflags[iy].value & 0xffffffff, strval);
                             value |= deh_mobjflags[iy].value;
                             break;
                           }
@@ -1722,13 +1730,20 @@ void deh_procThing(DEHFILE *fpin, FILE* fpout, char *line)
                     }
 
                   // Don't worry about conversion -- simply print values
-                  if (fpout) fprintf(fpout, "Bits = 0x%08lX = %ld \n",
-                                     value, value);
+                  if (fpout) fprintf(fpout, "Bits = 0x%08lX%08lX\n",
+                                     (unsigned int)(value>>32) & 0xffffffff, (unsigned int)value & 0xffffffff);
                 }
-              pix = (int *)&mobjinfo[indexnum];
-              pix[ix] = (int)value;
-              if (fpout) fprintf(fpout,"Assigned %d to %s(%d) at index %d\n",
-                                 (int)value, key, indexnum, ix);
+              if (!strcasecmp(key,"bits")) // proff
+              {
+                mobjinfo[indexnum].flags = value;
+              }
+              else
+              {
+                pix = (int *)&mobjinfo[indexnum];
+                pix[ix] = (int)value;
+              }
+              if (fpout) fprintf(fpout,"Assigned 0x%08lx%08lx to %s(%d) at index %d\n",
+                                 (unsigned int)(value>>32) & 0xffffffff, (unsigned int)value & 0xffffffff, key, indexnum, ix);
             }
         }
     }
@@ -1747,7 +1762,7 @@ void deh_procFrame(DEHFILE *fpin, FILE* fpout, char *line)
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
   int indexnum;
 
   strncpy(inbuffer,line,DEH_BUFFERMAX);
@@ -1770,25 +1785,25 @@ void deh_procFrame(DEHFILE *fpin, FILE* fpout, char *line)
         }
       if (!strcasecmp(key,deh_state[0]))  // Sprite number
         {
-          if (fpout) fprintf(fpout," - sprite = %ld\n",value);
+          if (fpout) fprintf(fpout," - sprite = %lld\n",value);
           states[indexnum].sprite = (spritenum_t)value;
         }
       else
         if (!strcasecmp(key,deh_state[1]))  // Sprite subnumber
           {
-            if (fpout) fprintf(fpout," - frame = %ld\n",value);
-            states[indexnum].frame = value; // long
+            if (fpout) fprintf(fpout," - frame = %lld\n",value);
+            states[indexnum].frame = (long)value; // long
           }
         else
           if (!strcasecmp(key,deh_state[2]))  // Duration
             {
-              if (fpout) fprintf(fpout," - tics = %ld\n",value);
-              states[indexnum].tics = value; // long
+              if (fpout) fprintf(fpout," - tics = %lld\n",value);
+              states[indexnum].tics = (long)value; // long
             }
           else
             if (!strcasecmp(key,deh_state[3]))  // Next frame
               {
-                if (fpout) fprintf(fpout," - nextstate = %ld\n",value);
+                if (fpout) fprintf(fpout," - nextstate = %lld\n",value);
                 states[indexnum].nextstate = (statenum_t)value;
               }
             else
@@ -1800,14 +1815,14 @@ void deh_procFrame(DEHFILE *fpin, FILE* fpout, char *line)
               else
                 if (!strcasecmp(key,deh_state[5]))  // Unknown 1
                   {
-                    if (fpout) fprintf(fpout," - misc1 = %ld\n",value);
-                    states[indexnum].misc1 = value; // long
+                    if (fpout) fprintf(fpout," - misc1 = %lld\n",value);
+                    states[indexnum].misc1 = (long)value; // long
                   }
                 else
                   if (!strcasecmp(key,deh_state[6]))  // Unknown 2
                     {
-                      if (fpout) fprintf(fpout," - misc2 = %ld\n",value);
-                      states[indexnum].misc2 = value; // long
+                      if (fpout) fprintf(fpout," - misc2 = %lld\n",value);
+                      states[indexnum].misc2 = (long)value; // long
                     }
                   else
                     if (fpout) fprintf(fpout,"Invalid frame string index for '%s'\n",key);
@@ -1827,7 +1842,7 @@ void deh_procPointer(DEHFILE *fpin, FILE* fpout, char *line) // done
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
   int indexnum;
   int i; // looper
 
@@ -1863,14 +1878,14 @@ void deh_procPointer(DEHFILE *fpin, FILE* fpout, char *line) // done
       if (value < 0 || value >= NUMSTATES)
         {
           if (fpout)
-            fprintf(fpout,"Bad pointer number %ld of %d\n",value, NUMSTATES);
+            fprintf(fpout,"Bad pointer number %lld of %d\n",value, NUMSTATES);
           return;
         }
 
       if (!strcasecmp(key,deh_state[4]))  // Codep frame (not set in Frame deh block)
         {
           states[indexnum].action = deh_codeptr[value];
-          if (fpout) fprintf(fpout," - applied from codeptr[%ld] to states[%d]\n",
+          if (fpout) fprintf(fpout," - applied from codeptr[%lld] to states[%d]\n",
 			     value,indexnum);
           // Write BEX-oriented line to match:
           for (i=0;i<NUMSTATES;i++)
@@ -1884,7 +1899,7 @@ void deh_procPointer(DEHFILE *fpin, FILE* fpout, char *line) // done
             }
         }
       else
-        if (fpout) fprintf(fpout,"Invalid frame pointer index for '%s' at %ld\n",
+        if (fpout) fprintf(fpout,"Invalid frame pointer index for '%s' at %lld\n",
                            key, value);
     }
   return;
@@ -1902,7 +1917,7 @@ void deh_procSounds(DEHFILE *fpin, FILE* fpout, char *line)
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
   int indexnum;
 
   strncpy(inbuffer,line,DEH_BUFFERMAX);
@@ -1929,28 +1944,28 @@ void deh_procSounds(DEHFILE *fpin, FILE* fpout, char *line)
         /* nop */ ;  // we don't know what this is, I don't think
       else
         if (!strcasecmp(key,deh_sfxinfo[1]))  // Zero/One
-          S_sfx[indexnum].singularity = value;
+          S_sfx[indexnum].singularity = (int)value;
         else
           if (!strcasecmp(key,deh_sfxinfo[2]))  // Value
-            S_sfx[indexnum].priority = value;
+            S_sfx[indexnum].priority = (int)value;
           else
             if (!strcasecmp(key,deh_sfxinfo[3]))  // Zero 1
               S_sfx[indexnum].link = (sfxinfo_t *)value;
             else
               if (!strcasecmp(key,deh_sfxinfo[4]))  // Zero 2
-                S_sfx[indexnum].pitch = value;
+                S_sfx[indexnum].pitch = (int)value;
               else
                 if (!strcasecmp(key,deh_sfxinfo[5]))  // Zero 3
-                  S_sfx[indexnum].volume = value;
+                  S_sfx[indexnum].volume = (int)value;
                 else
                   if (!strcasecmp(key,deh_sfxinfo[6]))  // Zero 4
                     S_sfx[indexnum].data = (void *) value; // killough 5/3/98: changed cast
                   else
                     if (!strcasecmp(key,deh_sfxinfo[7]))  // Neg. One 1
-                      S_sfx[indexnum].usefulness = value;
+                      S_sfx[indexnum].usefulness = (int)value;
                     else
                       if (!strcasecmp(key,deh_sfxinfo[8]))  // Neg. One 2
-                        S_sfx[indexnum].lumpnum = value;
+                        S_sfx[indexnum].lumpnum = (int)value;
                       else
                         if (fpout) fprintf(fpout,
                                            "Invalid sound string index for '%s'\n",key);
@@ -1970,7 +1985,7 @@ void deh_procAmmo(DEHFILE *fpin, FILE* fpout, char *line)
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
   int indexnum;
 
   strncpy(inbuffer,line,DEH_BUFFERMAX);
@@ -1994,10 +2009,10 @@ void deh_procAmmo(DEHFILE *fpin, FILE* fpout, char *line)
           continue;
         }
       if (!strcasecmp(key,deh_ammo[0]))  // Max ammo
-        maxammo[indexnum] = value;
+        maxammo[indexnum] = (int)value;
       else
         if (!strcasecmp(key,deh_ammo[1]))  // Per ammo
-          clipammo[indexnum] = value;
+          clipammo[indexnum] = (int)value;
         else
           if (fpout) fprintf(fpout,"Invalid ammo string index for '%s'\n",key);
     }
@@ -2016,7 +2031,7 @@ void deh_procWeapon(DEHFILE *fpin, FILE* fpout, char *line)
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
   int indexnum;
 
   strncpy(inbuffer,line,DEH_BUFFERMAX);
@@ -2040,22 +2055,22 @@ void deh_procWeapon(DEHFILE *fpin, FILE* fpout, char *line)
           continue;
         }
       if (!strcasecmp(key,deh_weapon[0]))  // Ammo type
-        weaponinfo[indexnum].ammo = value;
+        weaponinfo[indexnum].ammo = (ammotype_t)value;
       else
         if (!strcasecmp(key,deh_weapon[1]))  // Deselect frame
-          weaponinfo[indexnum].upstate = value;
+          weaponinfo[indexnum].upstate = (int)value;
         else
           if (!strcasecmp(key,deh_weapon[2]))  // Select frame
-            weaponinfo[indexnum].downstate = value;
+            weaponinfo[indexnum].downstate = (int)value;
           else
             if (!strcasecmp(key,deh_weapon[3]))  // Bobbing frame
-              weaponinfo[indexnum].readystate = value;
+              weaponinfo[indexnum].readystate = (int)value;
             else
               if (!strcasecmp(key,deh_weapon[4]))  // Shooting frame
-                weaponinfo[indexnum].atkstate = value;
+                weaponinfo[indexnum].atkstate = (int)value;
               else
                 if (!strcasecmp(key,deh_weapon[5]))  // Firing frame
-                  weaponinfo[indexnum].flashstate = value;
+                  weaponinfo[indexnum].flashstate = (int)value;
                 else
                   if (fpout) fprintf(fpout,"Invalid weapon string index for '%s'\n",key);
     }
@@ -2194,7 +2209,7 @@ void deh_procCheat(DEHFILE *fpin, FILE* fpout, char *line) // done
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
   char ch = 0; // CPhipps - `writable' null string to initialise...
   char *strval = &ch;  // pointer to the value area
   int ix, iy;   // array indices
@@ -2271,7 +2286,7 @@ void deh_procMisc(DEHFILE *fpin, FILE* fpout, char *line) // done
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;      // All deh values are ints or longs
+  uint_64_t value;      // All deh values are ints or longs
 
   strncpy(inbuffer,line,DEH_BUFFERMAX);
   while (!dehfeof(fpin) && *inbuffer && (*inbuffer != ' '))
@@ -2288,49 +2303,49 @@ void deh_procMisc(DEHFILE *fpin, FILE* fpout, char *line) // done
       if (fpout) fprintf(fpout,"Processing Misc item '%s'\n", key);
 
       if (!strcasecmp(key,deh_misc[0]))  // Initial Health
-        initial_health = value;
+        initial_health = (int)value;
       else
         if (!strcasecmp(key,deh_misc[1]))  // Initial Bullets
-          initial_bullets = value;
+          initial_bullets = (int)value;
         else
           if (!strcasecmp(key,deh_misc[2]))  // Max Health
-            maxhealth = value;
+            maxhealth = (int)value;
           else
             if (!strcasecmp(key,deh_misc[3]))  // Max Armor
-              max_armor = value;
+              max_armor = (int)value;
             else
               if (!strcasecmp(key,deh_misc[4]))  // Green Armor Class
-                green_armor_class = value;
+                green_armor_class = (int)value;
               else
                 if (!strcasecmp(key,deh_misc[5]))  // Blue Armor Class
-                  blue_armor_class = value;
+                  blue_armor_class = (int)value;
                 else
                   if (!strcasecmp(key,deh_misc[6]))  // Max Soulsphere
-                    max_soul = value;
+                    max_soul = (int)value;
                   else
                     if (!strcasecmp(key,deh_misc[7]))  // Soulsphere Health
-                      soul_health = value;
+                      soul_health = (int)value;
                     else
                       if (!strcasecmp(key,deh_misc[8]))  // Megasphere Health
-                        mega_health = value;
+                        mega_health = (int)value;
                       else
                         if (!strcasecmp(key,deh_misc[9]))  // God Mode Health
-                          god_health = value;
+                          god_health = (int)value;
                         else
                           if (!strcasecmp(key,deh_misc[10]))  // IDFA Armor
-                            idfa_armor = value;
+                            idfa_armor = (int)value;
                           else
                             if (!strcasecmp(key,deh_misc[11]))  // IDFA Armor Class
-                              idfa_armor_class = value;
+                              idfa_armor_class = (int)value;
                             else
                               if (!strcasecmp(key,deh_misc[12]))  // IDKFA Armor
-                                idkfa_armor = value;
+                                idkfa_armor = (int)value;
                               else
                                 if (!strcasecmp(key,deh_misc[13]))  // IDKFA Armor Class
-                                  idkfa_armor_class = value;
+                                  idkfa_armor_class = (int)value;
                                 else
                                   if (!strcasecmp(key,deh_misc[14]))  // BFG Cells/Shot
-                                    bfgcells = value;
+                                    bfgcells = (int)value;
                                   else
                                     if (!strcasecmp(key,deh_misc[15]))  // Monsters Infight
                                       /* No such switch in DOOM - nop */ ;
@@ -2431,7 +2446,7 @@ void deh_procText(DEHFILE *fpin, FILE* fpout, char *line)
         for (i=1; i<NUMSFX; i++)
           {
             // avoid short prefix erroneous match
-            if (strlen(S_sfx[i].name) != fromlen) continue;
+            if (strlen(S_sfx[i].name) != (size_t)fromlen) continue;
             if (!strnicmp(S_sfx[i].name,inbuffer,fromlen))
               {
                 if (fpout) fprintf(fpout,
@@ -2449,7 +2464,7 @@ void deh_procText(DEHFILE *fpin, FILE* fpout, char *line)
             for (i=1; i<NUMMUSIC; i++)
               {
                 // avoid short prefix erroneous match
-                if (strlen(S_music[i].name) != fromlen) continue;
+                if (strlen(S_music[i].name) != (size_t)fromlen) continue;
                 if (!strnicmp(S_music[i].name,inbuffer,fromlen))
                   {
                     if (fpout) fprintf(fpout,
@@ -2467,7 +2482,7 @@ void deh_procText(DEHFILE *fpin, FILE* fpout, char *line)
   if (!found) // Nothing we want to handle here--see if strings can deal with it.
     {
       if (fpout) fprintf(fpout,"Checking text area through strings for '%.12s%s' from=%d to=%d\n",inbuffer, (strlen(inbuffer) > 12) ? "..." : "",fromlen,tolen);
-      if (fromlen <= strlen(inbuffer))
+      if ((size_t)fromlen <= strlen(inbuffer))
         {
           line2 = strdup(&inbuffer[fromlen]);
           inbuffer[fromlen] = '\0';
@@ -2500,7 +2515,7 @@ void deh_procStrings(DEHFILE *fpin, FILE* fpout, char *line)
 {
   char key[DEH_MAXKEYLEN];
   char inbuffer[DEH_BUFFERMAX];
-  long value;    // All deh values are ints or longs
+  uint_64_t value;    // All deh values are ints or longs
   char *strval;      // holds the string value of the line
   static int maxstrlen = 128; // maximum string length, bumped 128 at
   // a time as needed
@@ -2530,7 +2545,7 @@ void deh_procStrings(DEHFILE *fpin, FILE* fpout, char *line)
               continue;
             }
         }
-      while (strlen(holdstring) + strlen(inbuffer) > maxstrlen) // Ty03/29/98 - fix stupid error
+      while (strlen(holdstring) + strlen(inbuffer) > (size_t)maxstrlen) // Ty03/29/98 - fix stupid error
         {
 	  // killough 11/98: allocate enough the first time
           maxstrlen += strlen(holdstring) + strlen(inbuffer) - maxstrlen;
@@ -2721,7 +2736,7 @@ char *ptr_lstrip(char *p)  // point past leading whitespace
 //          as a long just in case.  The passed pointer to hold
 //          the key must be DEH_MAXKEYLEN in size.
 
-boolean deh_GetData(char *s, char *k, long *l, char **strval, FILE *fpout)
+boolean deh_GetData(char *s, char *k, uint_64_t *l, char **strval, FILE *fpout)
 {
   char *t;  // current char
   long val; // to hold value of pair
@@ -2764,77 +2779,3 @@ boolean deh_GetData(char *s, char *k, long *l, char **strval, FILE *fpout)
 
   return(okrc);
 }
-
-//---------------------------------------------------------------------
-//
-// $Log: d_deh.c,v $
-// Revision 1.1  2000/05/04 07:59:43  proff_fs
-// Initial revision
-//
-// Revision 1.19  2000/05/01 17:50:33  Proff
-// made changes to compile with VisualC and SDL
-//
-// Revision 1.18  2000/04/29 16:15:01  cph
-// Revert new netgame stuff
-//
-// Revision 1.16  1999/10/27 18:35:50  cphipps
-// Made W_CacheLump* return a const pointer
-//
-// Revision 1.15  1999/10/12 13:01:09  cphipps
-// Changed header to GPL
-//
-// Revision 1.14  1999/03/07 22:17:07  cphipps
-// New automap rotation/overlay toggling strings
-//
-// Revision 1.13  1999/01/13 08:08:31  cphipps
-// Use logical output routine
-// Remove non-portable #defines of file stream funcs
-//
-// Revision 1.12  1999/01/01 13:32:13  cphipps
-// Fixed for new wad lump handling
-//
-// Revision 1.11  1998/12/28 13:15:11  cphipps
-// Fix savegame filename variable to be initialised
-//
-// Revision 1.10  1998/12/27 15:42:34  cphipps
-// Add restart level warning string
-//
-// Revision 1.9  1998/12/27 13:23:57  cphipps
-// Imported updated d_deh.c from MBF
-// Refixed const'ness problems
-// Added strlwr as before
-//
-// Revision 1.20  1998/06/01  22:30:38  thldrmn
-// fix .acv pointer for new GCC version
-//
-// Revision 1.19  1998/05/17  09:39:48  thldrmn
-// Bug fix to avoid processing last line twice
-//
-// Revision 1.17  1998/05/04  21:36:21  thldrmn
-// commenting, reformatting and savegamename change
-//
-// Revision 1.16  1998/05/03  22:09:59  killough
-// use p_inter.h for extern declarations and fix a pointer cast
-//
-// Revision 1.15  1998/04/26  14:46:24  thldrmn
-// BEX code pointer additions
-//
-// Revision 1.14  1998/04/24  23:49:35  thldrmn
-// Strings continuation fix
-//
-// Revision 1.13  1998/04/19  01:18:58  killough
-// Change deh cheat code handling to use new cheat table
-//
-// Revision 1.12  1998/04/11  14:47:31  thldrmn
-// Added include, fixed pars
-//
-// Revision 1.11  1998/04/10  06:49:15  killough
-// Fix CVS stuff
-//
-// Revision 1.10  1998/04/09  09:17:00  thldrmn
-// Update to text handling
-//
-// Revision 1.00  1998/04/07  04:43:59  ty
-// First time with cvs revision info
-//
-//---------------------------------------------------------------------

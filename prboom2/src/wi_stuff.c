@@ -1,13 +1,14 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: wi_stuff.c,v 1.1 2000/05/04 08:19:18 proff_fs Exp $
+ * $Id: wi_stuff.c,v 1.1.1.2 2000/09/20 09:46:27 figgi Exp $
  *
- *  LxDoom, a Doom port for Linux/Unix
+ *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
- *   and Colin Phipps
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@
  */
 
 static const char
-rcsid[] = "$Id: wi_stuff.c,v 1.1 2000/05/04 08:19:18 proff_fs Exp $";
+rcsid[] = "$Id: wi_stuff.c,v 1.1.1.2 2000/09/20 09:46:27 figgi Exp $";
 
 #include "doomstat.h"
 #include "m_random.h"
@@ -405,6 +406,23 @@ void WI_levelNameLump(int epis, int map, char* buf)
   }
 }
 
+/* 
+ * killough 11/98:
+ */
+
+void WI_DrawBackground(void)
+{
+  char  name[9];  // limited to 8 characters
+
+  if (gamemode == commercial || (gamemode == retail && wbs->epsd == 3))
+    strcpy(name, "INTERPIC");
+  else 
+    sprintf(name, "WIMAP%d", wbs->epsd);
+
+  // background
+  V_DrawNamePatch(0, 0, 1, name, CR_DEFAULT, VPT_STRETCH);
+}
+
 // ====================================================================
 // WI_slamBackground
 // Purpose: Put the full-screen background up prior to patches
@@ -413,8 +431,12 @@ void WI_levelNameLump(int epis, int map, char* buf)
 //
 void WI_slamBackground(void)
 {
+#ifdef GL_DOOM
+  WI_DrawBackground();
+#else
   memcpy(screens[0], screens[1], SCREENWIDTH * SCREENHEIGHT);
   V_MarkRect (0, 0, SCREENWIDTH, SCREENHEIGHT);
+#endif
 }
 
 
@@ -448,14 +470,14 @@ void WI_drawLF(void)
   WI_levelNameLump(wbs->epsd, wbs->last, lname);
   // CPhipps - patch drawing updated
   V_DrawNamePatch((320 - V_NamePatchWidth(lname))/2, y, 
-		 FB, lname, NULL, VPT_STRETCH);
+		 FB, lname, CR_DEFAULT, VPT_STRETCH);
 
   // draw "Finished!"
   y += (5*V_NamePatchHeight(lname))/4;
   
   // CPhipps - patch drawing updated
   V_DrawNamePatch((320 - V_NamePatchWidth(finished))/2, y, 
-		 FB, finished, NULL, VPT_STRETCH);
+		 FB, finished, CR_DEFAULT, VPT_STRETCH);
 }
 
 
@@ -476,14 +498,14 @@ void WI_drawEL(void)
   // draw "Entering"
   // CPhipps - patch drawing updated
   V_DrawNamePatch((320 - V_NamePatchWidth(entering))/2, 
-		  y, FB, entering, NULL, VPT_STRETCH);
+		  y, FB, entering, CR_DEFAULT, VPT_STRETCH);
 
   // draw level
   y += (5*V_NamePatchHeight(lname))/4;
 
   // CPhipps - patch drawing updated
   V_DrawNamePatch((320 - V_NamePatchWidth(lname))/2, y, FB, 
-		 lname, NULL, VPT_STRETCH);
+		 lname, CR_DEFAULT, VPT_STRETCH);
 }
 
 
@@ -535,7 +557,7 @@ WI_drawOnLnode  // draw stuff at a location by episode/map#
   {
     // CPhipps - patch drawing updated
     V_DrawNamePatch(lnodes[wbs->epsd][n].x, lnodes[wbs->epsd][n].y,
-		   FB, c[i], NULL, VPT_STRETCH);
+		   FB, c[i], CR_DEFAULT, VPT_STRETCH);
   }
   else
   {
@@ -663,7 +685,7 @@ void WI_drawAnimatedBack(void)
 
     if (a->ctr >= 0)
       // CPhipps - patch drawing updated
-      V_DrawMemPatch(a->loc.x, a->loc.y, FB, a->p[a->ctr], NULL, VPT_STRETCH);
+      V_DrawMemPatch(a->loc.x, a->loc.y, FB, a->p[a->ctr], CR_DEFAULT, VPT_STRETCH);
   }
 }
 
@@ -717,14 +739,14 @@ static int WI_drawNum (int x, int y, int n, int digits)
   {
     x -= fontwidth;
     // CPhipps - patch drawing updated
-    V_DrawMemPatch(x, y, FB, num[ n % 10 ], NULL, VPT_STRETCH);
+    V_DrawMemPatch(x, y, FB, num[ n % 10 ], CR_DEFAULT, VPT_STRETCH);
     n /= 10;
   }
 
   // draw a minus sign if necessary
   if (neg)
     // CPhipps - patch drawing updated
-    V_DrawNamePatch(x-=8, y, FB, wiminus, NULL, VPT_STRETCH);
+    V_DrawNamePatch(x-=8, y, FB, wiminus, CR_DEFAULT, VPT_STRETCH);
 
   return x;
 }
@@ -744,7 +766,7 @@ static void WI_drawPercent(int x, int y, int p)
     return;
 
   // CPhipps - patch drawing updated
-  V_DrawNamePatch(x, y, FB, percent, NULL, VPT_STRETCH);
+  V_DrawNamePatch(x, y, FB, percent, CR_DEFAULT, VPT_STRETCH);
   WI_drawNum(x, y, p, -1);
 }
 
@@ -776,12 +798,12 @@ static void WI_drawTime(int x, int y, int t)
       // draw
       if (t)
 	// CPhipps - patch drawing updated
-        V_DrawNamePatch(x, y, FB, colon, NULL, VPT_STRETCH);
+        V_DrawNamePatch(x, y, FB, colon, CR_DEFAULT, VPT_STRETCH);
       else break;
     } 
   else // "sucks" (maybe should be "addicted", even I've never had a 100 hour game ;)
     V_DrawNamePatch(x - V_NamePatchWidth(sucks), 
-		    y, FB, sucks, NULL, VPT_STRETCH); 
+		    y, FB, sucks, CR_DEFAULT, VPT_STRETCH); 
 }
 
 
@@ -828,10 +850,10 @@ void WI_initNoState(void)
 
 static void WI_drawTimeStats(int cnt_time, int cnt_total_time, int cnt_par)
 {
-  V_DrawNamePatch(SP_TIMEX, SP_TIMEY, FB, time, NULL, VPT_STRETCH);
+  V_DrawNamePatch(SP_TIMEX, SP_TIMEY, FB, time, CR_DEFAULT, VPT_STRETCH);
   WI_drawTime(320/2 - SP_TIMEX, SP_TIMEY, cnt_time);
 
-  V_DrawNamePatch(SP_TIMEX, (SP_TIMEY+200)/2, FB, total, NULL, VPT_STRETCH);
+  V_DrawNamePatch(SP_TIMEX, (SP_TIMEY+200)/2, FB, total, CR_DEFAULT, VPT_STRETCH);
   WI_drawTime(320/2 - SP_TIMEX, (SP_TIMEY+200)/2, cnt_total_time);
 
   // Ty 04/11/98: redid logic: should skip only if with pwad but 
@@ -843,7 +865,7 @@ static void WI_drawTimeStats(int cnt_time, int cnt_total_time, int cnt_par)
   {
     if (wbs->epsd < 3)
     {
-      V_DrawNamePatch(320/2 + SP_TIMEX, SP_TIMEY, FB, par, NULL, VPT_STRETCH);
+      V_DrawNamePatch(320/2 + SP_TIMEX, SP_TIMEY, FB, par, CR_DEFAULT, VPT_STRETCH);
       WI_drawTime(320 - SP_TIMEX, SP_TIMEY, cnt_par);
     }
   }
@@ -1182,10 +1204,10 @@ void WI_drawDeathmatchStats(void)
 
   // draw stat titles (top line)
   V_DrawNamePatch(DM_TOTALSX-V_NamePatchWidth(total)/2,
-		 DM_MATRIXY-WI_SPACINGY+10, FB, total, NULL, VPT_STRETCH);
+		 DM_MATRIXY-WI_SPACINGY+10, FB, total, CR_DEFAULT, VPT_STRETCH);
   
-  V_DrawNamePatch(DM_KILLERSX, DM_KILLERSY, FB, killers, NULL, VPT_STRETCH);
-  V_DrawNamePatch(DM_VICTIMSX, DM_VICTIMSY, FB, victims, NULL, VPT_STRETCH);
+  V_DrawNamePatch(DM_KILLERSX, DM_KILLERSY, FB, killers, CR_DEFAULT, VPT_STRETCH);
+  V_DrawNamePatch(DM_VICTIMSX, DM_VICTIMSY, FB, victims, CR_DEFAULT, VPT_STRETCH);
 
   // draw P?
   x = DM_MATRIXX + DM_SPACINGX;
@@ -1194,20 +1216,20 @@ void WI_drawDeathmatchStats(void)
   for (i=0 ; i<MAXPLAYERS ; i++)
   {
     if (playeringame[i]) {
-      int trans = playernumtotrans[i];
+      //int trans = playernumtotrans[i];
       V_DrawNamePatch(x-halfface, DM_MATRIXY - WI_SPACINGY, 
-		     FB, facebackp, trans ? translationtables + 256*(trans-1) : NULL, 
-		     VPT_STRETCH | (trans ? VPT_TRANS : 0));
+		     FB, facebackp, i ? CR_LIMIT+i : CR_DEFAULT,
+		     VPT_STRETCH | (i ? VPT_TRANS : 0));
       V_DrawNamePatch(DM_MATRIXX-halfface, y, 
-		     FB, facebackp, trans ? translationtables + 256*(trans-1) : NULL, 
-		     VPT_STRETCH | (trans ? VPT_TRANS : 0));
+		     FB, facebackp, i ? CR_LIMIT+i : CR_DEFAULT,
+		     VPT_STRETCH | (i ? VPT_TRANS : 0));
 
       if (i == me)
       {
         V_DrawNamePatch(x-halfface, DM_MATRIXY - WI_SPACINGY, 
-		       FB, bstar, NULL, VPT_STRETCH);
+		       FB, bstar, CR_DEFAULT, VPT_STRETCH);
         V_DrawNamePatch(DM_MATRIXX-halfface, y, 
-		       FB, star, NULL, VPT_STRETCH);
+		       FB, star, CR_DEFAULT, VPT_STRETCH);
       }
     }
     x += DM_SPACINGX;
@@ -1484,34 +1506,34 @@ void WI_drawNetgameStats(void)
 
   // draw stat titles (top line)
   V_DrawNamePatch(NG_STATSX+NG_SPACINGX-V_NamePatchWidth(kills),
-		 NG_STATSY, FB, kills, NULL, VPT_STRETCH);
+		 NG_STATSY, FB, kills, CR_DEFAULT, VPT_STRETCH);
 
   V_DrawNamePatch(NG_STATSX+2*NG_SPACINGX-V_NamePatchWidth(items),
-		 NG_STATSY, FB, items, NULL, VPT_STRETCH);
+		 NG_STATSY, FB, items, CR_DEFAULT, VPT_STRETCH);
 
   V_DrawNamePatch(NG_STATSX+3*NG_SPACINGX-V_NamePatchWidth(secret),
-		 NG_STATSY, FB, secret, NULL, VPT_STRETCH);
+		 NG_STATSY, FB, secret, CR_DEFAULT, VPT_STRETCH);
   
   if (dofrags)
     V_DrawNamePatch(NG_STATSX+4*NG_SPACINGX-V_NamePatchWidth(frags),
-		   NG_STATSY, FB, frags, NULL, VPT_STRETCH);
+		   NG_STATSY, FB, frags, CR_DEFAULT, VPT_STRETCH);
 
   // draw stats
   y = NG_STATSY + V_NamePatchHeight(kills);
 
   for (i=0 ; i<MAXPLAYERS ; i++)
   {
-    int trans = playernumtotrans[i];
+    //int trans = playernumtotrans[i];
     if (!playeringame[i])
       continue;
 
     x = NG_STATSX;
     V_DrawNamePatch(x-fwidth, y, FB, facebackp, 
-		   trans ? translationtables+256*(trans-1) : NULL, 
-		   VPT_STRETCH | (trans ? VPT_TRANS : 0));
+		   i ? CR_LIMIT+i : CR_DEFAULT,
+		   VPT_STRETCH | (i ? VPT_TRANS : 0));
 
     if (i == me)
-      V_DrawNamePatch(x-fwidth, y, FB, star, NULL, VPT_STRETCH);
+      V_DrawNamePatch(x-fwidth, y, FB, star, CR_DEFAULT, VPT_STRETCH);
 
     x += NG_SPACINGX;
     WI_drawPercent(x-pwidth, y+10, cnt_kills[i]); x += NG_SPACINGX;
@@ -1699,13 +1721,13 @@ void WI_drawStats(void)
   
   WI_drawLF();
 
-  V_DrawNamePatch(SP_STATSX, SP_STATSY, FB, kills, NULL, VPT_STRETCH);
+  V_DrawNamePatch(SP_STATSX, SP_STATSY, FB, kills, CR_DEFAULT, VPT_STRETCH);
   WI_drawPercent(320 - SP_STATSX, SP_STATSY, cnt_kills[0]);
 
-  V_DrawNamePatch(SP_STATSX, SP_STATSY+lh, FB, items, NULL, VPT_STRETCH);
+  V_DrawNamePatch(SP_STATSX, SP_STATSY+lh, FB, items, CR_DEFAULT, VPT_STRETCH);
   WI_drawPercent(320 - SP_STATSX, SP_STATSY+lh, cnt_items[0]);
 
-  V_DrawNamePatch(SP_STATSX, SP_STATSY+2*lh, FB, sp_secret, NULL, VPT_STRETCH);
+  V_DrawNamePatch(SP_STATSX, SP_STATSY+2*lh, FB, sp_secret, CR_DEFAULT, VPT_STRETCH);
   WI_drawPercent(320 - SP_STATSX, SP_STATSY+2*lh, cnt_secret[0]);
 
   WI_drawTimeStats(cnt_time, cnt_total_time, cnt_par);
@@ -1810,21 +1832,7 @@ void WI_loadData(void)
   char  name[9];  // limited to 8 characters
   anim_t* a;
 
-  if (gamemode == commercial)
-    strcpy(name, "INTERPIC");
-  else 
-    sprintf(name, "WIMAP%d", wbs->epsd);
-    
-  if ( gamemode == retail )
-  {
-    if (wbs->epsd == 3)
-      strcpy(name,"INTERPIC");
-  }
-
-  // background
-  // proff/nicolas 09/20/98 -- changed for hi-res
-  // CPhipps - patch drawing updated
-  V_DrawNamePatch(0, 0, 1, name, NULL, VPT_STRETCH);
+  WI_DrawBackground();
 
   if (gamemode != commercial)
   {
@@ -2000,113 +2008,3 @@ void WI_Start(wbstartstruct_t* wbstartstruct)
   else
     WI_initStats();
 }
-
-
-//----------------------------------------------------------------------------
-//
-// $Log: wi_stuff.c,v $
-// Revision 1.1  2000/05/04 08:19:18  proff_fs
-// Initial revision
-//
-// Revision 1.19  2000/04/09 14:11:01  cph
-// Remove unused NUMCMAPS
-// Fix entering level title position
-//
-// Revision 1.18  2000/04/04 11:15:31  cph
-// Remove lnames[]
-// New function returns the name of the graphic lump for a given level
-// DrawLF and DrawEL now use this to get just the name graphic they need
-//
-// Revision 1.17  2000/04/04 10:56:06  cph
-// Use V_DrawNamePatch and use patch names rather than holding pointers
-//  to most graphics
-//
-// Revision 1.16  2000/04/04 10:03:53  cph
-// Start using new patch width function
-// Use more graphics by name instead of holding pointers to them
-//
-// Revision 1.15  2000/04/03 22:13:35  cph
-// Check WI data unloaded only if RANGECHECKing
-//
-// Revision 1.14  1999/10/27 18:35:50  cphipps
-// Made W_CacheLump* return a const pointer
-//
-// Revision 1.13  1999/10/12 13:01:15  cphipps
-// Changed header to GPL
-//
-// Revision 1.12  1999/09/01 20:10:21  cphipps
-// Moved clean up code from WI_loadData to WI_unloadData where it belongs.
-// Remove WI_End calls here, instead it's called from g_game.c only after
-// the gamestate has actually changed.
-//
-// Revision 1.11  1999/07/20 18:40:58  cphipps
-// Separate game time display code from WI_drawStats to a new function
-// Add time displayto coop game stats, space permitting
-//
-// Revision 1.10  1999/06/20 12:27:16  cphipps
-// Make sure no "Entering..." shown after ExM8
-//
-// Revision 1.9  1999/03/24 14:13:58  cphipps
-// Draw player colours by translating the player 1 colour through the particular player's
-// translation table, instead of using the (fixed) per-player image as doom used to.
-//
-// Revision 1.8  1999/01/17 09:02:37  cphipps
-// Modified time drawing so it draws hours (up to 100 hours when it goes back to "sucks")
-//  and changed spacings slightly to allow for this.
-//
-// Revision 1.7  1999/01/02 16:42:06  cphipps
-// Added total time display
-//
-// Revision 1.6  1999/01/01 12:21:37  cphipps
-// WI_loadData and WI_unloadData improved
-// New wad lump handling
-//
-// Revision 1.5  1998/12/31 12:08:47  cphipps
-// Patch drawing updated
-//
-// Revision 1.4  1998/12/28 20:23:39  cphipps
-// Allocate coop & deathmatch stats data structs dynamically when needed
-// Remove dead code
-// Functions made static
-//
-// Revision 1.3  1998/11/17 15:52:13  cphipps
-// Imported updated PrBoom v2.02 source into LxDoom
-//
-// Revision 1.12  1998/09/07  20:10:39  jim
-// Logical output routine added
-//
-// Revision 1.11  1998/05/04  21:36:02  thldrmn
-// commenting and reformatting
-//
-// Revision 1.10  1998/05/03  22:45:35  killough
-// Provide minimal correct #include's at top; nothing else
-//
-// Revision 1.9  1998/04/27  02:11:44  killough
-// Fix lnames being freed too early causing crashes
-//
-// Revision 1.8  1998/04/26  14:55:38  jim
-// Fixed animated back bug
-//
-// Revision 1.7  1998/04/11  14:49:52  thldrmn
-// Fixed par display logic
-//
-// Revision 1.6  1998/03/28  18:12:03  killough
-// Make acceleratestage external so it can be used for teletype
-//
-// Revision 1.5  1998/03/28  05:33:12  jim
-// Text enabling changes for DEH
-//
-// Revision 1.4  1998/03/18  23:14:14  jim
-// Deh text additions
-//
-// Revision 1.3  1998/02/23  05:00:19  killough
-// Fix Secret percentage, avoid par times on pwads
-//
-// Revision 1.2  1998/01/26  19:25:12  phares
-// First rev with no ^Ms
-//
-// Revision 1.1.1.1  1998/01/19  14:03:05  rand
-// Lee's Jan 19 sources
-//
-//
-//----------------------------------------------------------------------------
