@@ -1,7 +1,7 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: g_game.c,v 1.50 2002/02/08 23:53:41 cph Exp $
+ * $Id: g_game.c,v 1.50.2.1 2002/02/09 13:09:59 cph Exp $
  *
  *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
@@ -35,7 +35,7 @@
  */
 
 static const char
-rcsid[] = "$Id: g_game.c,v 1.50 2002/02/08 23:53:41 cph Exp $";
+rcsid[] = "$Id: g_game.c,v 1.50.2.1 2002/02/09 13:09:59 cph Exp $";
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -86,6 +86,8 @@ rcsid[] = "$Id: g_game.c,v 1.50 2002/02/08 23:53:41 cph Exp $";
 #include "lprintf.h"
 #include "i_main.h"
 #include "i_system.h"
+
+#include "g_bindaxes.h"
 
 #define SAVEGAMESIZE  0x20000
 #define SAVESTRINGSIZE  24
@@ -219,23 +221,6 @@ fixed_t forwardmove[2] = {0x19, 0x32};
 fixed_t sidemove[2]    = {0x18, 0x28};
 fixed_t angleturn[3]   = {640, 1280, 320};  // + slow turn
 
-// CPhipps - made lots of key/button state vars static
-static int     turnheld;       // for accelerative turning
-
-// mouse values are used once
-static int   mousex;
-static int   mousey;
-static int   dclicktime;
-static int   dclickstate;
-static int   dclicks;
-static int   dclicktime2;
-static int   dclickstate2;
-static int   dclicks2;
-
-// joystick values are repeated
-static int   joyxmove;
-static int   joyymove;
-
 // Game events info
 static buttoncode_t special_event; // Event triggered by local player, to send
 static byte  savegameslot;         // Slot to load if gameaction == ga_loadgame
@@ -279,19 +264,6 @@ void G_BuildTiccmd(ticcmd_t* cmd)
 
   forward = side = 0;
 
-    // use two stage accelerative turning
-    // on the keyboard and joystick
-  if (joyxmove < 0 || joyxmove > 0 ||
-      action_left || action_right)
-    turnheld += ticdup;
-  else
-    turnheld = 0;
-
-  if (turnheld < SLOWTURNTICS)
-    tspeed = 2;             // slow turn
-  else
-    tspeed = speed;
-
   // turn 180 degrees in one keystroke?                           // phares
                                                                   //    |
   if (action_flip)                                                //    V
@@ -308,10 +280,6 @@ void G_BuildTiccmd(ticcmd_t* cmd)
         side += sidemove[speed];
       if (action_left)
         side -= sidemove[speed];
-      if (joyxmove > 0)
-        side += sidemove[speed];
-      if (joyxmove < 0)
-        side -= sidemove[speed];
     }
   else
     {
@@ -319,24 +287,20 @@ void G_BuildTiccmd(ticcmd_t* cmd)
         cmd->angleturn -= angleturn[tspeed];
       if (action_left)
         cmd->angleturn += angleturn[tspeed];
-      if (joyxmove > 0)
-        cmd->angleturn -= angleturn[tspeed];
-      if (joyxmove < 0)
-        cmd->angleturn += angleturn[tspeed];
     }
 
   if (action_forward)
     forward += forwardmove[speed];
   if (action_backward)
     forward -= forwardmove[speed];
-  if (joyymove < 0)
-    forward += forwardmove[speed];
-  if (joyymove > 0)
-    forward -= forwardmove[speed];
   if (action_moveright)
     side += sidemove[speed];
   if (action_moveleft)
     side -= sidemove[speed];
+
+  forward += axis_forward_value;
+  side += axis_side_value;
+  cmd->angleturn += axis_turn_value;
 
     // buttons
   cmd->chatchar = HU_dequeueChatChar();
@@ -347,8 +311,6 @@ void G_BuildTiccmd(ticcmd_t* cmd)
   if (action_use)
     {
       cmd->buttons |= BT_USE;
-      // clear double clicks if hit use button
-      dclicks = 0;
     }
 
   // Toggle between the top 2 favorite weapons.                   // phares
@@ -427,15 +389,6 @@ void G_BuildTiccmd(ticcmd_t* cmd)
       cmd->buttons |= BT_CHANGE;
       cmd->buttons |= newweapon<<BT_WEAPONSHIFT;
     }
-
-  mousey = (mousey > 0) ? mousey : mousey / 6; /* mead desense backward moves. */
-  forward += mousey;
-  if (strafe)
-    side += mousex / 4;       /* mead  Don't want to strafe as fast as turns.*/
-  else
-    cmd->angleturn -= mousex; /* mead now have enough dynamic range 2-10-00 */
-
-  mousex = mousey = 0;
 
   if (forward > MAXPLMOVE)
     forward = MAXPLMOVE;
@@ -549,8 +502,6 @@ static void G_DoLoadLevel (void)
   Z_CheckHeap ();
 
   // clear cmd building stuff
-  joyxmove = joyymove = 0;
-  mousex = mousey = 0;
   special_event = 0; paused = false;
 
   // killough 5/13/98: in case netdemo has consoleplayer other than green
@@ -651,22 +602,9 @@ boolean G_Responder (event_t* ev)
     	G_KeyResponder(ev); // keybinding
       return false;   // always let key up events filter down
 
-    case ev_mouse:
-      /*
-       * bmead@surfree.com
-       * Modified by Barry Mead after adding vastly more resolution
-       * to the Mouse Sensitivity Slider in the options menu 1-9-2000
-       * Removed the mouseSensitivity "*4" to allow more low end
-       * sensitivity resolution especially for lsdoom users.
-       */
-      mousex += (ev->data2*(mouseSensitivity_horiz))/10;  /* killough */
-      mousey += (ev->data3*(mouseSensitivity_vert))/10;  /*Mead rm *4 */
-      return true;    // eat events
-
-    case ev_joystick:
-      joyxmove = ev->data2;
-      joyymove = ev->data3;
-      return true;    // eat events
+    case ev_axis:
+      G_AxisResponder(ev);
+      return true;
 
     default:
       break;
