@@ -13,11 +13,11 @@
 // Action Variables
 //
 
-int axis_forward_value;
-int axis_side_value;
-int axis_turn_value;
-int axis_cycleweapon_value;
-int axis_changeweapon_value;
+int axis_forward_value=0;
+int axis_side_value=0;
+int axis_turn_value=0;
+int axis_cycleweapon_value=0;
+int axis_changeweapon_value=0;
 
 //
 // Actions List
@@ -163,7 +163,12 @@ doomaxis_t *G_AxisForName(char *name)
 
   sscanf(name, "dev%d/axis%d", &device, &axis);
 
-  return &axisbindings[device][axis];
+  if(device<=I_GetNumberOfDevices()) 
+  {
+    if(axis<=I_GetAxesForDevice(device))
+      return &axisbindings[device][axis];
+  }
+  return NULL;
 }
 
 //

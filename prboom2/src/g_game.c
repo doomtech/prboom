@@ -1,7 +1,7 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- * $Id: g_game.c,v 1.50.2.1 2002/02/09 13:09:59 cph Exp $
+ * $Id: g_game.c,v 1.50.2.2 2002/02/16 18:32:28 cph Exp $
  *
  *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
@@ -35,7 +35,7 @@
  */
 
 static const char
-rcsid[] = "$Id: g_game.c,v 1.50.2.1 2002/02/09 13:09:59 cph Exp $";
+rcsid[] = "$Id: g_game.c,v 1.50.2.2 2002/02/16 18:32:28 cph Exp $";
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -297,10 +297,11 @@ void G_BuildTiccmd(ticcmd_t* cmd)
     side += sidemove[speed];
   if (action_moveleft)
     side -= sidemove[speed];
-
-  forward += axis_forward_value;
-  side += axis_side_value;
-  cmd->angleturn += axis_turn_value;
+  
+  // Read Axes
+  forward += forwardmove[1]*(axis_forward_value/100.0);
+  side += sidemove[1]*(axis_side_value/100.0);
+  cmd->angleturn += angleturn[1]*(axis_turn_value/100.0);
 
     // buttons
   cmd->chatchar = HU_dequeueChatChar();
