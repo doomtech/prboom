@@ -1376,7 +1376,7 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   lumpnum = W_GetNumForName(lumpname);
   gl_lumpnum = W_CheckNumForName(gl_lumpname); // figgi
 
-  leveltime = 0;
+  leveltime = 0; totallive = 0;
 
   // note: most of this ordering is important
 
