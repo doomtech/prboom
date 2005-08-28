@@ -101,7 +101,7 @@ __inline static fixed_t FixedMul(fixed_t a, fixed_t b)
  * Replaced inline asm with Julian's version for Eternity dated 6/7/2001
  */
 inline
-static const fixed_t FixedMul(fixed_t a, fixed_t b)
+static CONSTFUNC fixed_t FixedMul(fixed_t a, fixed_t b)
 {
   fixed_t result;
 
@@ -162,8 +162,7 @@ __inline static fixed_t FixedDiv(fixed_t a, fixed_t b)
  * Also made const, also __asm__ to asm as in docs.
  * Replaced inline asm with Julian's version for Eternity dated 6/7/2001
  */
-inline
-static const fixed_t FixedDiv(fixed_t a, fixed_t b)
+inline static CONSTFUNC fixed_t FixedDiv(fixed_t a, fixed_t b)
 {
   if (D_abs(a) >> 14 < D_abs(b))
     {
@@ -199,7 +198,7 @@ inline static const fixed_t FixedDiv(fixed_t a, fixed_t b)
  * (notice that the C standard for % does not guarantee this)
  */
 
-inline static const fixed_t FixedMod(fixed_t a, fixed_t b)
+inline static CONSTFUNC fixed_t FixedMod(fixed_t a, fixed_t b)
 {
   if (b & (b-1)) {
     fixed_t r = a % b;

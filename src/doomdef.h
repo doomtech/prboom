@@ -38,10 +38,23 @@
 #include "config.h"
 #endif
 
-// killough 4/25/98: Make gcc extensions mean nothing on other compilers
+// Function Attributes
+//
+// If we're on a GNU system, make the __attribute__(()) GNU extension mean
+// nothing for other compilers (LK 1998-04-24).  Otherwise, define some
+// convenience macros.
+//
 #ifndef __GNUC__
 #define __attribute__(x)
 #endif
+
+#ifdef __GNUC__
+#define CONSTFUNC __attribute__((const))
+#else
+#define CONSTFUNC
+#endif
+
+
 
 // This must come first, since it redefines malloc(), free(), etc. -- killough:
 #include "z_zone.h"
