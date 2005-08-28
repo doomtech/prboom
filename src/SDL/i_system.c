@@ -126,22 +126,56 @@ const char* I_SigString(char* buf, size_t sz, int signum)
   return buf;
 }
 
-/* 
+// /* 
+//  * I_Read
+//  *
+//  * cph 2001/11/18 - wrapper for read(2) which handles partial reads and aborts
+//  * on error.
+//  */
+// void I_Read(int fd, void* buf, size_t sz)
+// {
+//   while (sz) {
+//     int rc = read(fd,buf,sz);
+//     if (rc <= 0) {
+//       I_Error("I_Read: read failed: %s", rc ? strerror(errno) : "EOF");
+//     }
+//     sz -= rc; (unsigned char *)buf += rc;
+//   }
+// }
+
+
+
+/*
  * I_Read
  *
- * cph 2001/11/18 - wrapper for read(2) which handles partial reads and aborts
- * on error.
+ * pjs - wrapper for read(2) which handles partial reads and aborts on error.  EOF is also
+ *    considered an error.
+ *
  */
-void I_Read(int fd, void* buf, size_t sz)
+void I_read(int fd, void *buf, size_t want)
 {
-  while (sz) {
-    int rc = read(fd,buf,sz);
-    if (rc <= 0) {
-      I_Error("I_Read: read failed: %s", rc ? strerror(errno) : "EOF");
+  char *p = (char *) buf;
+
+  while ( want )
+  {
+    int have = read(fd, p, want);
+
+    if ( have <= 0 )
+    {
+      if (errno == EINTR || errno == EAGAIN) // non-fatal.  try again.
+        continue;
+      else
+        I_Error("I_Read: read failed: %s", read ? strerror(errno) : "EOF");
     }
-    sz -= rc; (unsigned char *)buf += rc;
+
+    want -= have;
+    p += have;
   }
 }
+
+
+
+
 
 /*
  * I_Filelength
@@ -314,3 +348,5 @@ char *I_FindFile(const char* wfname, const char* ext)
 }
 
 #endif // PRBOOM_SERVER
+
+// vim: expandtab:ts=2:sw=2
