@@ -69,7 +69,11 @@
 extern const char *shiftxform;
 
 // the messages (what you see in the console window)
-static unsigned char messages[MESSAGES][LINELENGTH];
+// FIXME PJS: Is there a good reason for this to be unsigned?  Does it contain
+// anything other than seven bit ascii?
+// static unsigned char messages[MESSAGES][LINELENGTH];
+static char messages[MESSAGES][LINELENGTH];
+
 static int message_pos=0;      // position in the history (last line in window)
 static int message_last=0;     // the last message
 
