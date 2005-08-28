@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __WI_STUFF__
-#define __WI_STUFF__
+#ifndef WI_STUFF_H
+#define WI_STUFF_H
 
 //#include "v_video.h"
 
@@ -70,4 +70,4 @@ void WI_StopCamera();
 // Release intermission screen memory
 void WI_End(void);
 
-#endif
+#endif // WI_STUFF_H

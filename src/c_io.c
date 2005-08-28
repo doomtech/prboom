@@ -399,7 +399,7 @@ void C_Drawer(void)
 {
   int y;
   int count;
-  static int oldscreenheight=0;
+  // static int oldscreenheight=0;    FIXME: Not needed?
   
   if(!consoleactive)
     return;   // dont draw if not active

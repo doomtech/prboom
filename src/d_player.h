@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __D_PLAYER__
-#define __D_PLAYER__
+#ifndef D_PLAYER_H
+#define D_PLAYER_H
 
 typedef struct player_s player_t;
 

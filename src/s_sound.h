@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __S_SOUND__
-#define __S_SOUND__
+#ifndef S_SOUND_H
+#define S_SOUND_H
 
 #include "sounds.h"
 
@@ -102,4 +102,4 @@ extern int numChannels;
 //jff 3/17/98 holds last IDMUS number, or -1
 extern int idmusnum;
 
-#endif
+#endif // S_SOUNDS_H

@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __R_SKY__
-#define __R_SKY__
+#ifndef R_SKY_H
+#define R_SKY_H
 
 #include "m_fixed.h"
 
@@ -53,4 +53,4 @@ void R_InitSkyMap(void);
 // init sky at start of level
 void R_StartSky();
 
-#endif
+#endif // R_SKY_H

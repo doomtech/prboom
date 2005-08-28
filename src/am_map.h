@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __AMMAP_H__
-#define __AMMAP_H__
+#ifndef AMMAP_H
+#define AMMAP_H
 
 #include "d_event.h"
 
@@ -74,4 +74,4 @@ extern int markpointnum, markpointnum_max;
 extern int mapcolor_plyr[4];  // colors for players in multiplayer
 extern int mapcolor_me;       // consoleplayer's chosen colour
 
-#endif
+#endif // AMMAP_H

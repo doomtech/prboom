@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __F_WIPE_H__
-#define __F_WIPE_H__
+#ifndef F_WIPE_H
+#define F_WIPE_H
 
 /*
  * SCREEN WIPE PACKAGE

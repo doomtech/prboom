@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_MAPUTL__
-#define __P_MAPUTL__
+#ifndef P_MAPUTL_H
+#define P_MAPUTL_H
 
 #include "r_defs.h"
 
@@ -86,4 +86,4 @@ extern fixed_t openrange;
 extern fixed_t lowfloor;
 extern divline_t trace;
 
-#endif  /* __P_MAPUTL__ */
+#endif  // P_MAPUTL_H

@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_INTER__
-#define __P_INTER__
+#ifndef P_INTER_H
+#define P_INTER_H
 
 #include "d_player.h"
 #include "p_mobj.h"
@@ -75,4 +75,4 @@ extern int idkfa_armor_class;
 extern int bfgcells;
 extern int maxammo[], clipammo[];
 
-#endif
+#endif // P_INTER_H

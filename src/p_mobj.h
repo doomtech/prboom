@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_MOBJ__
-#define __P_MOBJ__
+#ifndef P_MOBJ_H
+#define P_MOBJ_H
 
 typedef struct mobj_s mobj_t;   //sf: move up here
 
@@ -389,5 +389,5 @@ void    P_SpawnMapThing (const mapthing_t*  mthing);
 void    P_SpawnPlayer(int n, const mapthing_t *mthing);
 void    P_CheckMissileSpawn(mobj_t*);  // killough 8/2/98
 void    P_ExplodeMissile(mobj_t*);    // killough
-#endif
 
+#endif // P_MOBJ_H

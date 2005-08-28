@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __M_CHEAT__
-#define __M_CHEAT__
+#ifndef M_CHEAT_H
+#define M_CHEAT_H
 
 /* killough 4/16/98: Cheat table structure */
 
@@ -55,4 +55,4 @@ boolean M_FindCheats(int key);
 
 extern int idmusnum;
 
-#endif
+#endif // M_CHEAT_H

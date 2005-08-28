@@ -29,8 +29,8 @@
  *---------------------------------------------------------------------
  */
 
-#ifndef _GL_INTERN_H
-#define _GL_INTERN_H
+#ifndef GL_INTERN_H
+#define GL_INTERN_H
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN

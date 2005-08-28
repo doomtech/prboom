@@ -29,8 +29,8 @@
  *---------------------------------------------------------------------
  */
 
-#ifndef _GL_STRUCT_H
-#define _GL_STRUCT_H
+#ifndef GL_STRUCT_H
+#define GL_STRUCT_H
 
 extern boolean usingGLNodes;
 
@@ -57,4 +57,4 @@ void gld_DrawScene(player_t *player);
 void gld_EndDrawScene(void);
 void gld_Finish();
 
-#endif // _GL_STRUCT_H
+#endif // GL_STRUCT_H

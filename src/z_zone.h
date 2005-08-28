@@ -34,8 +34,8 @@
  *
  *---------------------------------------------------------------------*/
 
-#ifndef __Z_ZONE__
-#define __Z_ZONE__
+#ifndef Z_ZONE_H
+#define Z_ZONE_H
 
 #ifndef __GNUC__
 #define __attribute__(x)
@@ -128,4 +128,4 @@ char *strdup(const char *s);
 
 void Z_ZoneHistory(char *);
 
-#endif
+#endif // Z_ZONE_H

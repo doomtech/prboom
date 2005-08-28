@@ -27,8 +27,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __C_IO_H__
-#define __C_IO_H__
+#ifndef C_IO_H
+#define C_IO_H
 
 #include "doomstat.h"
 #include "d_event.h"
@@ -64,4 +64,4 @@ extern int current_target;
 #define c_moving (current_height != current_target)
 extern boolean c_showprompt;
 
-#endif
+#endif // C_IO_H

@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __HU_FRAGS_H__
-#define __HU_FRAGS_H__
+#ifndef HU_FRAGS_H
+#define HU_FRAGS_H
 
 void HU_FragsInit();
 
@@ -39,4 +39,4 @@ void HU_FragsUpdate();
 void HU_FragsDrawer();
 void HU_FragsErase();
 
-#endif
+#endif // HU_FRAGS_H

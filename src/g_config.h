@@ -35,6 +35,10 @@
  *-----------------------------------------------------------------------------
  */
 
+#ifndef G_CONFIG_H
+#define G_CONFIG_H
+
 boolean G_LoadDefaults(const char *file);
 void G_SaveDefaults(void);
 
+#endif

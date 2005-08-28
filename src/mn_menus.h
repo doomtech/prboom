@@ -1,7 +1,6 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- *
  *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
@@ -33,4 +32,4 @@
 void MN_InitMenus();
 void MN_ShowFrameRate();
 
-#endif          /** MN_MENUS_H **/
+#endif // MN_MENUS_H

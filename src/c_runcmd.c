@@ -36,6 +36,10 @@
  *-----------------------------------------------------------------------------
  */
 
+
+// PJS 2005-08-28: Needed to import prototype for vasprintf on GNU systems.
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

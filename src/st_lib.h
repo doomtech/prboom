@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __STLIB__
-#define __STLIB__
+#ifndef STLIB_H
+#define STLIB_H
 
 // We are referring to patches.
 #include "r_defs.h"
@@ -204,4 +204,4 @@ void STlib_updateBinIcon
 ( st_binicon_t* bi,
   boolean refresh );
 
-#endif
+#endif // STLIB_H

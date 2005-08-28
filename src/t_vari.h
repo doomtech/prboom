@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __VARIABLE_H__
-#define __VARIABLE_H__
+#ifndef VARIABLE_H
+#define VARIABLE_H
 
 typedef struct svariable_s svariable_t;
 #define VARIABLESLOTS 16
@@ -114,4 +114,4 @@ extern int t_argc;
 extern svalue_t *t_argv;
 extern svalue_t t_return;
 
-#endif
+#endif // VARIABLE_H

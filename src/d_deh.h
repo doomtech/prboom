@@ -37,8 +37,8 @@
  *-----------------------------------------------------------------------------
 */
 
-#ifndef __D_DEH__
-#define __D_DEH__
+#ifndef D_DEH_H 
+#define D_DEH_H
 
 //
 //      Ty 03/22/98 - note that we are keeping the english versions and
@@ -1128,4 +1128,4 @@ extern boolean deh_loaded; // sf
 
 void D_BuildBEXTables(void);
 
-#endif
+#endif // D_DEH_H

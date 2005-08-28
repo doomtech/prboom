@@ -28,8 +28,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_SPEC__
-#define __P_SPEC__
+#ifndef P_SPEC_H
+#define P_SPEC_H
 
 #include "r_defs.h"
 #include "d_player.h"
@@ -1039,4 +1039,4 @@ int P_ActivateInStasisCeiling(line_t* line);
 
 mobj_t* P_GetPushThing(int);                                // phares 3/23/98
 
-#endif
+#endif // P_SPEC_H

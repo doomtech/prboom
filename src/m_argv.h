@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __M_ARGV__
-#define __M_ARGV__
+#ifndef M_ARGV_H
+#define M_ARGV_H
 
 /*
  * MISC
@@ -42,4 +42,4 @@ extern const char * const * myargv; /* CPhipps - const * const * */
 /* Returns the position of the given parameter in the arg list (0 if not found). */
 int M_CheckParm(const char *check);
 
-#endif
+#endif // M_ARGV_H

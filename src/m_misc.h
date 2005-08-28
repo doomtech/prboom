@@ -31,14 +31,10 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __M_MISC__
-#define __M_MISC__
-
+#ifndef M_MISC_H
+#define M_MISC_H
 
 #include "doomtype.h"
-//
-// MISC
-//
 
 boolean M_WriteFile (char const* name,void* source,int length);
 
@@ -47,4 +43,4 @@ int M_ReadFile (char const* name,byte** buffer);
 void M_ScreenShot (void);
 void M_DoScreenShot (const char*); // cph
 
-#endif
+#endif // M_MISC_H

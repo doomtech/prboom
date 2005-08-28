@@ -27,8 +27,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __V_MISC_H__
-#define __V_MISC_H__
+#ifndef V_MISC_H
+#define V_MISC_H
 
 //---------------------------------------------------------------------------
 //
@@ -110,4 +110,4 @@ void V_LoadingSetTo(int amount);
 
 void V_InitMisc();
 
-#endif
+#endif // V_MISC_H

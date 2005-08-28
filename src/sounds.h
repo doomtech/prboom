@@ -30,8 +30,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __SOUNDS__
-#define __SOUNDS__
+#ifndef SOUNDS_H
+#define SOUNDS_H
 
 //
 // SoundFX struct.
@@ -319,4 +319,4 @@ typedef enum {
 
 extern sfxinfo_t chgun;
 
-#endif
+#endif // SOUNDS_H

@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __M_SWAP__
-#define __M_SWAP__
+#ifndef M_SWAP_H
+#define M_SWAP_H
 
 #ifdef __GNUG__
 #pragma interface
@@ -122,4 +122,4 @@
 #define LONG(x) doom_wtohl(x)
 #define SHORT(x) doom_htows(x)
 
-#endif
+#endif // M_SWAP_H

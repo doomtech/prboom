@@ -27,8 +27,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __MN_MISC_H__
-#define __MN_MISC_H__
+#ifndef MN_MISC_H
+#define MN_MISC_H
 
 // pop-up messages
 
@@ -43,4 +43,4 @@ void MN_StartHelpScreen();
 
 void MN_SelectColour(const char *variable_name);
 
-#endif /** __MN_MISC_H__ **/
+#endif // MN_MISC_H

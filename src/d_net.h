@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __D_NET__
-#define __D_NET__
+#ifndef D_NET_H
+#define D_NET_H
 
 #include "d_player.h"
 

@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_SAVEG__
-#define __P_SAVEG__
+#ifndef P_SAVEG_H
+#define P_SAVEG_H
 
 #ifdef __GNUG__
 #pragma interface
@@ -60,4 +60,4 @@ void P_UnArchiveMap(void);
 extern byte *save_p;
 void CheckSaveGame(size_t);              /* killough */
 
-#endif
+#endif // P_SAVEG_H

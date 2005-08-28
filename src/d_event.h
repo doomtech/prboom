@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __D_EVENT__
-#define __D_EVENT__
+#ifndef D_EVENT_H 
+#define D_EVENT_H
 
 
 #include "doomtype.h"
@@ -127,4 +127,4 @@ extern int       eventtail;
 
 extern gameaction_t gameaction;
 
-#endif
+#endif // D_EVENT_H

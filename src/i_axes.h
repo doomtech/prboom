@@ -29,9 +29,14 @@
  *
  *-----------------------------------------------------------------------------*/
 
+#ifndef I_AXES_H
+#define I_AXES_H
+
 extern int usejoystick;
 
 void I_InitAxes();
-int I_GetNumberOfDevices();
-int I_GetAxesForDevice(int device);
+int  I_GetNumberOfDevices();
+int  I_GetAxesForDevice(int device);
 const char *I_GetDeviceName(int device);
+
+#endif // I_AXES_H

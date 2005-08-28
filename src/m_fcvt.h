@@ -26,8 +26,8 @@
 //
 //-----------------------------------------------------------------------------
 
-#ifndef __M_FCVT_H__
-#define __M_FCVT_H__
+#ifndef M_FCVT_H
+#define M_FCVT_H
 
 #ifdef NO_FCVT
 
@@ -36,9 +36,6 @@ char *M_Fcvtbuf(double, int, int *, int *, char *);
 void M_Ecvround(char *, char *, const char *, int *);
 char *M_Ecvtbuf(double, int, int *, int *, char *);
 
-#endif /* def NO_FCT */
+#endif // NO_FCT
 
-#endif /* ndef __M_FCVT_H__ */
-
-// EOF
-
+#endif // M_FCVT_H

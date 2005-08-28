@@ -29,6 +29,9 @@
  *  This is designed to be a fast allocator for small, regularly used block sizes
  *-----------------------------------------------------------------------------*/
 
+#ifndef Z_BMALLOC_H
+#define Z_BMALLOC_H
+
 struct block_memory_alloc_s {
   void  *firstpool;
   size_t size;
@@ -48,3 +51,5 @@ inline static void* Z_BCalloc(struct block_memory_alloc_s *pzone)
 { void *p = Z_BMalloc(pzone); memset(p,0,pzone->size); return p; }
 
 void Z_BFree(struct block_memory_alloc_s *pzone, void* p);
+
+#endif

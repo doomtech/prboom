@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __I_SYSTEM__
-#define __I_SYSTEM__
+#ifndef I_SYSTEM_H
+#define I_SYSTEM_H
 
 #ifdef __GNUG__
 #pragma interface
@@ -63,4 +63,4 @@ char *I_DoomExeDir(void); // killough 2/16/98: path to executable's dir
 
 char* I_FindFile(const char* wfname, const char* ext);
 
-#endif
+#endif // I_SYSTEM_H

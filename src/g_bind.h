@@ -31,8 +31,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __G_BIND_H__
-#define __G_BIND_H__
+#ifndef G_BIND_H
+#define G_BIND_H
 
 void G_InitKeyBindings(void);
 boolean G_KeyResponder(event_t *ev);

@@ -1,7 +1,6 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- *
  *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
@@ -29,8 +28,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __P_HUBS_H__
-#define __P_HUBS_H__
+#ifndef P_HUBS_H
+#define P_HUBS_H
 
 void P_ChangeHubLevel(char *levelname);
 void P_DoChangeHubLevel();
@@ -45,4 +44,4 @@ void P_HubReborn();
 
 extern boolean hub_changelevel;
 
-#endif
+#endif // P_HUBS_H

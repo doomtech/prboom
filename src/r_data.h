@@ -31,8 +31,8 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __R_DATA__
-#define __R_DATA__
+#ifndef R_DATA_H
+#define R_DATA_H
 
 #include "r_defs.h"
 #include "r_state.h"
@@ -102,4 +102,4 @@ void R_SetPatchNum(patchnum_t *patchnum, const char *name);
 extern int numtextures;
 extern texture_t **textures; // POPE
 
-#endif
+#endif // R_DATA_H

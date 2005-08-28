@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __R_DRAW__
-#define __R_DRAW__
+#ifndef R_DRAW_H
+#define R_DRAW_H
 
 #include "r_defs.h"
 
@@ -178,4 +178,4 @@ void R_FillBackScreen(void);
 // If the view size is not full screen, draws a border around it.
 void R_DrawViewBorder(void);
 
-#endif
+#endif // R_DRAW_H

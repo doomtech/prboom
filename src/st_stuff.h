@@ -31,8 +31,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __STSTUFF_H__
-#define __STSTUFF_H__
+#ifndef STSTUFF_H
+#define STSTUFF_H
 
 #include "doomtype.h"
 #include "d_event.h"
@@ -100,4 +100,4 @@ extern int sts_always_red;// status numbers do not change colors
 extern int sts_pct_always_gray;// status percents do not change colors
 extern int sts_traditional_keys;  // display keys the traditional way
 
-#endif
+#endif // STSTUFF_H

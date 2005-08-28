@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __M_FIXED__
-#define __M_FIXED__
+#ifndef M_FIXED_H
+#define M_FIXED_H
 
 #include "config.h"
 #include "doomtype.h"
@@ -207,4 +207,4 @@ inline static CONSTFUNC fixed_t FixedMod(fixed_t a, fixed_t b)
     return (a & (b-1));
 }
 
-#endif
+#endif // M_FIXED_H

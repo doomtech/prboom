@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __R_BSP__
-#define __R_BSP__
+#ifndef R_BSP_H
+#define R_BSP_H
 
 #ifdef __GNUG__
 #pragma interface
@@ -63,4 +63,4 @@ int R_DoorClosed(void);   /* killough 1/17/98 */
 /* killough 4/13/98: fake floors/ceilings for deep water / fake ceilings: */
 sector_t *R_FakeFlat(sector_t *, sector_t *, int *, int *, boolean);
 
-#endif
+#endif // R_BSP_H

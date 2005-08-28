@@ -31,8 +31,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __DOOMDATA__
-#define __DOOMDATA__
+#ifndef DOOMDATA_H
+#define DOOMDATA_H
 
 // The most basic types we use, portability.
 #include "doomtype.h"
@@ -201,4 +201,4 @@ typedef struct {
 #pragma pack(pop)
 #endif //_MSC_VER
 
-#endif // __DOOMDATA__
+#endif // DOOMDATA_H

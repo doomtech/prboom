@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __D_MAIN__
-#define __D_MAIN__
+#ifndef D_MAIN_H 
+#define D_MAIN_H
 
 #include "d_event.h"
 #include "p_chase.h"
@@ -95,4 +95,4 @@ boolean D_AddNewFile(char *s);
 #define MAXLOADFILES 2
 extern const char *wad_files[MAXLOADFILES], *deh_files[MAXLOADFILES];
 
-#endif
+#endif // D_MAIN_H

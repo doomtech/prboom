@@ -78,4 +78,4 @@ void R_FlushAllPatches();
 
 
 
-#endif
+#endif // R_PATCH_H

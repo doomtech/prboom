@@ -34,8 +34,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __D_STATE__
-#define __D_STATE__
+#ifndef D_STATE_H
+#define D_STATE_H
 
 // We need globally shared data structures,
 //  for defining the global state variables.
@@ -361,4 +361,4 @@ extern int monkeys, default_monkeys;
 
 extern int HelperThing;          // type of thing to use for helper
 
-#endif
+#endif // D_STATE_H

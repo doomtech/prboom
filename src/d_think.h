@@ -31,8 +31,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __D_THINK__
-#define __D_THINK__
+#ifndef D_THINK_H
+#define D_THINK_H
 
 #ifdef __GNUG__
 #pragma interface

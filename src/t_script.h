@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __T_SCRIPT_H__
-#define __T_SCRIPT_H__
+#ifndef T_SCRIPT_H
+#define T_SCRIPT_H
 
 typedef struct runningscript_s runningscript_t;
 
@@ -76,4 +76,4 @@ extern script_t levelscript;
 //extern script_t *scripts[MAXSCRIPTS];       // the scripts
 extern mobj_t *t_trigger;
 
-#endif
+#endif // T_SCRIPT_H

@@ -20,8 +20,8 @@
  */
 
 
-#ifndef __P_CHASE_H__
-#define __P_CHASE_H__
+#ifndef P_CHASE_H
+#define P_CHASE_H
 
 #include "p_mobj.h"
 
@@ -60,4 +60,4 @@ void P_WalkTicker ();
 void P_ToggleWalk ();
 void P_ResetWalkcam ();
 
-#endif
+#endif // P_CHASE_H

@@ -33,6 +33,10 @@
 
 // *INDENT-OFF*
 
+#ifndef GL_FUNCS_H
+#define GL_FUNCS_H
+
+
 #define DYNGL_DONT_NEED(ret, func, params)
 #define DYNGL_DONT_EXT(ret, func, params, extension)
 #define DYNGL_DONT_WANT(ret, func, params, alt)
@@ -142,5 +146,7 @@ DYNGL_EXT (void, glColorTableEXT, (GLenum, GLenum, GLsizei, GLenum, GLenum, cons
 #undef DYNGL_DONT_NEED
 #undef DYNGL_DONT_EXT
 #undef DYNGL_DONT_WANT
+
+#endif
 
 // *INDENT-ON*

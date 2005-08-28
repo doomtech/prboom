@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_SETUP__
-#define __P_SETUP__
+#ifndef P_SETUP_H
+#define P_SETUP_H
 
 #include "p_mobj.h"
 
@@ -79,4 +79,4 @@ typedef struct                          // Standard OLO stuff, put in WADs
 extern olo_t olo;
 extern int olo_loaded;
 
-#endif
+#endif // P_SETUP_H

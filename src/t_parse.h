@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __PARSE_H__
-#define __PARSE_H__
+#ifndef T_PARSE_H
+#define T_PARSE_H
 
 #include "m_fixed.h"
 #include "p_mobj.h"     // for mobj_t
@@ -170,4 +170,4 @@ extern int bracetype;
 extern script_t global_script; 
 extern script_t hub_script;
 
-#endif
+#endif // T_PARSE_H

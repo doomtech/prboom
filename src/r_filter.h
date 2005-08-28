@@ -1,5 +1,6 @@
 #ifndef R_FILTER_H
 #define R_FILTER_H
+
 //---------------------------------------------------------------------------
 // Functions/Macros for filtering support - POPE
 //---------------------------------------------------------------------------
@@ -211,6 +212,5 @@ static inline byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, 
   return quad;
 }
 
-//---------------------------------------------------------------------------
 
-#endif
+#endif // R_FILTER_H

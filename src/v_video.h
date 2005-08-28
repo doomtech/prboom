@@ -32,8 +32,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __V_VIDEO__
-#define __V_VIDEO__
+#ifndef V_VIDEO_H
+#define V_VIDEO_H
 
 #include "doomtype.h"
 #include "doomdef.h"
@@ -260,4 +260,4 @@ byte *V_GetPlottedTexture8(
 
 #include "v_misc.h"
 
-#endif
+#endif // V_VIDEO_H

@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------*/
 
 
-#ifndef __I_NET__
-#define __I_NET__
+#ifndef I_NET_H
+#define I_NET_H
 
 
 #ifdef __GNUG__
@@ -53,4 +53,4 @@ void I_InitNetwork (void);
 void I_NetCmd (enum netcmdcode_e flags);
 int ExpandTics(int);
 
-#endif
+#endif // I_NET_H

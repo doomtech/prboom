@@ -31,8 +31,8 @@
 
 */
 
-#ifndef __dyngl_h
-#define __dyngl_h
+#ifndef GL_DYN_H
+#define GL_DYN_H
 
 #include "SDL_types.h"
 

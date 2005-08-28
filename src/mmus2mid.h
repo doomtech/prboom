@@ -27,7 +27,7 @@
  *-----------------------------------------------------------------------------
  */
 
-#if !defined( MMUS2MID_H )
+#ifndef MMUS2MID_H
 #define MMUS2MID_H
 
 // error codes
@@ -69,4 +69,4 @@ extern void free_mididata(MIDI *mid);
 extern int MIDIToMidi(MIDI *mididata,UBYTE **mid,int *midlen);
 extern int MidiToMIDI(UBYTE *mid,MIDI *mididata);
 
-#endif
+#endif // MMUS2MID_H

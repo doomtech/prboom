@@ -27,8 +27,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __C_RUNCMD_H__
-#define __C_RUNCMD_H__
+#ifndef C_RUNCMD_H
+#define C_RUNCMD_H
 
 typedef struct command_s command_t;
 typedef struct variable_s variable_t;
@@ -309,4 +309,4 @@ extern char *colournames[];
 extern char *textcolours[];
 extern char *skills[];
 
-#endif
+#endif // C_RUNCMD_H

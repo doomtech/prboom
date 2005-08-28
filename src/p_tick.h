@@ -28,8 +28,8 @@
  *  Core thinker processing prototypes.
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_TICK__
-#define __P_TICK__
+#ifndef P_TICK_H
+#define P_TICK_H
 
 #include "d_think.h"
 
@@ -70,4 +70,4 @@ extern thinker_t thinkerclasscap[];
 /* cph 2002/01/13 - iterator for thinker lists */
 thinker_t* P_NextThinker(thinker_t*,th_class);
 
-#endif
+#endif // P_TICK_H

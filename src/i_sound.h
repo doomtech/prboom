@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __I_SOUND__
-#define __I_SOUND__
+#ifndef I_SOUND_H
+#define I_SOUND_H
 
 #include "sounds.h"
 #include "doomtype.h"
@@ -113,4 +113,4 @@ extern const char* snd_device;
 extern const char* musserver_filename; 
 extern int snd_samplerate;
 
-#endif
+#endif // I_SOUND_H

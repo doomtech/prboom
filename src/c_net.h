@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __C_NET_H__
-#define __C_NET_H__
+#ifndef C_NET_H
+#define C_NET_H
 
 #include "c_runcmd.h"
 
@@ -123,4 +123,4 @@ extern int cmdsrc;           // the player which started the current command
 
 //#define CONSHUGE
 
-#endif
+#endif // C_NET_H

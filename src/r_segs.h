@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __R_SEGS__
-#define __R_SEGS__
+#ifndef R_SEGS_H
+#define R_SEGS_H
 
 #ifdef __GNUG__
 #pragma interface
@@ -41,4 +41,4 @@ void R_StoreWallRange(int start, int stop);
 
 fixed_t R_PointToDist2(fixed_t x1, fixed_t y1, fixed_t x2, fixed_t y2);
 
-#endif
+#endif // R_SEGS_H

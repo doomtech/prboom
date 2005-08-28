@@ -27,8 +27,8 @@
  * DESCRIPTION: Main game control interface.
  *-----------------------------------------------------------------------------*/
 
-#ifndef __G_GAME__
-#define __G_GAME__
+#ifndef G_GAME_H
+#define G_GAME_H
 
 #include "doomdef.h"
 #include "d_event.h"

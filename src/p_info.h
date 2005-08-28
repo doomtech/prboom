@@ -1,7 +1,6 @@
 /* Emacs style mode select   -*- C++ -*- 
  *-----------------------------------------------------------------------------
  *
- *
  *  PrBoom a Doom port merged with LxDoom and LSDLDoom
  *  based on BOOM, a modified and improved DOOM engine
  *  Copyright (C) 1999 by
@@ -29,8 +28,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __P_INFO_H__
-#define __P_INFO_H__
+#ifndef P_INFO_H
+#define P_INFO_H
 
 #include "c_io.h"
 
@@ -64,4 +63,4 @@ typedef struct
 } levelmenuitem_t;
 
 
-#endif
+#endif // P_INFO_H

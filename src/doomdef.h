@@ -30,8 +30,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __DOOMDEF__
-#define __DOOMDEF__
+#ifndef DOOMDEF_H
+#define DOOMDEF_H
 
 /* use config.h if autoconf made one -- josh */
 #ifdef HAVE_CONFIG_H
@@ -387,4 +387,4 @@ typedef enum {
                      (isnumchar((s)[4])) &&      \
                      ((s)[5] == '\0'))
   
-#endif          // __DOOMDEF__
+#endif // DOOMDEF_H

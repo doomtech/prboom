@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __R_PLANE__
-#define __R_PLANE__
+#ifndef R_PLANE_H
+#define R_PLANE_H
 
 #include "r_data.h"
 
@@ -62,4 +62,4 @@ visplane_t *R_FindPlane(
 visplane_t *R_CheckPlane(visplane_t *pl, int start, int stop);
 visplane_t *R_DupPlane(const visplane_t *pl, int start, int stop);
 
-#endif
+#endif // R_PLANE_H

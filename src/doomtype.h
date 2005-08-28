@@ -30,8 +30,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __DOOMTYPE__
-#define __DOOMTYPE__
+#ifndef DOOMTYPE_H
+#define DOOMTYPE_H
 
 #ifndef __BYTEBOOL__
 #define __BYTEBOOL__
@@ -102,4 +102,4 @@ typedef enum {
   best_compatibility = prboom_4_compatibility,
 } complevel_t;
 
-#endif
+#endif // DOOMTYPE_H

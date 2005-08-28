@@ -31,8 +31,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __I_MAIN__
-#define __I_MAIN__
+#ifndef I_MAIN_H
+#define I_MAIN_H
 
 void I_Init(void);
 void I_SafeExit(int rc);
@@ -44,4 +44,4 @@ extern int (*I_GetTime)(void);
 extern uid_t stored_euid; /* UID that the SVGALib I_InitGraphics switches to before vga_init() */
 #endif
 
-#endif
+#endif // I_MAIN_H

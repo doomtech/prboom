@@ -28,6 +28,10 @@
  *  Low level network interface. 
  *-----------------------------------------------------------------------------*/
 
+
+#ifndef I_NETWORK_H
+#define I_NETWORK_H
+
 #ifdef USE_SDL_NET
  #include "SDL.h"
  #include "SDL_net.h"
@@ -67,3 +71,5 @@ extern int v4socket, v6socket;
 #endif
 
 extern size_t sentbytes, recvdbytes;
+
+#endif // I_NETWORK_H

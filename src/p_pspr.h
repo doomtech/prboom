@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_PSPR__
-#define __P_PSPR__
+#ifndef P_PSPR_H
+#define P_PSPR_H
 
 /* Basic data types.
  * Needs fixed point, and BAM angles. */
@@ -91,4 +91,4 @@ void P_SetupPsprites(struct player_s *curplayer);
 void P_MovePsprites(struct player_s *curplayer);
 void P_DropWeapon(struct player_s *player);
 
-#endif
+#endif // P_PSPR_H

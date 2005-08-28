@@ -31,8 +31,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __P_ENEMY__
-#define __P_ENEMY__
+#ifndef P_ENEMY_H
+#define P_ENEMY_H
 
 #include "p_mobj.h"
 
@@ -43,4 +43,4 @@ extern struct brain_s {         /* killough 3/26/98: global state of boss brain 
   int easy, targeton;
 } brain;
 
-#endif // __P_ENEMY__
+#endif // P_ENEMY_H

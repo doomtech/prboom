@@ -31,8 +31,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __D_ENGLSH__
-#define __D_ENGLSH__
+#ifndef D_ENGLSH_H
+#define D_ENGLSH_H
 
 /* d_main.c */
 #define D_DEVSTR    "Development mode ON.\n"
@@ -702,4 +702,4 @@
 #define CC_HERO "OUR HERO"
 
 
-#endif
+#endif // D_ENGLSH_H

@@ -42,8 +42,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __TABLES__
-#define __TABLES__
+#ifndef TABLES_H
+#define TABLES_H
 
 #include "m_fixed.h"
 
@@ -85,4 +85,4 @@ extern angle_t tantoangle[SLOPERANGE+1];
 // Utility function, called by R_PointToAngle.
 int SlopeDiv(unsigned num, unsigned den);
 
-#endif
+#endif // TABLES_H

@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __R_MAIN__
-#define __R_MAIN__
+#ifndef R_MAIN_H
+#define R_MAIN_H
 
 #include "d_player.h"
 #include "r_data.h"
@@ -129,4 +129,4 @@ void R_SetViewSize(int blocks);              // Called by M_Responder.
 void R_ExecuteSetViewSize(void);             // cph - called by D_Display to complete a view resize
 angle_t R_WadToAngle(int wadangle);
 
-#endif
+#endif // R_MAIN_H

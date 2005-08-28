@@ -34,8 +34,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __DSTRINGS__
-#define __DSTRINGS__
+#ifndef DSTRINGS_H
+#define DSTRINGS_H
 
 /* All important printed strings.
  * Language selection (message strings).

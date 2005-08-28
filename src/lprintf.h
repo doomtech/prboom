@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __LPRINTF__
-#define __LPRINTF__
+#ifndef LPRINTF_H
+#define LPRINTF_H
 
 typedef enum                /* Logical output levels */
 {
@@ -63,4 +63,4 @@ int Init_ConsoleWin(void);
 void Done_ConsoleWin(void);
 #endif
 
-#endif
+#endif // LPRINTF_H

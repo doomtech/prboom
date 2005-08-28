@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __HU_OVER_H__
-#define __HU_OVER_H__
+#ifndef HU_OVER_H
+#define HU_OVER_H
 
 //---------------------------------------------------------------------------
 //
@@ -80,4 +80,4 @@ void HU_OverlayDraw(void);
 void HU_OverlayStyle(void);
 void HU_ToggleHUD(void);
 
-#endif
+#endif // HU_OVER_H

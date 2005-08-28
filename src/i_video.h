@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __I_VIDEO__
-#define __I_VIDEO__
+#ifndef I_VIDEO_H
+#define I_VIDEO_H
 
 #include "doomtype.h"
 
@@ -74,4 +74,4 @@ void I_StartFrame (void);
 extern int use_doublebuffer;  /* proff 2001-7-4 - controls wether to use doublebuffering*/
 extern int use_fullscreen;  /* proff 21/05/2000 */
 
-#endif
+#endif // I_VIDEO_H

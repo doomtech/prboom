@@ -29,11 +29,11 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __FUNC_H__
-#define __FUNC_H__
+#ifndef T_FUNC_H
+#define T_FUNC_H
 
 #include "t_parse.h"
 
 void init_functions();
 
-#endif
+#endif // T_FUNC_H

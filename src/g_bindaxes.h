@@ -31,8 +31,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __G_BINDAXES_H__
-#define __G_BINDAXES_H__
+#ifndef G_BINDAXES_H
+#define G_BINDAXES_H
 
 void G_InitAxisBindings();
 boolean G_AxisResponder(event_t *ev);

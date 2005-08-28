@@ -29,8 +29,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __R_DEFS__
-#define __R_DEFS__
+#ifndef R_DEFS_H
+#define R_DEFS_H
 
 // Screenwidth.
 #include "doomdef.h"
@@ -454,4 +454,4 @@ typedef struct visplane
   unsigned short pad4;
 } visplane_t;
 
-#endif
+#endif // R_DEFS_H

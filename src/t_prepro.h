@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __PREPRO_H__
-#define __PREPRO_H__
+#ifndef T_PREPRO_H
+#define T_PREPRO_H
 
 typedef struct section_s section_t;
 typedef struct label_s label_t;
@@ -74,4 +74,4 @@ enum    // section types
 
 label_t *labelforname(char *labelname);
 
-#endif
+#endif // T_PREPRO_H

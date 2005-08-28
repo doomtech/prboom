@@ -28,8 +28,8 @@
  *
  *-----------------------------------------------------------------------------*/
 
-#ifndef __HU_STUFF_H__
-#define __HU_STUFF_H__
+#ifndef HU_STUFF_H
+#define HU_STUFF_H
 
 #include "d_event.h"
 #include "v_video.h"
@@ -79,4 +79,4 @@ void HU_PlayerMsg(char *s);
 void HU_CentreMsg(char *s);
 void HU_Erase(void);
 
-#endif
+#endif // HU_STUFF_H

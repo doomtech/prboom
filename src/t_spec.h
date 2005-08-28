@@ -29,8 +29,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __SPEC_H__
-#define __SPEC_H__
+#ifndef SPEC_H
+#define SPEC_H
 
 void spec_brace();
 
@@ -45,4 +45,4 @@ boolean spec_variable();
 
 void spec_script();     // in t_script.c btw
 
-#endif
+#endif // SPEC_H

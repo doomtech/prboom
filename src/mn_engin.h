@@ -27,8 +27,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef __MN_MENU__
-#define __MN_MENU__
+#ifndef MN_MENU_H
+#define MN_MENU_H
 
 #include "c_runcmd.h"
 #include "d_event.h"
@@ -183,5 +183,4 @@ extern char menu_error_message[128];
 extern int hide_menu;
 extern int menutime;
 
-#endif
-                            
+#endif // MN_MENU_H 
