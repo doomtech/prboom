@@ -35,6 +35,18 @@
 #include "config.h"
 #include "doomtype.h"
 
+// PJS
+//
+// We need doomdef.h to import the definition of CONSTFUNC, used in
+// definitions like:
+//
+// 	inline static CONSTFUNC fixed_t FixedMul(fixed_t a, fixed_t b)
+//
+// BTW, CONSTFUNC turns into __attribute__((const)) (a GNU extension) on GNU
+// based systems, but nothingness on non-GNU based systems.
+//
+#include "doomdef.h"
+
 /*
  * Fixed point, 32bit as 16.16.
  */

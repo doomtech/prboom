@@ -369,8 +369,13 @@ struct mobj_s
 // Whether an object is "sentient" or not. Used for environmental influences.
 #define sentient(mobj) ((mobj)->health > 0 && (mobj)->info->seestate)
 
-extern mapthing_t itemrespawnque[];
-extern int itemrespawntime[];
+// PJS
+//
+// These are declared static in p_mobj.c.  However, I don't see these variables
+// used anywhere, so why are we externing them?
+//
+// extern mapthing_t itemrespawnque[];
+// extern int itemrespawntime[];
 extern int iquehead;
 extern int iquetail;
 extern int gravity;

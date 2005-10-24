@@ -93,7 +93,15 @@ extern boolean gl_paletted_texture;
 extern boolean gl_shared_texture_palette;
 extern boolean use_mipmapping;
 extern int transparent_pal_index;
-extern unsigned char gld_palmap[256];
+
+// PJS
+//
+//  error: static declaration of ‘gld_palmap’ follows non-static declaration
+//
+// I don't see this used anywhere except for gl_texture.c.
+//
+// extern unsigned char gld_palmap[256];
+
 extern GLTexture *last_gltexture;
 extern int last_cm;
   

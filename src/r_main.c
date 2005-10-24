@@ -118,7 +118,12 @@ void (*colfunc)(); // Removed void parameter - POPE
 // killough 5/2/98: reformatted
 //
 
-const int R_PointOnSide(fixed_t x, fixed_t y, const node_t *node)
+// PJS
+//
+// error: conflicting types for ‘R_PointOnSide’
+//
+// const int R_PointOnSide(fixed_t x, fixed_t y, const node_t *node)
+CONSTFUNC int R_PointOnSide(fixed_t x, fixed_t y, const node_t *node)
 {
   if (!node->dx)
     return x <= node->x ? node->dy > 0 : node->dy < 0;
@@ -135,9 +140,12 @@ const int R_PointOnSide(fixed_t x, fixed_t y, const node_t *node)
   return FixedMul(y, node->dx>>FRACBITS) >= FixedMul(node->dy>>FRACBITS, x);
 }
 
-// killough 5/2/98: reformatted
-
-const int R_PointOnSegSide(fixed_t x, fixed_t y, const seg_t *line)
+// PJS
+//
+// error: conflicting types for ‘R_PointOnSegSide’
+//
+// const int R_PointOnSegSide(fixed_t x, fixed_t y, const seg_t *line)
+CONSTFUNC int R_PointOnSegSide(fixed_t x, fixed_t y, const seg_t *line)
 {
   fixed_t lx = line->v1->x;
   fixed_t ly = line->v1->y;

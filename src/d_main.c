@@ -137,7 +137,15 @@ boolean advancedemo;
 
 extern boolean timingdemo, singledemo, demoplayback, fastdemo; // killough
 
-static int      basetic;
+// PJS
+//
+// d_main.c:140: error: static declaration of ‘basetic’ follows non-static declaration
+// doomstat.h:227: error: previous declaration of ‘basetic’ was here
+//
+// I don't think this should be static.  In fact, I don't think *anything* being externed
+// in doomstat.h should be static.
+// static int      basetic;
+int      basetic;
 
 char    wadfile[PATH_MAX+1];       // primary wad file
 char    mapdir[PATH_MAX+1];        // directory of development maps

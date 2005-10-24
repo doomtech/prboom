@@ -41,11 +41,24 @@ extern side_t   *sidedef;
 extern line_t   *linedef;
 extern sector_t *frontsector;
 extern sector_t *backsector;
-extern int      rw_x;
-extern int      rw_stopx;
-extern boolean  segtextured;
-extern boolean  markfloor;      /* false if the back side is the same plane */
-extern boolean  markceiling;
+
+
+// PJS
+//
+// error: static declaration of ‘segtextured’ follows non-static declaration
+// error: static declaration of ‘markfloor’ follows non-static declaration
+// error: static declaration of ‘markfloor’ follows non-static declaration
+// error: static declaration of ‘rw_x’ follows non-static declaration
+// error: static declaration of ‘rw_stopx’ follows non-static declaration
+//
+// I don't see where these variables are used except in r_segs.c, where they're (seemingly correctly)
+// declared as static.  No reason to declare them extern here.
+// extern int      rw_x;
+// extern int      rw_stopx;
+// 
+// extern boolean  segtextured;
+// extern boolean  markfloor;      /* false if the back side is the same plane */
+// extern boolean  markceiling;
 
 /* old code -- killough:
  * extern drawseg_t drawsegs[MAXDRAWSEGS];
