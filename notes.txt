@@ -1,0 +1,3 @@
+The p_* OpenGl functions are in gl_dyn.* and gl_funcs.h.  They're for dynamic
+DLL loading, so the executable also works without OpenGL and the renderer can
+switch in game.
