@@ -37,6 +37,16 @@
 #pragma interface
 #endif
 
+/* CPhipps - now the endianness handling, converting input or output to/from 
+ * the machine's endianness to that wanted for this type of I/O
+ *
+ * To find our own endianness, use config.h
+ */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /* Endianess handling. */
 
 /* cph - First the macros to do the actual byte swapping */
@@ -58,6 +68,13 @@
 #endif
 #endif /* HAVE_ASM_BYTEORDER_H */
 
+#ifdef HAVE_LIBKERN_OSBYTEORDER_H
+#include <libkern/OSByteOrder.h>
+
+#define doom_swap_s (short)OSSwapInt16
+#define doom_swap_l (long)OSSwapInt32
+#endif
+
 #ifndef doom_swap_l
 #define doom_swap_l(x) \
         ((long int)((((unsigned long int)(x) & 0x000000ffU) << 24) | \
@@ -70,16 +87,6 @@
 #define doom_swap_s(x) \
         ((short int)((((unsigned short int)(x) & 0x00ff) << 8) | \
                               (((unsigned short int)(x) & 0xff00) >> 8))) 
-#endif
-
-/* CPhipps - now the endianness handling, converting input or output to/from 
- * the machine's endianness to that wanted for this type of I/O
- *
- * To find our own endianness, use config.h
- */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
 #endif
 
 /* Macros are named doom_XtoYT, where 
