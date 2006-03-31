@@ -278,7 +278,7 @@ void I_SetSfxVolume(int volume)
 int I_GetSfxLumpNum(sfxinfo_t* sfx)
 {
   char namebuf[9];
-  sprintf(namebuf, "ds%s", sfx->name);
+  psnprintf(namebuf, 9, "ds%s", sfx->name);
   return W_GetNumForName(namebuf);
 }
 
