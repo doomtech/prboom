@@ -197,6 +197,8 @@ char *I_DoomExeDir(void)
     }
   return base;
 }
+#elif defined(MACOSX)
+/* Implemented elsewhere */
 #else
 // cph - V.Aguilar (5/30/99) suggested return ~/.lxdoom/, creating
 //  if non-existant
@@ -247,6 +249,9 @@ static boolean HasTrailingSlash(const char* dn)
  * ~
  */
 
+#ifdef MACOSX
+/* Implemented elsewhere */
+#else
 char *I_FindFile(const char* wfname, const char* ext)
 {
   int		i;
@@ -312,5 +317,6 @@ char *I_FindFile(const char* wfname, const char* ext)
   }
   return NULL;
 }
+#endif /* MACOSX */
 
 #endif // PRBOOM_SERVER
