@@ -46,9 +46,9 @@
 // killough 1/6/98: replaced globals with statics where appropriate
 
 // True if any of the segs textures might be visible.
-static boolean  segtextured;
-static boolean  markfloor;      // False if the back side is the same plane.
-static boolean  markceiling;
+boolean  segtextured;
+boolean  markfloor;      // False if the back side is the same plane.
+boolean  markceiling;
 static boolean  maskedtexture;
 static int      toptexture;
 static int      bottomtexture;
@@ -63,8 +63,8 @@ fixed_t         rw_distance;
 //
 // regular wall
 //
-static int      rw_x;
-static int      rw_stopx;
+int      rw_x;
+int      rw_stopx;
 static angle_t  rw_centerangle;
 static fixed_t  rw_offset;
 static fixed_t  rw_scale;

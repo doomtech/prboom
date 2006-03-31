@@ -137,7 +137,7 @@ boolean advancedemo;
 
 extern boolean timingdemo, singledemo, demoplayback, fastdemo; // killough
 
-static int      basetic;
+int      basetic;
 
 char    wadfile[PATH_MAX+1];       // primary wad file
 char    mapdir[PATH_MAX+1];        // directory of development maps

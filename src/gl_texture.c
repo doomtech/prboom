@@ -48,7 +48,7 @@ GLTexture *last_gltexture=NULL;
 int last_cm=-1;
 
 int transparent_pal_index;
-static unsigned char gld_palmap[256];
+unsigned char gld_palmap[256];
 
 void gld_InitPalettedTextures(void)
 {
