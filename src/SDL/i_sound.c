@@ -511,7 +511,6 @@ I_InitSound(boolean first)
 // MUSIC API.
 //
 
-#include "SDL_mixer.h"
 #include "mmus2mid.h"
 
 static Mix_Music *music = NULL;
@@ -642,8 +641,8 @@ int I_RegisterMusic( const char* filename, musicinfo_t *song )
 #ifdef HAVE_MIXER
   if (!filename) return 1;
   if (!song) return 1;
-  music[0] = Mix_LoadMUS(filename);
-  if (music[0] == NULL)
+  music = Mix_LoadMUS(filename);
+  if (music == NULL)
     {
       lprintf(LO_WARN,"Couldn't load music from %s: %s\nAttempting to load default MIDI music.\n", filename, Mix_GetError());
       return 1;
@@ -651,7 +650,6 @@ int I_RegisterMusic( const char* filename, musicinfo_t *song )
   else
     {
       song->data = 0;
-      song->handle = 0;
       song->lumpnum = -1; //this doesn't seem to cause problems
       return 0;
     }
