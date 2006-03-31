@@ -35,6 +35,10 @@
  *-----------------------------------------------------------------------------
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdarg.h>
 
 #include "psnprntf.h"
@@ -1117,7 +1121,9 @@ menu_t menu_video =
     {it_gap},
     {it_toggle,       "video mode",                   "r_videomode"},
     {it_toggle,       "render mode",                  "r_rendermode"},
+#ifndef DISABLE_DOUBLEBUFFER
     {it_toggle,       "doublebuffer",                 "r_doublebuffer"},
+#endif
     {it_toggle,       "fullscreen",                   "r_fullscreen"},
     {it_runcmd,       "apply changes",                "r_setmode"},
 

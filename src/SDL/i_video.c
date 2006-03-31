@@ -75,7 +75,11 @@ static char *gl_library_str;
 extern void M_QuitDOOM(int choice);
 
 static int r_rendermode = 0;
+#ifdef DISABLE_DOUBLEBUFFER
+int use_doublebuffer = 0;
+#else
 int use_doublebuffer = 1;
+#endif
 int use_fullscreen = 1;
 static SDL_Surface *screen;
 
@@ -848,7 +852,9 @@ void I_UpdateVideoMode(void)
   V_SetPalette(0);
 }
 
+#ifndef DISABLE_DOUBLEBUFFER
 CONSOLE_INT(r_doublebuffer, use_doublebuffer, NULL, 0, 1, yesno, cf_buffered) {}
+#endif
 CONSOLE_INT(r_fullscreen, use_fullscreen, NULL, 0, 1, yesno, cf_buffered) {}
 
 static const char *str_rendermode[] = {
@@ -938,7 +944,9 @@ void I_Video_AddCommands()
 #else
 	gl_library_str = Z_Strdup("libGL.so.1", PU_STATIC, 0);
 #endif
+#ifndef DISABLE_DOUBLEBUFFER
   C_AddCommand(r_doublebuffer);
+#endif
   C_AddCommand(r_fullscreen);
   r_rendermode = V_GetMode();
   C_AddCommand(r_rendermode);
