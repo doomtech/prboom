@@ -90,7 +90,7 @@ int  viewwindowy;
 //
 // CPhipps - also to use it in the i386 asm I need it global
 
-byte *ylookup[MAXHEIGHT];
+//byte *ylookup[MAXHEIGHT];
 //int  columnofs[MAXWIDTH];
 byte *topleft;
 
@@ -116,6 +116,884 @@ fixed_t dc_iscale;
 fixed_t dc_texturemid;
 int     dc_texheight;    // killough
 byte    *dc_source;      // first pixel in a column (possibly virtual)
+
+// SoM: OPTIMIZE for ANYRES
+typedef enum
+{
+   COL_NONE,
+   COL_OPAQUE,
+   COL_TRANS,
+   COL_FLEXTRANS,
+   COL_FUZZ,
+   COL_FLEXADD
+} columntype_e;
+
+static int    temp_x = 0;
+static int    tempyl[4], tempyh[4];
+static byte   tempbuf[MAX_SCREENHEIGHT * 4];
+static int    startx = 0;
+static int    temptype = COL_NONE;
+static int    commontop, commonbot;
+static byte   *temptranmap = NULL;
+static fixed_t temptranslevel;
+// haleyjd 09/12/04: optimization -- precalculate flex tran lookups
+static unsigned int *temp_fg2rgb;
+static unsigned int *temp_bg2rgb;
+// SoM 7-28-04: Fix the fuzz problem.
+static byte   *tempfuzzmap;
+
+//
+// Spectre/Invisibility.
+//
+
+#define FUZZTABLE 50
+// proff 08/17/98: Changed for high-res
+//#define FUZZOFF (SCREENWIDTH)
+#define FUZZOFF 1
+
+static const int fuzzoffset_org[FUZZTABLE] = {
+  FUZZOFF,-FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,
+  FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,
+  FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,
+  FUZZOFF,-FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,
+  FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,-FUZZOFF,FUZZOFF,
+  FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,
+  FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF
+};
+
+static int fuzzoffset[FUZZTABLE];
+
+static int fuzzpos = 0;
+
+//
+// Error functions that will abort if R_FlushColumns tries to flush 
+// columns without a column type.
+//
+
+static void R_FlushWholeError(void)
+{
+   I_Error("R_FlushWholeColumns called without being initialized.\n");
+}
+
+static void R_FlushHTError(void)
+{
+   I_Error("R_FlushHTColumns called without being initialized.\n");
+}
+
+static void R_QuadFlushError(void)
+{
+   I_Error("R_FlushQuadColumn called without being initialized.\n");
+}
+
+//
+// R_FlushWholeOpaque
+//
+// Flushes the entire columns in the buffer, one at a time.
+// This is used when a quad flush isn't possible.
+// Opaque version -- no remapping whatsoever.
+//
+static void R_FlushWholeOpaque(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int  count, yl;
+
+   while(--temp_x >= 0)
+   {
+      yl     = tempyl[temp_x];
+      source = tempbuf + temp_x + (yl << 2);
+      dest   = topleft + yl*SCREENWIDTH + startx + temp_x;
+      count  = tempyh[temp_x] - yl + 1;
+      
+      while(--count >= 0)
+      {
+         *dest = *source;
+         source += 4;
+         dest += SCREENWIDTH;
+      }
+   }
+}
+
+//
+// R_FlushHTOpaque
+//
+// Flushes the head and tail of columns in the buffer in
+// preparation for a quad flush.
+// Opaque version -- no remapping whatsoever.
+//
+static void R_FlushHTOpaque(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int count, colnum = 0;
+   int yl, yh;
+
+   while(colnum < 4)
+   {
+      yl = tempyl[colnum];
+      yh = tempyh[colnum];
+      
+      // flush column head
+      if(yl < commontop)
+      {
+         source = tempbuf + colnum + (yl << 2);
+         dest   = topleft + yl*SCREENWIDTH + startx + colnum;
+         count  = commontop - yl;
+         
+         while(--count >= 0)
+         {
+            *dest = *source;
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+      
+      // flush column tail
+      if(yh > commonbot)
+      {
+         source = tempbuf + colnum + ((commonbot + 1) << 2);
+         dest   = topleft + (commonbot + 1)*SCREENWIDTH + startx + colnum;
+         count  = yh - commonbot;
+         
+         while(--count >= 0)
+         {
+            *dest = *source;
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }         
+      ++colnum;
+   }
+}
+
+static void R_FlushWholeTL(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int  count, yl;
+
+   while(--temp_x >= 0)
+   {
+      yl     = tempyl[temp_x];
+      source = tempbuf + temp_x + (yl << 2);
+      dest   = topleft + yl*SCREENWIDTH + startx + temp_x;
+      count  = tempyh[temp_x] - yl + 1;
+
+      while(--count >= 0)
+      {
+         // haleyjd 09/11/04: use temptranmap here
+         *dest = temptranmap[(*dest<<8) + *source];
+         source += 4;
+         dest += SCREENWIDTH;
+      }
+   }
+}
+
+static void R_FlushHTTL(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int count;
+   int colnum = 0, yl, yh;
+
+   while(colnum < 4)
+   {
+      yl = tempyl[colnum];
+      yh = tempyh[colnum];
+
+      // flush column head
+      if(yl < commontop)
+      {
+         source = tempbuf + colnum + (yl << 2);
+         dest   = topleft + yl*SCREENWIDTH + startx + colnum;
+         count  = commontop - yl;
+
+         while(--count >= 0)
+         {
+            // haleyjd 09/11/04: use temptranmap here
+            *dest = temptranmap[(*dest<<8) + *source];
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+
+      // flush column tail
+      if(yh > commonbot)
+      {
+         source = tempbuf + colnum + ((commonbot + 1) << 2);
+         dest   = topleft + (commonbot + 1)*SCREENWIDTH + startx + colnum;
+         count  = yh - commonbot;
+
+         while(--count >= 0)
+         {
+            // haleyjd 09/11/04: use temptranmap here
+            *dest = temptranmap[(*dest<<8) + *source];
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+      
+      ++colnum;
+   }
+}
+
+static void R_FlushWholeFuzz(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int  count, yl;
+
+   while(--temp_x >= 0)
+   {
+      yl     = tempyl[temp_x];
+      source = tempbuf + temp_x + (yl << 2);
+      dest   = topleft + yl*SCREENWIDTH + startx + temp_x;
+      count  = tempyh[temp_x] - yl + 1;
+
+      while(--count >= 0)
+      {
+         // SoM 7-28-04: Fix the fuzz problem.
+         *dest = tempfuzzmap[6*256+dest[fuzzoffset[fuzzpos]]];
+         
+         // Clamp table lookup index.
+         if(++fuzzpos == FUZZTABLE) 
+            fuzzpos = 0;
+         
+         source += 4;
+         dest += SCREENWIDTH;
+      }
+   }
+}
+
+static void R_FlushHTFuzz(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int count;
+   int colnum = 0, yl, yh;
+
+   while(colnum < 4)
+   {
+      yl = tempyl[colnum];
+      yh = tempyh[colnum];
+
+      // flush column head
+      if(yl < commontop)
+      {
+         source = tempbuf + colnum + (yl << 2);
+         dest   = topleft + yl*SCREENWIDTH + startx + colnum;
+         count  = commontop - yl;
+
+         while(--count >= 0)
+         {
+            // SoM 7-28-04: Fix the fuzz problem.
+            *dest = tempfuzzmap[6*256+dest[fuzzoffset[fuzzpos]]];
+            
+            // Clamp table lookup index.
+            if(++fuzzpos == FUZZTABLE) 
+               fuzzpos = 0;
+            
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+
+      // flush column tail
+      if(yh > commonbot)
+      {
+         source = tempbuf + colnum + ((commonbot + 1) << 2);
+         dest   = topleft + (commonbot + 1)*SCREENWIDTH + startx + colnum;
+         count  = yh - commonbot;
+
+         while(--count >= 0)
+         {
+            // SoM 7-28-04: Fix the fuzz problem.
+            *dest = tempfuzzmap[6*256+dest[fuzzoffset[fuzzpos]]];
+            
+            // Clamp table lookup index.
+            if(++fuzzpos == FUZZTABLE) 
+               fuzzpos = 0;
+            
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+      
+      ++colnum;
+   }
+}
+
+#if 0
+static void R_FlushWholeFlex(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int  count, yl;
+   unsigned int fg, bg;
+
+   while(--temp_x >= 0)
+   {
+      yl     = tempyl[temp_x];
+      source = tempbuf + temp_x + (yl << 2);
+      dest   = topleft + yl*SCREENWIDTH + startx + temp_x;
+      count  = tempyh[temp_x] - yl + 1;
+
+      while(--count >= 0)
+      {
+         // haleyjd 09/12/04: use precalculated lookups
+         fg = temp_fg2rgb[*source];
+         bg = temp_bg2rgb[*dest];
+         fg = (fg+bg) | 0xf07c3e1f;
+         *dest = RGB8k[0][0][(fg>>5) & (fg>>19)];
+         
+         source += 4;
+         dest += SCREENWIDTH;
+      }
+   }
+}
+
+static void R_FlushHTFlex(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int count;
+   int colnum = 0, yl, yh;
+   unsigned int fg, bg;
+
+   while(colnum < 4)
+   {
+      yl = tempyl[colnum];
+      yh = tempyh[colnum];
+
+      // flush column head
+      if(yl < commontop)
+      {
+         source = tempbuf + colnum + (yl << 2);
+         dest   = topleft + yl*SCREENWIDTH + startx + colnum;
+         count  = commontop - yl;
+
+         while(--count >= 0)
+         {
+            // haleyjd 09/12/04: use precalculated lookups
+            fg = temp_fg2rgb[*source];
+            bg = temp_bg2rgb[*dest];
+            fg = (fg+bg) | 0xf07c3e1f;
+            *dest = RGB8k[0][0][(fg>>5) & (fg>>19)];
+            
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+
+      // flush column tail
+      if(yh > commonbot)
+      {
+         source = tempbuf + colnum + ((commonbot + 1) << 2);
+         dest   = topleft + (commonbot + 1)*SCREENWIDTH + startx + colnum;
+         count  = yh - commonbot;
+
+         while(--count >= 0)
+         {
+            // haleyjd 09/12/04: use precalculated lookups
+            fg = temp_fg2rgb[*source];
+            bg = temp_bg2rgb[*dest];
+            fg = (fg+bg) | 0xf07c3e1f;
+            *dest = RGB8k[0][0][(fg>>5) & (fg>>19)];
+            
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+      
+      ++colnum;
+   }
+}
+
+static void R_FlushWholeFlexAdd(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int  count, yl;
+   unsigned int a, b;
+
+   while(--temp_x >= 0)
+   {
+      yl     = tempyl[temp_x];
+      source = tempbuf + temp_x + (yl << 2);
+      dest   = topleft + yh*SCREENWIDTH + startx + temp_x;
+      count  = tempyh[temp_x] - yl + 1;
+
+      while(--count >= 0)
+      {
+         // mask out LSBs in green and red to allow overflow
+         a = temp_fg2rgb[*source] & 0xFFBFDFF;
+         b = temp_bg2rgb[*dest] & 0xFFBFDFF;
+         
+         a  = a + b;                      // add with overflow
+         b  = a & 0x10040200;             // isolate LSBs
+         b  = (b - (b >> 5)) & 0xF83C1E0; // convert to clamped values
+         a |= 0xF07C3E1F;                 // apply normal tl mask
+         a |= b;                          // mask in clamped values
+         
+         *dest = RGB8k[0][0][(a >> 5) & (a >> 19)];
+         
+         source += 4;
+         dest += SCREENWIDTH;
+      }
+   }
+}
+
+static void R_FlushHTFlexAdd(void)
+{
+   register byte *source;
+   register byte *dest;
+   register int count;
+   int colnum = 0, yl, yh;
+   unsigned int a, b;
+
+   while(colnum < 4)
+   {
+      yl = tempyl[colnum];
+      yh = tempyh[colnum];
+
+      // flush column head
+      if(yl < commontop)
+      {
+         source = tempbuf + colnum + (yl << 2);
+         dest   = topleft + yl*SCREENWIDTH + startx + colnum;
+         count  = commontop - yl;
+
+         while(--count >= 0)
+         {
+            // mask out LSBs in green and red to allow overflow
+            a = temp_fg2rgb[*source] & 0xFFBFDFF;
+            b = temp_bg2rgb[*dest] & 0xFFBFDFF;
+            
+            a  = a + b;                      // add with overflow
+            b  = a & 0x10040200;             // isolate LSBs
+            b  = (b - (b >> 5)) & 0xF83C1E0; // convert to clamped values
+            a |= 0xF07C3E1F;                 // apply normal tl mask
+            a |= b;                          // mask in clamped values
+            
+            *dest = RGB8k[0][0][(a >> 5) & (a >> 19)];
+            
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+
+      // flush column tail
+      if(yh > commonbot)
+      {
+         source = tempbuf + colnum + ((commonbot + 1) << 2);
+         dest   = topleft + (commonbot + 1)*SCREENWIDTH + startx + colnum;
+         count  = yh - commonbot;
+
+         while(--count >= 0)
+         {
+            // mask out LSBs in green and red to allow overflow
+            a = temp_fg2rgb[*source] & 0xFFBFDFF;
+            b = temp_bg2rgb[*dest] & 0xFFBFDFF;
+            
+            a  = a + b;                      // add with overflow
+            b  = a & 0x10040200;             // isolate LSBs
+            b  = (b - (b >> 5)) & 0xF83C1E0; // convert to clamped values
+            a |= 0xF07C3E1F;                 // apply normal tl mask
+            a |= b;                          // mask in clamped values
+            
+            *dest = RGB8k[0][0][(a >> 5) & (a >> 19)];
+            
+            source += 4;
+            dest += SCREENWIDTH;
+         }
+      }
+      
+      ++colnum;
+   }
+}
+#endif
+
+static void (*R_FlushWholeColumns)(void) = R_FlushWholeError;
+static void (*R_FlushHTColumns)(void)    = R_FlushHTError;
+
+// Begin: Quad column flushing functions.
+static void R_FlushQuadOpaque(void)
+{
+   register int *source = (int *)(tempbuf + (commontop << 2));
+   register int *dest = (int *)(topleft + commontop*SCREENWIDTH + startx);
+   register int count;
+   register int deststep = SCREENWIDTH / 4;
+
+   count = commonbot - commontop + 1;
+
+   while(--count >= 0)
+   {
+      *dest = *source++;
+      dest += deststep;
+   }
+}
+
+static void R_FlushQuadTL(void)
+{
+   register byte *source = tempbuf + (commontop << 2);
+   register byte *dest = topleft + commontop*SCREENWIDTH + startx;
+   register int count;
+
+   count = commonbot - commontop + 1;
+
+   while(--count >= 0)
+   {
+      *dest   = temptranmap[(*dest<<8) + *source];
+      dest[1] = temptranmap[(dest[1]<<8) + source[1]];
+      dest[2] = temptranmap[(dest[2]<<8) + source[2]];
+      dest[3] = temptranmap[(dest[3]<<8) + source[3]];
+      source += 4;
+      dest += SCREENWIDTH;
+   }
+}
+
+static void R_FlushQuadFuzz(void)
+{
+   register byte *source = tempbuf + (commontop << 2);
+   register byte *dest = topleft + commontop*SCREENWIDTH + startx;
+   register int count;
+   int fuzz1, fuzz2, fuzz3, fuzz4;
+   fuzz1 = fuzzpos;
+   fuzz2 = (fuzz1 + MAX_SCREENHEIGHT) % FUZZTABLE;
+   fuzz3 = (fuzz2 + MAX_SCREENHEIGHT) % FUZZTABLE;
+   fuzz4 = (fuzz3 + MAX_SCREENHEIGHT) % FUZZTABLE;
+
+   count = commonbot - commontop + 1;
+
+   while(--count >= 0)
+   {
+      // SoM 7-28-04: Fix the fuzz problem.
+      *dest = tempfuzzmap[6*256+dest[fuzzoffset[fuzz1]]];
+      if(++fuzz1 == FUZZTABLE) fuzz1 = 0;
+      dest[1] = tempfuzzmap[6*256+dest[1 + (fuzzoffset[fuzz2])]];
+      if(++fuzz2 == FUZZTABLE) fuzz2 = 0;
+      dest[2] = tempfuzzmap[6*256+dest[2 + (fuzzoffset[fuzz3])]];
+      if(++fuzz3 == FUZZTABLE) fuzz3 = 0;
+      dest[3] = tempfuzzmap[6*256+dest[3 + (fuzzoffset[fuzz4])]];
+      if(++fuzz4 == FUZZTABLE) fuzz4 = 0;
+
+      source += 4;
+      dest += SCREENWIDTH;
+   }
+
+   fuzzpos = fuzz4;
+}
+
+#if 0
+static void R_FlushQuadFlex(void)
+{
+   register byte *source = tempbuf + (commontop << 2);
+   register byte *dest = topleft + commontop*SCREENWIDTH + startx;
+   register int count;
+   unsigned int fg, bg;
+
+   count = commonbot - commontop + 1;
+
+   while(--count >= 0)
+   {
+      // haleyjd 09/12/04: use precalculated lookups
+      fg = temp_fg2rgb[*source];
+      bg = temp_bg2rgb[*dest];
+      fg = (fg+bg) | 0xf07c3e1f;
+      *dest = RGB8k[0][0][(fg>>5) & (fg>>19)];
+
+      fg = temp_fg2rgb[source[1]];
+      bg = temp_bg2rgb[dest[1]];
+      fg = (fg+bg) | 0xf07c3e1f;
+      dest[1] = RGB8k[0][0][(fg>>5) & (fg>>19)];
+
+      fg = temp_fg2rgb[source[2]];
+      bg = temp_bg2rgb[dest[2]];
+      fg = (fg+bg) | 0xf07c3e1f;
+      dest[2] = RGB8k[0][0][(fg>>5) & (fg>>19)];
+
+      fg = temp_fg2rgb[source[3]];
+      bg = temp_bg2rgb[dest[3]];
+      fg = (fg+bg) | 0xf07c3e1f;
+      dest[3] = RGB8k[0][0][(fg>>5) & (fg>>19)];
+
+      source += 4;
+      dest += SCREENWIDTH;
+   }
+}
+
+static void R_FlushQuadFlexAdd(void)
+{
+   register byte *source = tempbuf + (commontop << 2);
+   register byte *dest = topleft + commontop*SCREENWIDTH + startx;
+   register int count;
+   unsigned int a, b;
+
+   count = commonbot - commontop + 1;
+
+   while(--count >= 0)
+   {
+      // haleyjd 02/08/05: this is NOT gonna be very fast.
+      a = temp_fg2rgb[*source] & 0xFFBFDFF;
+      b = temp_bg2rgb[*dest] & 0xFFBFDFF;
+      a  = a + b;                      
+      b  = a & 0x10040200;             
+      b  = (b - (b >> 5)) & 0xF83C1E0; 
+      a |= 0xF07C3E1F;                 
+      a |= b;                          
+      *dest = RGB8k[0][0][(a >> 5) & (a >> 19)];
+
+      a = temp_fg2rgb[source[1]] & 0xFFBFDFF;
+      b = temp_bg2rgb[dest[1]] & 0xFFBFDFF;
+      a  = a + b;                      
+      b  = a & 0x10040200;             
+      b  = (b - (b >> 5)) & 0xF83C1E0; 
+      a |= 0xF07C3E1F;                 
+      a |= b;                          
+      dest[1] = RGB8k[0][0][(a >> 5) & (a >> 19)];
+
+      a = temp_fg2rgb[source[2]] & 0xFFBFDFF;
+      b = temp_bg2rgb[dest[2]] & 0xFFBFDFF;
+      a  = a + b;                      
+      b  = a & 0x10040200;             
+      b  = (b - (b >> 5)) & 0xF83C1E0; 
+      a |= 0xF07C3E1F;                 
+      a |= b;                          
+      dest[2] = RGB8k[0][0][(a >> 5) & (a >> 19)];
+
+      a = temp_fg2rgb[source[3]] & 0xFFBFDFF;
+      b = temp_bg2rgb[dest[3]] & 0xFFBFDFF;
+      a  = a + b;                      
+      b  = a & 0x10040200;             
+      b  = (b - (b >> 5)) & 0xF83C1E0; 
+      a |= 0xF07C3E1F;                 
+      a |= b;                          
+      dest[3] = RGB8k[0][0][(a >> 5) & (a >> 19)];
+
+      source += 4;
+      dest += SCREENWIDTH;
+   }
+}
+#endif
+
+static void (*R_FlushQuadColumn)(void) = R_QuadFlushError;
+
+static void R_FlushColumns(void)
+{
+   if(temp_x != 4 || commontop >= commonbot)
+      R_FlushWholeColumns();
+   else
+   {
+      R_FlushHTColumns();
+      R_FlushQuadColumn();
+   }
+   temp_x = 0;
+}
+
+//
+// R_ResetColumnBuffer
+//
+// haleyjd 09/13/04: new function to call from main rendering loop
+// which gets rid of the unnecessary reset of various variables during
+// column drawing.
+//
+void R_ResetColumnBuffer(void)
+{
+   // haleyjd 10/06/05: this must not be done if temp_x == 0!
+   if(temp_x)
+      R_FlushColumns();
+   temptype = COL_NONE;
+   R_FlushWholeColumns = R_FlushWholeError;
+   R_FlushHTColumns    = R_FlushHTError;
+   R_FlushQuadColumn   = R_QuadFlushError;
+}
+
+// haleyjd 09/12/04: split up R_GetBuffer into various different
+// functions to minimize the number of branches and take advantage
+// of as much precalculated information as possible.
+
+static byte *R_GetBufferOpaque(void)
+{
+   // haleyjd: reordered predicates
+   if(temp_x == 4 ||
+      (temp_x && (temptype != COL_OPAQUE || temp_x + startx != dc_x)))
+      R_FlushColumns();
+
+   if(!temp_x)
+   {
+      ++temp_x;
+      startx = dc_x;
+      *tempyl = commontop = dc_yl;
+      *tempyh = commonbot = dc_yh;
+      temptype = COL_OPAQUE;
+      R_FlushWholeColumns = R_FlushWholeOpaque;
+      R_FlushHTColumns    = R_FlushHTOpaque;
+      R_FlushQuadColumn   = R_FlushQuadOpaque;
+      return tempbuf + (dc_yl << 2);
+   }
+
+   tempyl[temp_x] = dc_yl;
+   tempyh[temp_x] = dc_yh;
+   
+   if(dc_yl > commontop)
+      commontop = dc_yl;
+   if(dc_yh < commonbot)
+      commonbot = dc_yh;
+      
+   return tempbuf + (dc_yl << 2) + temp_x++;
+}
+
+static byte *R_GetBufferTrans(void)
+{
+   // haleyjd: reordered predicates
+   if(temp_x == 4 || tranmap != temptranmap ||
+      (temp_x && (temptype != COL_TRANS || temp_x + startx != dc_x)))
+      R_FlushColumns();
+
+   if(!temp_x)
+   {
+      ++temp_x;
+      startx = dc_x;
+      *tempyl = commontop = dc_yl;
+      *tempyh = commonbot = dc_yh;
+      temptype = COL_TRANS;
+      temptranmap = tranmap;
+      R_FlushWholeColumns = R_FlushWholeTL;
+      R_FlushHTColumns    = R_FlushHTTL;
+      R_FlushQuadColumn   = R_FlushQuadTL;
+      return tempbuf + (dc_yl << 2);
+   }
+
+   tempyl[temp_x] = dc_yl;
+   tempyh[temp_x] = dc_yh;
+   
+   if(dc_yl > commontop)
+      commontop = dc_yl;
+   if(dc_yh < commonbot)
+      commonbot = dc_yh;
+      
+   return tempbuf + (dc_yl << 2) + temp_x++;
+}
+
+#if 0
+static byte *R_GetBufferFlexTrans(void)
+{
+   // haleyjd: reordered predicates
+   if(temp_x == 4 || temptranslevel != dc_translevel ||
+      (temp_x && (temptype != COL_FLEXTRANS || temp_x + startx != dc_x)))
+      R_FlushColumns();
+
+   if(!temp_x)
+   {
+      ++temp_x;
+      startx = dc_x;
+      *tempyl = commontop = dc_yl;
+      *tempyh = commonbot = dc_yh;
+      temptype = COL_FLEXTRANS;
+      temptranslevel = dc_translevel;
+      
+      // haleyjd 09/12/04: optimization -- calculate flex tran lookups
+      // here instead of every time a column is flushed.
+      {
+         fixed_t fglevel, bglevel;
+         
+         fglevel = temptranslevel & ~0x3ff;
+         bglevel = FRACUNIT - fglevel;
+         temp_fg2rgb  = Col2RGB[fglevel >> 10];
+         temp_bg2rgb  = Col2RGB[bglevel >> 10];
+      }
+
+      R_FlushWholeColumns = R_FlushWholeFlex;
+      R_FlushHTColumns    = R_FlushHTFlex;
+      R_FlushQuadColumn   = R_FlushQuadFlex;
+      return tempbuf + (dc_yl << 2);
+   }
+
+   tempyl[temp_x] = dc_yl;
+   tempyh[temp_x] = dc_yh;
+   
+   if(dc_yl > commontop)
+      commontop = dc_yl;
+   if(dc_yh < commonbot)
+      commonbot = dc_yh;
+      
+   return tempbuf + (dc_yl << 2) + temp_x++;
+}
+
+static byte *R_GetBufferFlexAdd(void)
+{
+   // haleyjd: reordered predicates
+   if(temp_x == 4 || temptranslevel != dc_translevel ||
+      (temp_x && (temptype != COL_FLEXADD || temp_x + startx != dc_x)))
+      R_FlushColumns();
+
+   if(!temp_x)
+   {
+      ++temp_x;
+      startx = dc_x;
+      *tempyl = commontop = dc_yl;
+      *tempyh = commonbot = dc_yh;
+      temptype = COL_FLEXADD;
+      temptranslevel = dc_translevel;
+      
+      {
+         fixed_t fglevel, bglevel;
+         
+         fglevel = temptranslevel & ~0x3ff;
+         bglevel = FRACUNIT;
+         temp_fg2rgb  = Col2RGB[fglevel >> 10];
+         temp_bg2rgb  = Col2RGB[bglevel >> 10];
+      }
+
+      R_FlushWholeColumns = R_FlushWholeFlexAdd;
+      R_FlushHTColumns    = R_FlushHTFlexAdd;
+      R_FlushQuadColumn   = R_FlushQuadFlexAdd;
+      return tempbuf + (dc_yl << 2);
+   }
+
+   tempyl[temp_x] = dc_yl;
+   tempyh[temp_x] = dc_yh;
+   
+   if(dc_yl > commontop)
+      commontop = dc_yl;
+   if(dc_yh < commonbot)
+      commonbot = dc_yh;
+      
+   return tempbuf + (dc_yl << 2) + temp_x++;
+}
+#endif
+
+static byte *R_GetBufferFuzz(void)
+{
+   // haleyjd: reordered predicates
+   if(temp_x == 4 ||
+      (temp_x && (temptype != COL_FUZZ || temp_x + startx != dc_x)))
+      R_FlushColumns();
+
+   if(!temp_x)
+   {
+      ++temp_x;
+      startx = dc_x;
+      *tempyl = commontop = dc_yl;
+      *tempyh = commonbot = dc_yh;
+      temptype = COL_FUZZ;
+      tempfuzzmap = dc_colormap; // SoM 7-28-04: Fix the fuzz problem.
+      R_FlushWholeColumns = R_FlushWholeFuzz;
+      R_FlushHTColumns    = R_FlushHTFuzz;
+      R_FlushQuadColumn   = R_FlushQuadFuzz;
+      return tempbuf + (dc_yl << 2);
+   }
+
+   tempyl[temp_x] = dc_yl;
+   tempyh[temp_x] = dc_yh;
+   
+   if(dc_yl > commontop)
+      commontop = dc_yl;
+   if(dc_yh < commonbot)
+      commonbot = dc_yh;
+      
+   return tempbuf + (dc_yl << 2) + temp_x++;
+}
 
 //
 // A column is a vertical slice/span from a wall texture that,
@@ -157,7 +1035,9 @@ void R_DrawColumn (void)
 #endif
 
   // Framebuffer destination address.
-  dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+  // dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+   // SoM: MAGIC
+   dest = R_GetBufferOpaque();
 
   // Determine scaling, which is the only mapping to be done.
 #define  fracstep dc_iscale
@@ -173,7 +1053,7 @@ void R_DrawColumn (void)
         while(count--)
         {
                 *dest = dc_colormap[dc_source[(frac>>FRACBITS)&127]];
-                dest += SCREENWIDTH;
+                dest += 4;
                 frac += fracstep;
         }
     } else if (dc_texheight == 0) {
@@ -190,7 +1070,7 @@ void R_DrawColumn (void)
          while (count>0)   // texture height is a power of 2 -- killough
            {
              *dest = dc_colormap[dc_source[(frac>>FRACBITS) & heightmask]];
-             dest += SCREENWIDTH;
+             dest += 4;
              frac += fracstep;
             count--;
            }
@@ -214,7 +1094,7 @@ void R_DrawColumn (void)
              // heightmask is the Tutti-Frutti fix -- killough
 
              *dest = dc_colormap[dc_source[frac>>FRACBITS]];
-             dest += SCREENWIDTH;
+             dest += 4;
              if ((frac += fracstep) >= (int)heightmask)
                frac -= heightmask;
             count--;
@@ -256,7 +1136,9 @@ void R_DrawTLColumn (void)
 #endif
 
   // Framebuffer destination address.
-  dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+  //dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+  // SoM: MAGIC
+  dest = R_GetBufferTrans();
 
   // Determine scaling,
   //  which is the only mapping to be done.
@@ -292,7 +1174,7 @@ void R_DrawTLColumn (void)
             // heightmask is the Tutti-Frutti fix -- killough
 
             *dest = tranmap[(*dest<<8)+colormap[source[frac>>FRACBITS]]]; // phares
-            dest += SCREENWIDTH;
+            dest += 4;
             if ((frac += fracstep) >= (int)heightmask)
               frac -= heightmask;
           }
@@ -304,10 +1186,10 @@ void R_DrawTLColumn (void)
         while ((count-=2)>=0)   // texture height is a power of 2 -- killough
           {
             *dest = tranmap[(*dest<<8)+colormap[source[(frac>>FRACBITS) & heightmask]]]; // phares
-            dest += SCREENWIDTH;
+            dest += 4;
             frac += fracstep;
             *dest = tranmap[(*dest<<8)+colormap[source[(frac>>FRACBITS) & heightmask]]]; // phares
-            dest += SCREENWIDTH;
+            dest += 4;
             frac += fracstep;
           }
         if (count & 1)
@@ -316,29 +1198,6 @@ void R_DrawTLColumn (void)
   }
 }
 #undef fracstep
-
-//
-// Spectre/Invisibility.
-//
-
-#define FUZZTABLE 50
-// proff 08/17/98: Changed for high-res
-//#define FUZZOFF (SCREENWIDTH)
-#define FUZZOFF 1
-
-static const int fuzzoffset_org[FUZZTABLE] = {
-  FUZZOFF,-FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,
-  FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,
-  FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,
-  FUZZOFF,-FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,
-  FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,-FUZZOFF,FUZZOFF,
-  FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,
-  FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF,FUZZOFF,-FUZZOFF,FUZZOFF
-};
-
-static int fuzzoffset[FUZZTABLE];
-
-static int fuzzpos = 0;
 
 //
 // Framebuffer postprocessing.
@@ -381,7 +1240,9 @@ void R_DrawFuzzColumn(void)
   //  or blocky mode removed.
 
   // Does not work with blocky mode.
-  dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+  //dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+  // SoM: MAGIC
+  dest = R_GetBufferFuzz();
 
   // Looks familiar.
   fracstep = dc_iscale;
@@ -409,7 +1270,7 @@ void R_DrawFuzzColumn(void)
       if (++fuzzpos == FUZZTABLE)
         fuzzpos = 0;
 
-      dest += SCREENWIDTH;
+      dest += 4;
 
       frac += fracstep;
     } while (count--);
@@ -446,7 +1307,9 @@ void R_DrawTranslatedColumn (void)
 #endif
 
   // FIXME. As above.
-  dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+  // dest = topleft + dc_yl*SCREENWIDTH + dc_x;
+  // SoM: MAGIC
+  dest = R_GetBufferOpaque();
 
   // Looks familiar.
   fracstep = dc_iscale;
@@ -462,7 +1325,7 @@ void R_DrawTranslatedColumn (void)
       //  is mapped to gray, red, black/indigo.
 
       *dest = dc_colormap[dc_translation[dc_source[frac>>FRACBITS]]];
-      dest += SCREENWIDTH;
+      dest += 4;
 
       frac += fracstep;
     }
@@ -598,8 +1461,8 @@ void R_InitBuffer(int width, int height)
   // Preclaculate all row offsets.
   // CPhipps - merge viewwindowx into here
 
-  for (i=0 ; i<height ; i++)
-    ylookup[i] = screens[0] + (i+viewwindowy)*SCREENWIDTH + viewwindowx;
+  // for (i=0 ; i<height ; i++)
+  //   ylookup[i] = screens[0] + (i+viewwindowy)*SCREENWIDTH + viewwindowx;
 
   for (i=0; i<FUZZTABLE; i++)
     fuzzoffset[i] = fuzzoffset_org[i]*SCREENWIDTH;
