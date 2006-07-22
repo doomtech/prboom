@@ -469,22 +469,22 @@ static void R_FlushQuadFuzz(void)
    register int count;
    int fuzz1, fuzz2, fuzz3, fuzz4;
    fuzz1 = fuzzpos;
-   fuzz2 = (fuzz1 + MAX_SCREENHEIGHT) % FUZZTABLE;
-   fuzz3 = (fuzz2 + MAX_SCREENHEIGHT) % FUZZTABLE;
-   fuzz4 = (fuzz3 + MAX_SCREENHEIGHT) % FUZZTABLE;
+   fuzz2 = (fuzz1 + tempyl[1]) % FUZZTABLE;
+   fuzz3 = (fuzz2 + tempyl[2]) % FUZZTABLE;
+   fuzz4 = (fuzz3 + tempyl[3]) % FUZZTABLE;
 
    count = commonbot - commontop + 1;
 
    while(--count >= 0)
    {
       // SoM 7-28-04: Fix the fuzz problem.
-      *dest = tempfuzzmap[6*256+dest[fuzzoffset[fuzz1]]];
+      dest[0] = tempfuzzmap[6*256+dest[0 + fuzzoffset[fuzz1]]];
       if(++fuzz1 == FUZZTABLE) fuzz1 = 0;
-      dest[1] = tempfuzzmap[6*256+dest[1 + (fuzzoffset[fuzz2])]];
+      dest[1] = tempfuzzmap[6*256+dest[1 + fuzzoffset[fuzz2]]];
       if(++fuzz2 == FUZZTABLE) fuzz2 = 0;
-      dest[2] = tempfuzzmap[6*256+dest[2 + (fuzzoffset[fuzz3])]];
+      dest[2] = tempfuzzmap[6*256+dest[2 + fuzzoffset[fuzz3]]];
       if(++fuzz3 == FUZZTABLE) fuzz3 = 0;
-      dest[3] = tempfuzzmap[6*256+dest[3 + (fuzzoffset[fuzz4])]];
+      dest[3] = tempfuzzmap[6*256+dest[3 + fuzzoffset[fuzz4]]];
       if(++fuzz4 == FUZZTABLE) fuzz4 = 0;
 
       source += 4;
@@ -607,7 +607,7 @@ static byte *R_GetBufferFuzz(void)
       *tempyl = commontop = dc_yl;
       *tempyh = commonbot = dc_yh;
       temptype = COL_FUZZ;
-      tempfuzzmap = dc_colormap; // SoM 7-28-04: Fix the fuzz problem.
+      tempfuzzmap = fullcolormap; // SoM 7-28-04: Fix the fuzz problem.
       R_FlushWholeColumns = R_FlushWholeFuzz;
       R_FlushHTColumns    = R_FlushHTFuzz;
       R_FlushQuadColumn   = R_FlushQuadFuzz;
@@ -665,7 +665,6 @@ void R_DrawColumn (void)
 #endif
 
   // Framebuffer destination address.
-  // dest = topleft + dc_yl*SCREENWIDTH + dc_x;
    // SoM: MAGIC
    dest = R_GetBufferOpaque();
 
@@ -766,7 +765,6 @@ void R_DrawTLColumn (void)
 #endif
 
   // Framebuffer destination address.
-  //dest = topleft + dc_yl*SCREENWIDTH + dc_x;
   // SoM: MAGIC
   dest = R_GetBufferTrans();
 
@@ -866,44 +864,10 @@ void R_DrawFuzzColumn(void)
     I_Error("R_DrawFuzzColumn: %i to %i at %i", dc_yl, dc_yh, dc_x);
 #endif
 
-  // Keep till detailshift bug in blocky mode fixed,
-  //  or blocky mode removed.
-
-  // Does not work with blocky mode.
-  //dest = topleft + dc_yl*SCREENWIDTH + dc_x;
   // SoM: MAGIC
-  dest = R_GetBufferFuzz();
+  R_GetBufferFuzz();
+  return;
 
-  // Looks familiar.
-  fracstep = dc_iscale;
-  frac = dc_texturemid + (dc_yl-centery)*fracstep;
-
-  // Looks like an attempt at dithering,
-  // using the colormap #6 (of 0-31, a bit brighter than average).
-
-  do
-    {
-      // Lookup framebuffer, and retrieve
-      //  a pixel that is either one column
-      //  left or right of the current one.
-      // Add index from colormap to index.
-      // killough 3/20/98: use fullcolormap instead of colormaps
-
-      *dest = fullcolormap[6*256+dest[fuzzoffset[fuzzpos]]];
-
-// Some varying invisibility effects can be gotten by playing // phares
-// with this logic. For example, try                          // phares
-//                                                            // phares
-//    *dest = fullcolormap[0*256+dest[FUZZOFF]];              // phares
-
-      // Clamp table lookup index.
-      if (++fuzzpos == FUZZTABLE)
-        fuzzpos = 0;
-
-      dest += 4;
-
-      frac += fracstep;
-    } while (count--);
 }
 
 //
@@ -937,7 +901,6 @@ void R_DrawTranslatedColumn (void)
 #endif
 
   // FIXME. As above.
-  // dest = topleft + dc_yl*SCREENWIDTH + dc_x;
   // SoM: MAGIC
   dest = R_GetBufferOpaque();
 
