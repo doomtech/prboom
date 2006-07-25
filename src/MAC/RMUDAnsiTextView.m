@@ -1,5 +1,8 @@
 #import "RMUDAnsiTextView.h"
 
+#define DEFAULT_FOREGROUND 30
+#define DEFAULT_BACKGROUND 47
+
 id rgb(int r, int g, int b) {
     return [NSColor colorWithDeviceRed: r/255.0 green: g/255.0 blue: b/255.0 alpha: 1.0];
 }
@@ -42,8 +45,8 @@ id to_num(int n) {
       rgb(255, 255, 255), to_num(47),
       rgb(255, 255, 255), to_num(49),
       nil];
-  currentForegroundColorIndex = 30;
-  currentBackgroundColorIndex = 47;
+  currentForegroundColorIndex = DEFAULT_FOREGROUND;
+  currentBackgroundColorIndex = DEFAULT_BACKGROUND;
   
   ansiSequenceRegex =
     [AGRegex regexWithPattern:@"\\e\\[(\\d+;)?(\\d+;)?(\\d+;)?(\\d+;)?(\\d+)m"
@@ -144,13 +147,13 @@ id to_num(int n) {
     NSNumber *option = [options objectAtIndex:i];
     if ([[ansiColorTable allKeys] containsObject:option]) {
       int index = [option intValue];
-      if (index == 0) {
-        currentForegroundColorIndex = 30;
-        currentBackgroundColorIndex = 47;
-      }
-      if ((index >= 30) && (index <= 39))
+      if ((index == 0) || (index == 39))
+        currentForegroundColorIndex = DEFAULT_FOREGROUND;
+      if ((index == 0) || (index == 49))
+        currentBackgroundColorIndex = DEFAULT_BACKGROUND;
+      if ((index >= 30) && (index <= 38))
         currentForegroundColorIndex = index;
-      if ((index >= 40) && (index <= 49))
+      if ((index >= 40) && (index <= 48))
         currentBackgroundColorIndex = index;
     }
   }
