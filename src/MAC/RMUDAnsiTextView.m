@@ -23,7 +23,6 @@ id to_num(int n) {
 {
   ansiColorTable =
     [NSDictionary dictionaryWithObjectsAndKeys:
-      rgb(255, 255, 255), to_num(0),
       rgb(0, 0, 0), to_num(30),
       rgb(190, 25, 25), to_num(31),
       rgb(60, 190, 60), to_num(32),
@@ -33,9 +32,18 @@ id to_num(int n) {
       rgb(50, 200, 200), to_num(36),
       rgb(255, 255, 255), to_num(37),
       rgb(255, 255, 255), to_num(39),
+      rgb(0, 0, 0), to_num(40),
+      rgb(190, 25, 25), to_num(41),
+      rgb(60, 190, 60), to_num(42),
+      rgb(200, 200, 75), to_num(43),
+      rgb(0, 40, 185), to_num(44),
+      rgb(170, 60, 190), to_num(45),
+      rgb(50, 200, 200), to_num(46),
+      rgb(255, 255, 255), to_num(47),
+      rgb(255, 255, 255), to_num(49),
       nil];
-  currentForegroundColorIndex = 0;
-  currentBackgroundColorIndex = -1;
+  currentForegroundColorIndex = 30;
+  currentBackgroundColorIndex = 47;
   
   ansiSequenceRegex =
     [AGRegex regexWithPattern:@"\\e\\[(\\d+;)?(\\d+;)?(\\d+;)?(\\d+;)?(\\d+)m"
@@ -93,6 +101,7 @@ id to_num(int n) {
                 [NSDictionary dictionaryWithObjectsAndKeys:
                   [self font], NSFontAttributeName,
                   [self currentForegroundColor], NSForegroundColorAttributeName,
+                  [self currentBackgroundColor], NSBackgroundColorAttributeName,
                   nil]];
       [[self textStorage] appendAttributedString:insertionString];
       [self handleAnsiSequence:ansiSequence];
@@ -107,6 +116,7 @@ id to_num(int n) {
                 [NSDictionary dictionaryWithObjectsAndKeys:
                   [self font], NSFontAttributeName,
                   [self currentForegroundColor], NSForegroundColorAttributeName,
+                  [self currentBackgroundColor], NSBackgroundColorAttributeName,
                   nil]];
       [[self textStorage] appendAttributedString:insertionString];
       remainingAnsiString = @"";
@@ -133,7 +143,15 @@ id to_num(int n) {
   for (i = 0; i < [options count]; i++) {
     NSNumber *option = [options objectAtIndex:i];
     if ([[ansiColorTable allKeys] containsObject:option]) {
-      currentForegroundColorIndex = [option intValue];
+      int index = [option intValue];
+      if (index == 0) {
+        currentForegroundColorIndex = 30;
+        currentBackgroundColorIndex = 47;
+      }
+      if ((index >= 30) && (index <= 39))
+        currentForegroundColorIndex = index;
+      if ((index >= 40) && (index <= 49))
+        currentBackgroundColorIndex = index;
     }
   }
   [options release];
@@ -141,12 +159,11 @@ id to_num(int n) {
 - (void)didChangeText
 {
   [super didChangeText];
-  NSClipView *clipView = [self superview];
-  NSScrollView *scrollView = [clipView superview];
+  NSClipView *clipView = (NSClipView *)[self superview];
+  NSScrollView *scrollView = (NSScrollView *)[clipView superview];
   NSPoint proposedScrollPoint = NSMakePoint(0.0, [self frame].size.height);
   NSPoint scrollPoint = [clipView constrainScrollPoint:proposedScrollPoint];
   [clipView scrollToPoint:scrollPoint];
   [scrollView reflectScrolledClipView:clipView];
-  [scrollView setNeedsDisplay:YES];
 }
 @end
