@@ -59,6 +59,7 @@
 #include "s_sound.h"
 #include "sounds.h"
 #include "w_wad.h"
+#include "st_stuff.h"
 #include "lprintf.h"
 
 #ifdef GL_DOOM
@@ -77,8 +78,6 @@ int use_doublebuffer = 1; // Included not to break m_misc, but not relevant to S
 #endif
 int use_fullscreen;
 static SDL_Surface *screen;
-
-unsigned char* out_buffer = NULL;
 
 ////////////////////////////////////////////////////////////////////////////
 // Input code
@@ -386,7 +385,7 @@ void I_FinishUpdate (void)
         return;
       }
       dest=screen->pixels;
-      src=screens[0];
+      src=screens[0].data;
       w=screen->w;
       h=screen->h;
       for (; h>0; h--)
@@ -415,7 +414,7 @@ void I_FinishUpdate (void)
 //
 void I_ReadScreen (byte* scr)
 {
-  memcpy(scr, screens[0], SCREENWIDTH*SCREENHEIGHT);
+  memcpy(scr, screens[0].data, SCREENWIDTH*SCREENHEIGHT);
 }
 
 //
@@ -502,10 +501,9 @@ static void I_ClosestResolution (int *width, int *height, int flags)
 }  
 
 // CPhipps -
-// I_SetRes
-// Sets the screen resolution, possibly using the supplied guide
-
-void I_SetRes(unsigned int width, unsigned int height)
+// I_CalculateRes
+// Calculates the screen resolution, possibly using the supplied guide
+void I_CalculateRes(unsigned int width, unsigned int height)
 {
   // e6y: how about 1680x1050?
   /*
@@ -529,6 +527,26 @@ void I_SetRes(unsigned int width, unsigned int height)
   SCREENWIDTH = (width+15) & ~15;
   SCREENHEIGHT = height;
 #endif
+}
+
+// CPhipps -
+// I_SetRes
+// Sets the screen resolution
+void I_SetRes(void)
+{
+  int i;
+
+  I_CalculateRes(SCREENWIDTH, SCREENHEIGHT);
+
+  // set first three to standard values
+  for (i=0; i<3; i++) {
+    screens[i].width = SCREENWIDTH;
+    screens[i].height = SCREENHEIGHT;
+  }
+
+  // statusbar
+  screens[4].width = SCREENWIDTH;
+  screens[4].height = (ST_SCALED_HEIGHT+1);
 
   lprintf(LO_INFO,"I_SetRes: Using resolution %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
 }
@@ -544,8 +562,6 @@ void I_InitGraphics(void)
 
     atexit(I_ShutdownGraphics);
     lprintf(LO_INFO, "I_InitGraphics: %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
-
-    out_buffer=screens[0];
 
     /* Set the video mode */
     I_UpdateVideoMode();
@@ -567,6 +583,10 @@ void I_UpdateVideoMode(void)
   int init_flags;
 
   lprintf(LO_INFO, "I_UpdateVideoMode: %dx%d (%s)\n", SCREENWIDTH, SCREENHEIGHT, use_fullscreen ? "fullscreen" : "nofullscreen");
+
+  V_FreeScreens();
+
+  I_SetRes();
 
   w = SCREENWIDTH;
   h = SCREENHEIGHT;
@@ -621,18 +641,15 @@ void I_UpdateVideoMode(void)
   // Get the info needed to render to the display
   if (!SDL_MUSTLOCK(screen))
   {
-    if (out_buffer)
-      free(out_buffer);
-    out_buffer=NULL;
-    screens[0] = (unsigned char *) (screen->pixels);
+    screens[0].not_on_heap = true;
+    screens[0].data = (unsigned char *) (screen->pixels);
   }
   else
   {
-    if (!out_buffer)
-      free(out_buffer);
-    out_buffer = calloc(SCREENWIDTH*SCREENHEIGHT, 1);
-    screens[0] = out_buffer;
+    screens[0].not_on_heap = false;
   }
+
+  V_AllocScreens();
 
   // Hide pointer while over this window
   SDL_ShowCursor(0);

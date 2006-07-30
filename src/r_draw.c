@@ -1014,7 +1014,7 @@ void R_InitBuffer(int width, int height)
 
   viewwindowy = width==SCREENWIDTH ? 0 : (SCREENHEIGHT-(ST_SCALED_HEIGHT-1)-height)>>1;
 
-  topleft = screens[0] + viewwindowy*SCREENWIDTH + viewwindowx;
+  topleft = screens[0].data + viewwindowy*SCREENWIDTH + viewwindowx;
 
   // Preclaculate all row offsets.
   // CPhipps - merge viewwindowx into here
@@ -1072,7 +1072,7 @@ void R_FillBackScreen (void)
 void R_VideoErase(unsigned ofs, int count)
 {
 #ifndef GL_DOOM
-  memcpy(screens[0]+ofs, screens[1]+ofs, count);   // LFB copy.
+  memcpy(screens[0].data+ofs, screens[1].data+ofs, count);   // LFB copy.
 #endif
 }
 

@@ -608,12 +608,15 @@ static void F_BunnyScroll (void)
 #else
       int realscrolled = (SCREENWIDTH * scrolled) / 320;
 
-      V_AllocScreen(SCRN);
+      screens[SCRN].width = SCREENWIDTH;
+      screens[SCRN].height = SCREENHEIGHT;
+      screens[SCRN].not_on_heap = false;
+      V_AllocScreen(&screens[SCRN]);
       V_DrawNamePatch(0, 0, SCRN, pfub2, CR_DEFAULT, VPT_STRETCH);
       V_CopyRect(realscrolled, 0, SCRN, SCREENWIDTH-realscrolled, SCREENHEIGHT, 0, 0, 0, VPT_NONE);
       V_DrawNamePatch(0, 0, SCRN, pfub1, CR_DEFAULT, VPT_STRETCH);
       V_CopyRect(0, 0, SCRN, realscrolled, SCREENHEIGHT, SCREENWIDTH-realscrolled, 0, 0, VPT_NONE);
-      V_FreeScreen(SCRN);
+      V_FreeScreen(&screens[SCRN]);
 #endif
     }
   }

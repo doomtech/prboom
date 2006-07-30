@@ -45,7 +45,7 @@
 #include "lprintf.h"
 
 // Each screen is [SCREENWIDTH*SCREENHEIGHT];
-byte *screens[6];
+screeninfo_t screens[NUM_SCREENS];
 
 /* jff 4/24/98 initialize this at runtime */
 const byte *colrngs[CR_LIMIT];
@@ -137,8 +137,8 @@ void V_CopyRect(int srcx, int srcy, int srcscrn, int width,
     I_Error ("V_CopyRect: Bad arguments");
 #endif
 
-  src = screens[srcscrn]+SCREENWIDTH*srcy+srcx;
-  dest = screens[destscrn]+SCREENWIDTH*desty+destx;
+  src = screens[srcscrn].data+SCREENWIDTH*srcy+srcx;
+  dest = screens[destscrn].data+SCREENWIDTH*desty+destx;
 
   for ( ; height>0 ; height--)
     {
@@ -170,7 +170,7 @@ void V_DrawBackground(const char* flatname, int scrn)
 
   /* V_DrawBlock(0, 0, scrn, 64, 64, src, 0); */
   width = height = 64;
-  dest = screens[scrn];
+  dest = screens[scrn].data;
 
   while (height--) {
     memcpy (dest, src, width);
@@ -197,17 +197,14 @@ void V_DrawBackground(const char* flatname, int scrn)
 void V_Init (void)
 {
   int  i;
-  // CPhipps - allocate only 2 screens all the time, the rest can be allocated as and when needed
-#define PREALLOCED_SCREENS 2
 
-  // CPhipps - no point in "stick these in low dos memory on PCs" anymore
-  // Allocate the screens individually, so I_InitGraphics can release screens[0]
-  //  if e.g. it wants a MitSHM buffer instead
-
-  for (i=0 ; i<PREALLOCED_SCREENS ; i++)
-    screens[i] = calloc(SCREENWIDTH*SCREENHEIGHT, 1);
-  for (; i<4; i++) // Clear the rest (paranoia)
-    screens[i] = NULL;
+  // reset the all
+  for (i = 0; i<NUM_SCREENS; i++) {
+    screens[i].data = NULL;
+    screens[i].not_on_heap = false;
+    screens[i].width = 0;
+    screens[i].height = 0;
+  }
 }
 
 //
@@ -255,7 +252,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
   if (!(flags & VPT_STRETCH)) {
     int             col;
     const column_t *column;
-    byte           *desttop = screens[scrn]+y*SCREENWIDTH+x;
+    byte           *desttop = screens[scrn].data+y*SCREENWIDTH+x;
     unsigned int    w = SHORT(patch->width);
 
     w--; // CPhipps - note: w = width-1 now, speeds up flipping
@@ -341,7 +338,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
     stretchx = ( x * DX ) >> 16;
     stretchy = ( y * DY ) >> 16;
 
-    desttop = screens[scrn] + stretchy * SCREENWIDTH +  stretchx;
+    desttop = screens[scrn].data + stretchy * SCREENWIDTH +  stretchx;
 
     for ( col = 0; col <= w; x++, col+=DXI, desttop++ ) {
       const column_t *column;
@@ -456,10 +453,57 @@ void V_SetPalette(int pal)
 #ifndef GL_DOOM
 void V_FillRect(int scrn, int x, int y, int width, int height, byte colour)
 {
-  byte* dest = screens[scrn] + x + y*SCREENWIDTH;
+  byte* dest = screens[scrn].data + x + y*SCREENWIDTH;
   while (height--) {
     memset(dest, colour, width);
     dest += SCREENWIDTH;
   }
 }
 #endif
+
+//
+// V_GetPixelDepth
+//
+int V_GetPixelDepth(void) {
+  return 1;
+}
+
+//
+// V_AllocScreen
+//
+void V_AllocScreen(screeninfo_t *scrn) {
+  if (!scrn->not_on_heap)
+    if ((scrn->width * scrn->height) > 0)
+      scrn->data = malloc(scrn->width*scrn->height*V_GetPixelDepth());
+}
+
+//
+// V_AllocScreens
+//
+void V_AllocScreens(void) {
+  int i;
+
+  for (i=0; i<NUM_SCREENS; i++)
+    V_AllocScreen(&screens[i]);
+}
+
+//
+// V_FreeScreen
+//
+void V_FreeScreen(screeninfo_t *scrn) {
+  if (!scrn->not_on_heap) {
+    free(scrn->data);
+    scrn->data = NULL;
+  }
+}
+
+//
+// V_FreeScreens
+//
+void V_FreeScreens(void) {
+  int i;
+
+  for (i=0; i<NUM_SCREENS; i++)
+    V_FreeScreen(&screens[i]);
+}
+

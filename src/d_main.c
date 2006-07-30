@@ -1383,7 +1383,7 @@ static void D_DoomMainSetup(void)
       w = desired_screenwidth;
       h = desired_screenheight;
     }
-    I_SetRes(w, h);
+    I_CalculateRes(w, h);
   }
 
   if ((p = M_CheckParm("-fullscreen")))

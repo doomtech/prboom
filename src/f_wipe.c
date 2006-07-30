@@ -52,9 +52,9 @@
 #define SRC_SCR 2
 #define DEST_SCR 3
 
-static byte *wipe_scr_start;
-static byte *wipe_scr_end;
-static byte *wipe_scr;
+static screeninfo_t wipe_scr_start;
+static screeninfo_t wipe_scr_end;
+static screeninfo_t wipe_scr;
 
 static void wipe_shittyColMajorXform(short *array, int width, int height)
 {
@@ -75,12 +75,12 @@ static int wipe_initMelt(int width, int height, int ticks)
   int i;
 
   // copy start screen to main screen
-  memcpy(wipe_scr, wipe_scr_start, width*height);
+  memcpy(wipe_scr.data, wipe_scr_start.data, width*height);
 
   // makes this wipe faster (in theory)
   // to have stuff in column-major format
-  wipe_shittyColMajorXform((short*)wipe_scr_start, width/2, height);
-  wipe_shittyColMajorXform((short*)wipe_scr_end, width/2, height);
+  wipe_shittyColMajorXform((short*)wipe_scr_start.data, width/2, height);
+  wipe_shittyColMajorXform((short*)wipe_scr_end.data, width/2, height);
 
   // setup initial column positions (y<0 => not ready to scroll yet)
   y = (int *) malloc(width*sizeof(int));
@@ -126,8 +126,8 @@ static int wipe_doMelt(int width, int height, int ticks)
             dy = (y[i] < 16) ? y[i]+1 : SCREENHEIGHT/25;
             if (y[i]+dy >= height)
               dy = height - y[i];
-            s = &((short *)wipe_scr_end)[i*height+y[i]];
-            d = &((short *)wipe_scr)[y[i]*width+i];
+            s = &((short *)wipe_scr_end.data)[i*height+y[i]];
+            d = &((short *)wipe_scr.data)[y[i]*width+i];
             idx = 0;
             for (j=dy;j;j--)
               {
@@ -135,8 +135,8 @@ static int wipe_doMelt(int width, int height, int ticks)
                 idx += width;
               }
             y[i] += dy;
-            s = &((short *)wipe_scr_start)[i*height];
-            d = &((short *)wipe_scr)[y[i]*width+i];
+            s = &((short *)wipe_scr_start.data)[i*height];
+            d = &((short *)wipe_scr.data)[y[i]*width+i];
             idx = 0;
             for (j=height-y[i];j;j--)
               {
@@ -153,24 +153,37 @@ static int wipe_doMelt(int width, int height, int ticks)
 static int wipe_exitMelt(int width, int height, int ticks)
 {
   free(y);
-  free(wipe_scr_start);
-  free(wipe_scr_end);
+  V_FreeScreen(&wipe_scr_start);
+  wipe_scr_start.width = 0;
+  wipe_scr_start.height = 0;
+  V_FreeScreen(&wipe_scr_end);
+  wipe_scr_end.width = 0;
+  wipe_scr_end.height = 0;
   // Paranoia
   y = NULL;
-  wipe_scr_start = wipe_scr_end = screens[SRC_SCR] = screens[DEST_SCR] = NULL;
+  screens[SRC_SCR] = wipe_scr_start;
+  screens[DEST_SCR] = wipe_scr_end;
   return 0;
 }
 
 int wipe_StartScreen(int x, int y, int width, int height)
 {
-  wipe_scr_start = screens[SRC_SCR] = malloc(SCREENWIDTH * SCREENHEIGHT);
+  wipe_scr_start.width = SCREENWIDTH;
+  wipe_scr_start.height = SCREENHEIGHT;
+  wipe_scr_start.not_on_heap = false;
+  V_AllocScreen(&wipe_scr_start);
+  screens[SRC_SCR] = wipe_scr_start;
   V_CopyRect(x, y, 0,       width, height, x, y, SRC_SCR, VPT_NONE ); // Copy start screen to buffer
   return 0;
 }
 
 int wipe_EndScreen(int x, int y, int width, int height)
 {
-  wipe_scr_end = screens[DEST_SCR] = malloc(SCREENWIDTH * SCREENHEIGHT);
+  wipe_scr_end.width = SCREENWIDTH;
+  wipe_scr_end.height = SCREENHEIGHT;
+  wipe_scr_end.not_on_heap = false;
+  V_AllocScreen(&wipe_scr_end);
+  screens[DEST_SCR] = wipe_scr_end;
   V_CopyRect(x, y, 0,       width, height, x, y, DEST_SCR, VPT_NONE); // Copy end screen to buffer
   V_CopyRect(x, y, SRC_SCR, width, height, x, y, 0       , VPT_NONE); // restore start screen
   return 0;
