@@ -35,6 +35,7 @@
 #define __I_VIDEO__
 
 #include "doomtype.h"
+#include "v_video.h"
 
 #ifdef __GNUG__
 #pragma interface
@@ -53,7 +54,7 @@ void I_SetPalette(int pal); /* CPhipps - pass down palette number */
 void I_UpdateNoBlit (void);
 void I_FinishUpdate (void);
 
-void I_ReadScreen (byte* scr);
+void I_ReadScreen (screeninfo_t *dest);
 
 /* I_StartTic
  * Called by D_DoomLoop,

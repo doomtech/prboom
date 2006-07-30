@@ -78,8 +78,9 @@ typedef struct {
   byte *data;          // pointer to the screen content
   boolean not_on_heap; // if set, no malloc or free is preformed and
                        // data never set to NULL. Used i.e. with SDL doublebuffer.
-  int width;           // the width of the surface, used when mallocing
+  int width;           // the width of the surface
   int height;          // the height of the surface, used when mallocing
+  int pitch;           // tha actual width of one line, used when mallocing
 } screeninfo_t;
 
 #define NUM_SCREENS 6
@@ -157,7 +158,7 @@ void V_SetPalette(int pal);
 // CPhipps - function to plot a pixel
 
 #ifndef GL_DOOM
-#define V_PlotPixel(s,x,y,c) screens[s].data[x+SCREENWIDTH*y]=c
+#define V_PlotPixel(s,x,y,c) screens[s].data[x+screens[s].pitch*y]=c
 #endif
 
 void V_AllocScreen(screeninfo_t *scrn);

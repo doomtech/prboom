@@ -137,14 +137,14 @@ void V_CopyRect(int srcx, int srcy, int srcscrn, int width,
     I_Error ("V_CopyRect: Bad arguments");
 #endif
 
-  src = screens[srcscrn].data+SCREENWIDTH*srcy+srcx;
-  dest = screens[destscrn].data+SCREENWIDTH*desty+destx;
+  src = screens[srcscrn].data+screens[srcscrn].pitch*srcy+srcx;
+  dest = screens[destscrn].data+screens[destscrn].pitch*desty+destx;
 
   for ( ; height>0 ; height--)
     {
       memcpy (dest, src, width);
-      src += SCREENWIDTH;
-      dest += SCREENWIDTH;
+      src += screens[srcscrn].pitch;
+      dest += screens[destscrn].pitch;
     }
 }
 #endif /* GL_DOOM */
@@ -175,7 +175,7 @@ void V_DrawBackground(const char* flatname, int scrn)
   while (height--) {
     memcpy (dest, src, width);
     src += width;
-    dest += SCREENWIDTH;
+    dest += screens[scrn].pitch;
   }
   /* end V_DrawBlock */
 
@@ -204,6 +204,7 @@ void V_Init (void)
     screens[i].not_on_heap = false;
     screens[i].width = 0;
     screens[i].height = 0;
+    screens[i].pitch = 0;
   }
 }
 
@@ -252,7 +253,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
   if (!(flags & VPT_STRETCH)) {
     int             col;
     const column_t *column;
-    byte           *desttop = screens[scrn].data+y*SCREENWIDTH+x;
+    byte           *desttop = screens[scrn].data+y*screens[scrn].pitch+x;
     unsigned int    w = SHORT(patch->width);
 
     w--; // CPhipps - note: w = width-1 now, speeds up flipping
@@ -266,7 +267,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
   // killough 2/21/98: Unrolled and performance-tuned
 
   register const byte *source = (const byte *)column + 3;
-  register byte *dest = desttop + column->topdelta*SCREENWIDTH;
+  register byte *dest = desttop + column->topdelta*screens[scrn].pitch;
   register int count = column->length;
 
   if (!(flags & VPT_TRANS)) {
@@ -283,12 +284,12 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
         source += 4;
         dest[0] = s0;
         dest[SCREENWIDTH] = s1;
-        dest += SCREENWIDTH*2;
+        dest += screens[scrn].pitch*2;
       } while ((count-=4)>=0);
     if (count+=4)
       do {
         *dest = *source++;
-        dest += SCREENWIDTH;
+        dest += screens[scrn].pitch;
       } while (--count);
     column = (const column_t *)(source+1); //killough 2/21/98 even faster
   } else {
@@ -310,12 +311,12 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
         source += 4;
         dest[0] = s0;
         dest[SCREENWIDTH] = s1;
-        dest += SCREENWIDTH*2;
+        dest += screens[scrn].pitch*2;
       } while ((count-=4)>=0);
     if (count+=4)
       do {
         *dest = trans[*source++];
-        dest += SCREENWIDTH;
+        dest += screens[scrn].pitch;
       } while (--count);
     column = (const column_t *)(source+1);
   }
@@ -338,7 +339,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
     stretchx = ( x * DX ) >> 16;
     stretchy = ( y * DY ) >> 16;
 
-    desttop = screens[scrn].data + stretchy * SCREENWIDTH +  stretchx;
+    desttop = screens[scrn].data + stretchy * screens[scrn].pitch +  stretchx;
 
     for ( col = 0; col <= w; x++, col+=DXI, desttop++ ) {
       const column_t *column;
@@ -350,7 +351,7 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
       while ( column->topdelta != 0xff ) {
   int toprow = ((column->topdelta * DY) >> 16);
   register const byte *source = (const byte* ) column + 3;
-  register byte       *dest = desttop + toprow * SCREENWIDTH;
+  register byte       *dest = desttop + toprow * screens[scrn].pitch;
   register int         count  = ( column->length * DY ) >> 16;
   register int         srccol = 0;
 
@@ -374,13 +375,13 @@ void V_DrawMemPatch(int x, int y, int scrn, const patch_t *patch,
   if (flags & VPT_TRANS)
     while (count--) {
       *dest  =  trans[source[srccol>>16]];
-      dest  +=  SCREENWIDTH;
+      dest  +=  screens[scrn].pitch;
       srccol+=  DYI;
     }
   else
     while (count--) {
       *dest  =  source[srccol>>16];
-      dest  +=  SCREENWIDTH;
+      dest  +=  screens[scrn].pitch;
       srccol+=  DYI;
     }
   column = (const column_t* ) ((const byte* ) column + ( column->length ) + 4 );
@@ -464,10 +465,10 @@ void V_SetPalette(int pal)
 #ifndef GL_DOOM
 void V_FillRect(int scrn, int x, int y, int width, int height, byte colour)
 {
-  byte* dest = screens[scrn].data + x + y*SCREENWIDTH;
+  byte* dest = screens[scrn].data + x + y*screens[scrn].pitch;
   while (height--) {
     memset(dest, colour, width);
-    dest += SCREENWIDTH;
+    dest += screens[scrn].pitch;
   }
 }
 #endif
@@ -484,8 +485,8 @@ int V_GetPixelDepth(void) {
 //
 void V_AllocScreen(screeninfo_t *scrn) {
   if (!scrn->not_on_heap)
-    if ((scrn->width * scrn->height) > 0)
-      scrn->data = malloc(scrn->width*scrn->height*V_GetPixelDepth());
+    if ((scrn->pitch * scrn->height) > 0)
+      scrn->data = malloc(scrn->pitch*scrn->height);
 }
 
 //

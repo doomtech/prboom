@@ -376,7 +376,6 @@ void I_FinishUpdate (void)
 #ifndef GL_DOOM
   if (SDL_MUSTLOCK(screen)) {
       int h;
-      int w;
       byte *src;
       byte *dest;
 
@@ -386,13 +385,12 @@ void I_FinishUpdate (void)
       }
       dest=screen->pixels;
       src=screens[0].data;
-      w=screen->w;
       h=screen->h;
       for (; h>0; h--)
       {
-        memcpy(dest,src,w);
+        memcpy(dest,src,SCREENWIDTH);
         dest+=screen->pitch;
-        src+=SCREENWIDTH;
+        src+=screens[0].pitch;
       }
       SDL_UnlockSurface(screen);
   }
@@ -412,9 +410,22 @@ void I_FinishUpdate (void)
 //
 // I_ReadScreen
 //
-void I_ReadScreen (byte* scr)
+#ifndef min
+#define min(a,b) ((a)<(b)?(a):(b))
+#endif
+void I_ReadScreen (screeninfo_t *dest)
 {
-  memcpy(scr, screens[0].data, SCREENWIDTH*SCREENHEIGHT);
+  int h;
+  byte *srcofs = screens[0].data;
+  byte *dstofs = dest->data;
+  int width, height;
+  width = min(screens[0].width, dest->width);
+  height = min(screens[0].height, dest->height);
+  for (h=height; h>0; h--) {
+    memcpy(dstofs, srcofs, width);
+    srcofs += screens[0].pitch;
+    dstofs += dest->pitch;
+  }
 }
 
 //
@@ -523,9 +534,15 @@ void I_CalculateRes(unsigned int width, unsigned int height)
   }
   SCREENWIDTH = width;
   SCREENHEIGHT = height;
+  SCREENPITCH = SCREENWIDTH;
 #else
   SCREENWIDTH = (width+15) & ~15;
   SCREENHEIGHT = height;
+  if (!(SCREENWIDTH % 1024)) {
+    SCREENPITCH = SCREENWIDTH+32;
+  } else {
+    SCREENPITCH = SCREENWIDTH;
+  }
 #endif
 }
 
@@ -542,11 +559,13 @@ void I_SetRes(void)
   for (i=0; i<3; i++) {
     screens[i].width = SCREENWIDTH;
     screens[i].height = SCREENHEIGHT;
+    screens[i].pitch = SCREENPITCH;
   }
 
   // statusbar
   screens[4].width = SCREENWIDTH;
   screens[4].height = (ST_SCALED_HEIGHT+1);
+  screens[4].pitch = SCREENPITCH;
 
   lprintf(LO_INFO,"I_SetRes: Using resolution %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
 }
@@ -579,7 +598,6 @@ void I_InitGraphics(void)
 
 void I_UpdateVideoMode(void)
 {
-  unsigned int w, h;
   int init_flags;
 
   lprintf(LO_INFO, "I_UpdateVideoMode: %dx%d (%s)\n", SCREENWIDTH, SCREENHEIGHT, use_fullscreen ? "fullscreen" : "nofullscreen");
@@ -587,9 +605,6 @@ void I_UpdateVideoMode(void)
   V_FreeScreens();
 
   I_SetRes();
-
-  w = SCREENWIDTH;
-  h = SCREENHEIGHT;
 
   // Initialize SDL with this graphics mode
 #ifdef GL_DOOM
@@ -625,13 +640,13 @@ void I_UpdateVideoMode(void)
   SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
   SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, gl_colorbuffer_bits );
   SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, gl_depthbuffer_bits );
-  screen = SDL_SetVideoMode(w, h, gl_colorbuffer_bits, init_flags);
+  screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, gl_colorbuffer_bits, init_flags);
 #else
-  screen = SDL_SetVideoMode(w, h, 8, init_flags);
+  screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, 8, init_flags);
 #endif
 
   if(screen == NULL) {
-    I_Error("Couldn't set %dx%d video mode [%s]", w, h, SDL_GetError());
+    I_Error("Couldn't set %dx%d video mode [%s]", SCREENWIDTH, SCREENHEIGHT, SDL_GetError());
   }
 
   lprintf(LO_INFO, "I_UpdateVideoMode: 0x%x, %s, %s\n", init_flags, screen->pixels ? "SDL buffer" : "own buffer", SDL_MUSTLOCK(screen) ? "lock-and-copy": "direct access");
@@ -643,6 +658,7 @@ void I_UpdateVideoMode(void)
   {
     screens[0].not_on_heap = true;
     screens[0].data = (unsigned char *) (screen->pixels);
+    screens[0].pitch = screen->pitch;
   }
   else
   {
@@ -654,7 +670,7 @@ void I_UpdateVideoMode(void)
   // Hide pointer while over this window
   SDL_ShowCursor(0);
 
-  R_InitBuffer(w,h);
+  R_InitBuffer(SCREENWIDTH, SCREENHEIGHT);
 
 #ifdef GL_DOOM
   {
