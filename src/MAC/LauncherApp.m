@@ -51,10 +51,29 @@
 
 - (void)loadDefaults
 {
-	[window setFrameUsingName:@"Launcher"];
-	[consoleWindow setFrameUsingName:@"Console"];
-
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+
+	if([defaults boolForKey:@"Saved 2.4.5"])
+	{
+		[window setFrameUsingName:@"Launcher"];
+		if([[defaults objectForKey:@"Wad Drawer State"] boolValue])
+		{
+			[wadDrawer open];
+			[self updateDrawerButton:wadDrawerButton];
+		}
+		if([[defaults objectForKey:@"Debug Drawer State"] boolValue])
+		{
+			[debugDrawer open];
+			[self updateDrawerButton:debugDrawerButton];
+		}
+		if([[defaults objectForKey:@"Demo Drawer State"] boolValue])
+		{
+			[demoDrawer open];
+			[self updateDrawerButton:demoDrawerButton];
+		}
+	}
+
+	[consoleWindow setFrameUsingName:@"Console"];
 
 	if([defaults boolForKey:@"Saved"] == true)
 	{
@@ -92,12 +111,17 @@
 
 - (void)saveDefaults
 {
-	[window saveFrameUsingName:@"Launcher"];
-	[consoleWindow saveFrameUsingName:@"Console"];
-
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
 	[defaults setBool:true forKey:@"Saved"];
+	[defaults setBool:true forKey:@"Saved 2.4.5"];
+
+	[window saveFrameUsingName:@"Launcher"];
+	[consoleWindow saveFrameUsingName:@"Console"];
+
+	[defaults setObject:[NSNumber numberWithBool:[wadDrawer state]] forKey:@"Wad Drawer State"];
+	[defaults setObject:[NSNumber numberWithBool:[debugDrawer state]] forKey:@"Debug Drawer State"];
+	[defaults setObject:[NSNumber numberWithBool:[demoDrawer state]] forKey:@"Demo Drawer State"];
 
 	[defaults setObject:[gameButton objectValue] forKey:@"Game"];
 	[defaults setObject:[respawnMonstersButton objectValue] forKey:@"Respawn Monsters"];
@@ -162,6 +186,34 @@
         forPath:(NSString *)path
 {
 	[self updateGameWad];
+}
+
+- (NSDrawer *)drawerForButton:(id)button
+{
+	if(button == wadDrawerButton)
+		return wadDrawer;
+	else if(button == demoDrawerButton)
+		return demoDrawer;
+	else if(button == debugDrawerButton)
+		return debugDrawer;
+	else
+		return nil;
+}
+
+- (IBAction)drawerButtonClicked:(id)button
+{
+	NSDrawer *drawer= [self drawerForButton:button];
+	[drawer toggle:button];
+	[self updateDrawerButton:button];
+}
+
+- (void)updateDrawerButton:(id)button
+{
+	int state = [[self drawerForButton:button] state];
+	bool opening = state == 1 | state == 2;
+	NSString *newText = opening ? @"Hide" : @"Show";
+	AGRegex *re = [AGRegex regexWithPattern:@"^(Show|Hide)"];
+	[button setTitle:[re replaceWithString:newText inString:[button title]]];
 }
 
 - (IBAction)startClicked:(id)sender

@@ -44,6 +44,14 @@
 	IBOutlet id chooseDemoFileButton;
 	IBOutlet id demoFileField;
 
+	// Drawers
+	IBOutlet id wadDrawer;
+	IBOutlet id wadDrawerButton;
+	IBOutlet id demoDrawer;
+	IBOutlet id demoDrawerButton;
+	IBOutlet id debugDrawer;
+	IBOutlet id debugDrawerButton;
+
 	// Console
 	IBOutlet id consoleWindow;
 	IBOutlet id consoleTextView;
@@ -68,6 +76,11 @@
 - (void)updateGameWad;
 - (void)watcher:(id)watcher receivedNotification:(NSString *)notification
         forPath:(NSString *)path;
+
+// Drawer Management
+- (NSDrawer *)drawerForButton:(id)button;
+- (IBAction)drawerButtonClicked:(id)button;
+- (void)updateDrawerButton:(id)button;
 
 // Game
 - (IBAction)startClicked:(id)sender;

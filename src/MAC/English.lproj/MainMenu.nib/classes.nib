@@ -7,6 +7,7 @@
                 chooseDemoFileClicked = id; 
                 demoButtonClicked = id; 
                 disableSoundClicked = id; 
+                drawerButtonClicked = id; 
                 gameButtonClicked = id; 
                 openWebsite = id; 
                 removeWadClicked = id; 
@@ -21,6 +22,10 @@
                 compatibilityLevelButton = id; 
                 consoleTextView = id; 
                 consoleWindow = id; 
+                debugDrawer = id; 
+                debugDrawerButton = id; 
+                demoDrawer = id; 
+                demoDrawerButton = id; 
                 demoFileField = id; 
                 demoMatrix = id; 
                 disableGraphicsButton = id; 
@@ -42,6 +47,8 @@
                 removeWadButton = id; 
                 respawnMonstersButton = id; 
                 timeDemoButton = id; 
+                wadDrawer = id; 
+                wadDrawerButton = id; 
                 wadView = id; 
                 window = id; 
             }; 
