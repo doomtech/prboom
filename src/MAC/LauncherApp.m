@@ -103,6 +103,7 @@
 		[compatibilityLevelButton setObjectValue:[NSNumber numberWithLong:0]];
 	}
 
+	[wadView noteNumberOfRowsChanged];
 	[self disableSoundClicked:disableSoundButton];
 	[self demoButtonClicked:demoMatrix];
 	[self tableViewSelectionDidChange:nil];
@@ -210,7 +211,7 @@
 - (void)updateDrawerButton:(id)button
 {
 	int state = [[self drawerForButton:button] state];
-	bool opening = state == 1 | state == 2;
+	bool opening = state == NSDrawerOpenState | state == NSDrawerOpeningState;
 	NSString *newText = opening ? @"Hide" : @"Show";
 	AGRegex *re = [AGRegex regexWithPattern:@"^(Show|Hide)"];
 	[button setTitle:[re replaceWithString:newText inString:[button title]]];
@@ -421,7 +422,7 @@ static NSString *readPipe(NSPipe *pipe)
 	[panel setAllowsMultipleSelection:true];
 	[panel setCanChooseFiles:true];
 	[panel setCanChooseDirectories:false];
-	NSArray *types = [NSArray arrayWithObjects:@"wad", @"WAD", nil];
+	NSArray *types = [NSArray arrayWithObjects:@"wad", @"WAD", @"DEH", @"deh", nil];
 	[panel beginSheetForDirectory:nil file:nil types:types
 	       modalForWindow:window  modalDelegate:self
 	       didEndSelector:@selector(addWadEnded:returnCode:contextInfo:)
@@ -460,8 +461,13 @@ static NSString *readPipe(NSPipe *pipe)
                 objectValueForTableColumn:(NSTableColumn *)column
                 row:(int)row
 {
-	// We only have one column
-	return [wads objectAtIndex:row];
+	NSString *columnId = [column identifier];
+	if([columnId isEqualToString:@"Path"])
+		return [wads objectAtIndex:row];
+	else if([columnId isEqualToString:@"Icon"])
+		return [[NSWorkspace sharedWorkspace] iconForFile:[wads objectAtIndex:row]];
+	else
+		return nil;
 }
 
 - (void)tableView:(NSTableView *)tableView
@@ -469,8 +475,9 @@ static NSString *readPipe(NSPipe *pipe)
                   forTableColumn:(NSTableColumn *)column
                   row:(int)row
 {
-	// We only have one column
-	[wads replaceObjectAtIndex:row withObject:object];
+	NSString *columnId = [[column identifier] stringValue];
+	if([columnId isEqualToString:@"Path"])
+		[wads replaceObjectAtIndex:row withObject:object];
 }
 
 @end
