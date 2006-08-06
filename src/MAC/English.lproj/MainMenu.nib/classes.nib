@@ -3,14 +3,12 @@
         {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
         {
             ACTIONS = {
-                addWadClicked = id; 
                 chooseDemoFileClicked = id; 
                 demoButtonClicked = id; 
                 disableSoundClicked = id; 
                 drawerButtonClicked = id; 
                 gameButtonClicked = id; 
                 openWebsite = id; 
-                removeWadClicked = id; 
                 showConsoleClicked = id; 
                 showGameFolderClicked = id; 
                 startClicked = id; 
@@ -44,17 +42,23 @@
                 noDemoButton = id; 
                 noMonstersButton = id; 
                 playDemoButton = id; 
-                removeWadButton = id; 
                 respawnMonstersButton = id; 
                 timeDemoButton = id; 
                 wadDrawer = id; 
                 wadDrawerButton = id; 
-                wadView = id; 
+                wadViewController = id; 
                 window = id; 
             }; 
             SUPERCLASS = NSObject; 
         }, 
-        {CLASS = RMUDAnsiTextView; LANGUAGE = ObjC; SUPERCLASS = NSTextView; }
+        {CLASS = RMUDAnsiTextView; LANGUAGE = ObjC; SUPERCLASS = NSTextView; }, 
+        {
+            ACTIONS = {add = id; remove = id; }; 
+            CLASS = WadViewController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {removeButton = id; view = id; }; 
+            SUPERCLASS = NSObject; 
+        }
     ); 
     IBVersion = 1; 
 }

@@ -1,13 +1,9 @@
 // This file is hereby placed in the Public Domain -- Neil Stevens
 
 #import "LauncherApp.h"
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSBundle.h>
-#import <Foundation/NSString.h>
-#import <Foundation/NSFileManager.h>
 #import "RMUDAnsiTextView.h"
 #import "UKKQueue.h"
+#import "WadViewController.h"
 
 #include <fcntl.h>
 
@@ -25,7 +21,6 @@
 	[[UKKQueue sharedQueue] setDelegate:self];
 	[[UKKQueue sharedQueue] addPath:[self wadPath]];
 
-	wads = [[NSMutableArray arrayWithCapacity:3] retain];
 	[self loadDefaults];
 
 	// Check if the task printed any output
@@ -88,7 +83,7 @@
 		[disableMusicButton setObjectValue:[defaults objectForKey:@"Disable Music"]];
 		[disableSoundButton setObjectValue:[defaults objectForKey:@"Disable Sound"]];
 		[disableSoundEffectsButton setObjectValue:[defaults objectForKey:@"Disable Sound Effects"]];
-		[wads setArray:[defaults stringArrayForKey:@"Wads"]];
+		[wadViewController setWads:[defaults stringArrayForKey:@"Wads"]];
 
 		// Store the compat level in terms of the Prboom values, rather than
 		// our internal indices.  That means we have to add one when we read
@@ -103,10 +98,8 @@
 		[compatibilityLevelButton setObjectValue:[NSNumber numberWithLong:0]];
 	}
 
-	[wadView noteNumberOfRowsChanged];
 	[self disableSoundClicked:disableSoundButton];
 	[self demoButtonClicked:demoMatrix];
-	[self tableViewSelectionDidChange:nil];
 	[self updateGameWad];
 }
 
@@ -135,7 +128,7 @@
 	[defaults setObject:[disableMusicButton objectValue] forKey:@"Disable Music"];
 	[defaults setObject:[disableSoundButton objectValue] forKey:@"Disable Sound"];
 	[defaults setObject:[disableSoundEffectsButton objectValue] forKey:@"Disable Sound Effects"];
-	[defaults setObject:wads forKey:@"Wads"];
+	[defaults setObject:[wadViewController wads] forKey:@"Wads"];
 
 	// Store the compat level in terms of the Prboom values, rather than
 	// our internal indices.  That means we have to add one when we read
@@ -275,6 +268,7 @@
 	// Extra wads
 	[args insertObject:@"-file" atIndex:[args count]];
 	int i;
+	NSArray *wads = [wadViewController wads];
 	for(i = 0; i < [wads count]; ++i)
 		[args insertObject:[wads objectAtIndex:i] atIndex:[args count]];
 
@@ -414,70 +408,6 @@ static NSString *readPipe(NSPipe *pipe)
 	[chooseDemoFileButton setEnabled:enabled];
 	[demoFileField setEnabled:enabled];
 	[ffToLevelField setEnabled:enabled];
-}
-
-- (IBAction)addWadClicked:(id)sender
-{
-	NSOpenPanel *panel = [NSOpenPanel openPanel];
-	[panel setAllowsMultipleSelection:true];
-	[panel setCanChooseFiles:true];
-	[panel setCanChooseDirectories:false];
-	NSArray *types = [NSArray arrayWithObjects:@"wad", @"WAD", @"DEH", @"deh", nil];
-	[panel beginSheetForDirectory:nil file:nil types:types
-	       modalForWindow:window  modalDelegate:self
-	       didEndSelector:@selector(addWadEnded:returnCode:contextInfo:)
-	       contextInfo:nil];
-}
-
-- (void)addWadEnded:(NSOpenPanel *)panel returnCode:(int)code contextInfo:(void *)info
-{
-	if(code == NSCancelButton) return;
-
-	int i;
-	for(i = 0; i < [[panel filenames] count]; ++i)
-		[wads insertObject:[[panel filenames] objectAtIndex:i] atIndex:[wads count]];
-
-	[wadView noteNumberOfRowsChanged];
-}
-
-- (IBAction)removeWadClicked:(id)sender
-{
-	[wads removeObjectsAtIndexes:[wadView selectedRowIndexes]];
-	[wadView selectRowIndexes:[NSIndexSet indexSetWithIndex:-1] byExtendingSelection:false];
-	[wadView noteNumberOfRowsChanged];
-}
-
-- (void)tableViewSelectionDidChange:(NSNotification *)notification
-{
-	[removeWadButton setEnabled:([wadView selectedRow] > -1)];
-}
-
-- (int)numberOfRowsInTableView:(NSTableView *)tableView
-{
-	return [wads count];
-}
-
-- (id)tableView:(NSTableView *)tableView
-                objectValueForTableColumn:(NSTableColumn *)column
-                row:(int)row
-{
-	NSString *columnId = [column identifier];
-	if([columnId isEqualToString:@"Path"])
-		return [wads objectAtIndex:row];
-	else if([columnId isEqualToString:@"Icon"])
-		return [[NSWorkspace sharedWorkspace] iconForFile:[wads objectAtIndex:row]];
-	else
-		return nil;
-}
-
-- (void)tableView:(NSTableView *)tableView
-                  setObjectValue:(id)object
-                  forTableColumn:(NSTableColumn *)column
-                  row:(int)row
-{
-	NSString *columnId = [[column identifier] stringValue];
-	if([columnId isEqualToString:@"Path"])
-		[wads replaceObjectAtIndex:row withObject:object];
 }
 
 @end
