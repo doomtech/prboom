@@ -391,9 +391,6 @@ void V_DrawMemPatch8(int x, int y, int scrn, const patch_t *patch,
 // static inline; other compilers have different behaviour.
 // This inline is _only_ for the function below
 
-#ifdef __GNUC__
-inline
-#endif
 void V_DrawNumPatch8(int x, int y, int scrn, int lump,
          int cm, enum patch_translation_e flags)
 {
@@ -573,8 +570,8 @@ static int V_GetModePixelDepth(video_mode_t mode) {
     case VID_MODE8: return 1;
     case VID_MODE16: return 2;
     case VID_MODE32: return 4;
+    default: return 0;
   }
-  return 0;
 }
 
 //
