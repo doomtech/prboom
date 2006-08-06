@@ -165,7 +165,6 @@ void V_DrawBackground8(const char* flatname, int scrn)
   // killough 4/17/98:
   src = W_CacheLumpNum(lump = firstflat + R_FlatNumForName(flatname));
 
-  /* V_DrawBlock(0, 0, scrn, 64, 64, src, 0); */
   width = height = 64;
   dest = screens[scrn].data;
 
@@ -174,7 +173,6 @@ void V_DrawBackground8(const char* flatname, int scrn)
     src += width;
     dest += screens[scrn].pitch;
   }
-  /* end V_DrawBlock */
 
   for (y=0 ; y<SCREENHEIGHT ; y+=64)
     for (x=y ? 0 : 64; x<SCREENWIDTH ; x+=64)
@@ -322,7 +320,6 @@ void V_DrawMemPatch8(int x, int y, int scrn, const patch_t *patch,
     // CPhipps - move stretched patch drawing code here
     //         - reformat initialisers, move variables into inner blocks
 
-    byte *desttop;
     int   col;
     int   w = (SHORT( patch->width ) << 16) - 1; // CPhipps - -1 for faster flipping
     int   stretchx, stretchy;
@@ -331,12 +328,10 @@ void V_DrawMemPatch8(int x, int y, int scrn, const patch_t *patch,
     int   DY  = (SCREENHEIGHT<<16) / 200;
     register int DYI = (200<<16)   / SCREENHEIGHT;
 
-    stretchx = ( x * DX ) >> 16;
-    stretchy = ( y * DY ) >> 16;
+    stretchx = ( x * DX );
+    stretchy = ( y * DY );
 
-    desttop = screens[scrn].data + stretchy * screens[scrn].pitch +  stretchx;
-
-    for ( col = 0; col <= w; x++, col+=DXI, desttop++ ) {
+    for ( col = 0; col <= w; col+=DXI, stretchx+=1<<16 ) {
       const column_t *column;
       {
   unsigned int d = patch->columnofs[(flags & VPT_FLIP) ? ((w - col)>>16): (col>>16)];
@@ -344,16 +339,16 @@ void V_DrawMemPatch8(int x, int y, int scrn, const patch_t *patch,
       }
 
       while ( column->topdelta != 0xff ) {
-  int toprow = ((column->topdelta * DY) >> 16);
+  int toprow = stretchy + (column->topdelta * DY);
   register const byte *source = (const byte* ) column + 3;
-  register byte       *dest = desttop + toprow * screens[scrn].pitch;
-  register int         count  = ( column->length * DY ) >> 16;
+  register byte       *dest = screens[scrn].data + (toprow >> 16)*screens[scrn].pitch + (stretchx >> 16);
+  register int         count  = column->length * DY;
   register int         srccol = 0;
 
 #ifdef RANGECHECK
   // this rangecheck fires only when the patch goes over the screen by
   // more than one pixel, to prevent massive warnings at 800x600
-  if ((toprow < 0) || ((toprow + count) > SCREENHEIGHT))
+  if ((toprow < 0) || ((toprow + count) > (SCREENHEIGHT << 16)))
     lprintf(LO_WARN,
             "V_DrawMemPatch: column exceeds screenheight (toprow %i + count %i = %i)\n"
             "Bad V_DrawMemPatch (flags=%u)", toprow, count, toprow+count, flags);
@@ -364,20 +359,22 @@ void V_DrawMemPatch8(int x, int y, int scrn, const patch_t *patch,
     column = (const column_t* ) ((const byte* ) column + ( column->length ) + 4 );
     continue;
   }
-  if ((toprow + count) >= SCREENHEIGHT) // check by John Popplewell
-    count = SCREENHEIGHT-toprow-1; // proff - clip at bottom
+  if ((toprow + count) >= (SCREENHEIGHT << 16)) // check by John Popplewell
+    count = (SCREENHEIGHT << 16)-toprow; // proff - clip at bottom
 
   if (flags & VPT_TRANS)
-    while (count--) {
+    while (count > 0) {
       *dest  =  trans[source[srccol>>16]];
       dest  +=  screens[scrn].pitch;
       srccol+=  DYI;
+      count -= 1<<16;
     }
   else
-    while (count--) {
+    while (count > 0) {
       *dest  =  source[srccol>>16];
       dest  +=  screens[scrn].pitch;
       srccol+=  DYI;
+      count -= 1<<16;
     }
   column = (const column_t* ) ((const byte* ) column + ( column->length ) + 4 );
       }
@@ -484,9 +481,6 @@ void WRAP_gld_DrawNumPatch(int x, int y, int scrn, int lump, int cm, enum patch_
 {
   gld_DrawNumPatch(x,y,lump,cm,flags);
 }
-void WRAP_gld_DrawBlock(int x, int y, int scrn, int width, int height, const byte *src, enum patch_translation_e flags)
-{
-}
 void V_PlotPixelGL(int scrn, int x, int y, byte color) {
   gld_DrawLine(x-1, y, x+1, y, color);
   gld_DrawLine(x, y-1, x, y+1, color);
@@ -502,7 +496,6 @@ void NULL_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int d
 void NULL_DrawBackground(const char *flatname, int n) {}
 void NULL_DrawMemPatch(int x, int y, int scrn, const patch_t *patch, int cm, enum patch_translation_e flags) {}
 void NULL_DrawNumPatch(int x, int y, int scrn, int lump, int cm, enum patch_translation_e flags) {}
-void NULL_DrawBlock(int x, int y, int scrn, int width, int height, const byte *src, enum patch_translation_e flags) {}
 void NULL_PlotPixel(int scrn, int x, int y, byte color) {}
 void NULL_DrawLine(fline_t* fl, int color) {}
 
