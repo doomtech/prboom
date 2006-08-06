@@ -442,7 +442,7 @@ static NSString *readPipe(NSPipe *pipe)
 
 - (IBAction)removeWadClicked:(id)sender
 {
-	[wads removeObjectAtIndex:[wadView selectedRow]];
+	[wads removeObjectsAtIndexes:[wadView selectedRowIndexes]];
 	[wadView selectRowIndexes:[NSIndexSet indexSetWithIndex:-1] byExtendingSelection:false];
 	[wadView noteNumberOfRowsChanged];
 }
