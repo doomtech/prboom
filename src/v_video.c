@@ -500,15 +500,25 @@ void WRAP_gld_DrawLine(fline_t* fl, int color)
 }
 #endif
 
-static video_mode_t current_vidmode = VID_MODE8;
+void NULL_FillRect(int scrn, int x, int y, int width, int height, byte colour) {}
+void NULL_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty, int destscrn, enum patch_translation_e flags) {}
+void NULL_DrawBackground(const char *flatname, int n) {}
+void NULL_DrawMemPatch(int x, int y, int scrn, const patch_t *patch, int cm, enum patch_translation_e flags) {}
+void NULL_DrawNumPatch(int x, int y, int scrn, int lump, int cm, enum patch_translation_e flags) {}
+void NULL_DrawBlock(int x, int y, int scrn, int width, int height, const byte *src, enum patch_translation_e flags) {}
+void NULL_PlotPixel(int scrn, int x, int y, byte color) {}
+void NULL_DrawLine(fline_t* fl, int color) {}
 
-V_CopyRect_f V_CopyRect;
-V_FillRect_f V_FillRect;
-V_DrawMemPatch_f V_DrawMemPatch;
-V_DrawNumPatch_f V_DrawNumPatch;
-V_DrawBackground_f V_DrawBackground;
-V_PlotPixel_f V_PlotPixel;
-V_DrawLine_f V_DrawLine;
+const char *default_videomode;
+static video_mode_t current_videomode = VID_MODE8;
+
+V_CopyRect_f V_CopyRect = NULL_CopyRect;
+V_FillRect_f V_FillRect = NULL_FillRect;
+V_DrawMemPatch_f V_DrawMemPatch = NULL_DrawMemPatch;
+V_DrawNumPatch_f V_DrawNumPatch = NULL_DrawNumPatch;
+V_DrawBackground_f V_DrawBackground = NULL_DrawBackground;
+V_PlotPixel_f V_PlotPixel = NULL_PlotPixel;
+V_DrawLine_f V_DrawLine = NULL_DrawLine;
 
 //
 // V_InitMode
@@ -530,7 +540,7 @@ void V_InitMode(video_mode_t mode) {
       V_DrawBackground = V_DrawBackground8;
       V_PlotPixel = V_PlotPixel8;
       V_DrawLine = WRAP_V_DrawLine;
-      current_vidmode = VID_MODE8;
+      current_videomode = VID_MODE8;
       break;
 #ifdef GL_DOOM
     case VID_MODEGL:
@@ -542,7 +552,7 @@ void V_InitMode(video_mode_t mode) {
       V_DrawBackground = WRAP_gld_DrawBackground;
       V_PlotPixel = V_PlotPixelGL;
       V_DrawLine = WRAP_gld_DrawLine;
-      current_vidmode = VID_MODEGL;
+      current_videomode = VID_MODEGL;
       break;
 #endif
   }
@@ -552,33 +562,33 @@ void V_InitMode(video_mode_t mode) {
 // V_GetMode
 //
 video_mode_t V_GetMode(void) {
-  return current_vidmode;
-}
-
-//
-// V_GetNumPixelBits
-//
-int V_GetNumPixelBits(void) {
-  return V_GetModePixelDepth(current_vidmode) * 8;
-}
-
-//
-// V_GetPixelDepth
-//
-int V_GetPixelDepth(void) {
-  return V_GetModePixelDepth(current_vidmode);
+  return current_videomode;
 }
 
 //
 // V_GetModePixelDepth
 //
-int V_GetModePixelDepth(video_mode_t mode) {
+static int V_GetModePixelDepth(video_mode_t mode) {
   switch (mode) {
     case VID_MODE8: return 1;
     case VID_MODE16: return 2;
     case VID_MODE32: return 4;
   }
   return 0;
+}
+
+//
+// V_GetNumPixelBits
+//
+int V_GetNumPixelBits(void) {
+  return V_GetModePixelDepth(current_videomode) * 8;
+}
+
+//
+// V_GetPixelDepth
+//
+int V_GetPixelDepth(void) {
+  return V_GetModePixelDepth(current_videomode);
 }
 
 //

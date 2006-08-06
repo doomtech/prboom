@@ -299,6 +299,7 @@ default_t defaults[] =
    def_int,ss_none}, // number of audio events simultaneously // killough
 
   {"Video settings",{NULL},{0},UL,UL,def_none,ss_none},
+  {"videomode",{NULL, &default_videomode},{0, "8"}, UL, UL, def_str,ss_none},
   /* 640x480 default resolution */
   {"screen_width",{&desired_screenwidth},{640}, 320, MAX_SCREENWIDTH,
    def_int,ss_none},
