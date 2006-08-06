@@ -270,7 +270,20 @@
 	int i;
 	NSArray *wads = [wadViewController wads];
 	for(i = 0; i < [wads count]; ++i)
-		[args insertObject:[wads objectAtIndex:i] atIndex:[args count]];
+	{
+		NSString *path = [wads objectAtIndex:i];
+		if([[path pathExtension] caseInsensitiveCompare:@"wad"] == NSOrderedSame)
+			[args insertObject:[wads objectAtIndex:i] atIndex:[args count]];
+	}
+
+	// Dehacked
+	[args insertObject:@"-deh" atIndex:[args count]];
+	for(i = 0; i < [wads count]; ++i)
+	{
+		NSString *path = [wads objectAtIndex:i];
+		if([[path pathExtension] caseInsensitiveCompare:@"deh"] == NSOrderedSame)
+			[args insertObject:[wads objectAtIndex:i] atIndex:[args count]];
+	}
 
 	// Demo
 	if([demoMatrix selectedCell] != noDemoButton)
