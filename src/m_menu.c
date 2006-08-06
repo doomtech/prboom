@@ -2881,7 +2881,7 @@ enum {
 #define G_Y4 (G_Y3+52)
 #define GF_X 76
 
-static const char *videomodes[] = {"8bit","16bit","32bit","OpenGL"};
+static const char *videomodes[] = {"8bit",/*"16bit","32bit",*/"OpenGL"};
 
 setup_menu_t gen_settings1[] = { // General Settings screen1
 

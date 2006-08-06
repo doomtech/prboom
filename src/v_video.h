@@ -90,9 +90,9 @@ extern int          usegamma;
 // The available bit-depth modes
 typedef enum {
   VID_MODE8   = 0,
-  VID_MODE16  = 1,
-  VID_MODE32  = 2,
-  VID_MODEGL  = 3
+//  VID_MODE16  = 1,
+//  VID_MODE32  = 2,
+  VID_MODEGL  = 1
 } video_mode_t;
 
 extern video_mode_t default_videomode;

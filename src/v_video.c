@@ -527,8 +527,8 @@ void V_InitMode(video_mode_t mode) {
 #endif
   switch (mode) {
     case VID_MODE8:
-    case VID_MODE16:
-    case VID_MODE32:
+    //case VID_MODE16:
+    //case VID_MODE32:
       lprintf(LO_INFO, "V_InitMode: using 8 bit video mode\n");
       V_CopyRect = V_CopyRect8;
       V_FillRect = V_FillRect8;
@@ -568,8 +568,8 @@ video_mode_t V_GetMode(void) {
 static int V_GetModePixelDepth(video_mode_t mode) {
   switch (mode) {
     case VID_MODE8: return 1;
-    case VID_MODE16: return 2;
-    case VID_MODE32: return 4;
+    //case VID_MODE16: return 2;
+    //case VID_MODE32: return 4;
     default: return 0;
   }
 }
