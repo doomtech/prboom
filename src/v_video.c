@@ -321,7 +321,7 @@ void V_DrawMemPatch8(int x, int y, int scrn, const patch_t *patch,
     //         - reformat initialisers, move variables into inner blocks
 
     int   col;
-    int   w = (SHORT( patch->width ) << 16) - 1; // CPhipps - -1 for faster flipping
+    int   w = (SHORT( patch->width ) << 16) - 0x8000; // CPhipps - -1 for faster flipping
     int   stretchx, stretchy;
     int   DX  = (SCREENWIDTH<<16)  / 320;
     int   DXI = (320<<16)          / SCREENWIDTH;
@@ -339,7 +339,7 @@ void V_DrawMemPatch8(int x, int y, int scrn, const patch_t *patch,
       }
 
       while ( column->topdelta != 0xff ) {
-  int toprow = stretchy + (column->topdelta * DY);
+  int toprow = stretchy + (column->topdelta * DY) + 0x8000;
   register const byte *source = (const byte* ) column + 3;
   register byte       *dest = screens[scrn].data + (toprow >> 16)*screens[scrn].pitch + (stretchx >> 16);
   register int         count  = column->length * DY;
