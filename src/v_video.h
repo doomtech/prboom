@@ -95,7 +95,7 @@ typedef enum {
   VID_MODEGL  = 3
 } video_mode_t;
 
-extern const char *default_videomode;
+extern video_mode_t default_videomode;
 
 void V_InitMode(video_mode_t mode);
 

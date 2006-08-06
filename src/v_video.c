@@ -506,7 +506,7 @@ void NULL_DrawBlock(int x, int y, int scrn, int width, int height, const byte *s
 void NULL_PlotPixel(int scrn, int x, int y, byte color) {}
 void NULL_DrawLine(fline_t* fl, int color) {}
 
-const char *default_videomode;
+video_mode_t default_videomode;
 static video_mode_t current_videomode = VID_MODE8;
 
 V_CopyRect_f V_CopyRect = NULL_CopyRect;

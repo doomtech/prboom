@@ -596,22 +596,21 @@ void I_UpdateVideoMode(void)
 {
   int init_flags;
   int i;
-  const char *modestr;
   video_mode_t mode;
 
   lprintf(LO_INFO, "I_UpdateVideoMode: %dx%d (%s)\n", SCREENWIDTH, SCREENHEIGHT, use_fullscreen ? "fullscreen" : "nofullscreen");
 
-  modestr = default_videomode;
-  if ((i=M_CheckParm("-vidmode")) && i<myargc-1)
-    modestr = myargv[i+1];
-  if (!stricmp(modestr,"16")) {
-    mode = VID_MODE16;
-  } else if (!stricmp(modestr,"32")) {
-    mode = VID_MODE32;
-  } else if (!stricmp(modestr,"gl")) {
-    mode = VID_MODEGL;
-  } else {
-    mode = VID_MODE8;
+  mode = default_videomode;
+  if ((i=M_CheckParm("-vidmode")) && i<myargc-1) {
+    if (!stricmp(myargv[i+1],"16")) {
+      mode = VID_MODE16;
+    } else if (!stricmp(myargv[i+1],"32")) {
+      mode = VID_MODE32;
+    } else if (!stricmp(myargv[i+1],"gl")) {
+      mode = VID_MODEGL;
+    } else {
+      mode = VID_MODE8;
+    }
   }
   V_InitMode(mode);
 

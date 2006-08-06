@@ -300,9 +300,9 @@ default_t defaults[] =
 
   {"Video settings",{NULL},{0},UL,UL,def_none,ss_none},
 #if ((defined GL_DOOM) && (defined _MSC_VER))
-  {"videomode",{NULL, &default_videomode},{0, "gl"}, UL, UL, def_str,ss_none},
+  {"videomode",{&default_videomode},{VID_MODEGL}, VID_MODE8, VID_MODEGL, def_int,ss_none},
 #else
-  {"videomode",{NULL, &default_videomode},{0, "8"}, UL, UL, def_str,ss_none},
+  {"videomode",{&default_videomode},{VID_MODE8}, VID_MODE8, VID_MODEGL, def_int,ss_none},
 #endif
   /* 640x480 default resolution */
   {"screen_width",{&desired_screenwidth},{640}, 320, MAX_SCREENWIDTH,
