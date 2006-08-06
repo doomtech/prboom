@@ -6,6 +6,7 @@ Changes from v2.4.4 to v2.4.5
 - Unified software and opengl engine into one binary
 - Added video mode selection to menu
 - Fullscreen setting will only take effect after game restart
+- Mac OS X: Launcher now uses drawers instead of tabs
 
 Changes from v2.4.3 to v2.4.4
 - Don't fail when a texture name can't be looked up
