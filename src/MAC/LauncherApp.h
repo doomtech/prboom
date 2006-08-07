@@ -40,11 +40,8 @@
 
 	// Drawers
 	IBOutlet id wadDrawer;
-	IBOutlet id wadDrawerButton;
 	IBOutlet id demoDrawer;
-	IBOutlet id demoDrawerButton;
 	IBOutlet id debugDrawer;
-	IBOutlet id debugDrawerButton;
 
 	// Wad stuff
 	IBOutlet id wadViewController;
@@ -73,11 +70,6 @@
 - (void)updateGameWad;
 - (void)watcher:(id)watcher receivedNotification:(NSString *)notification
         forPath:(NSString *)path;
-
-// Drawer Management
-- (NSDrawer *)drawerForButton:(id)button;
-- (IBAction)drawerButtonClicked:(id)button;
-- (void)updateDrawerButton:(id)button;
 
 // Game
 - (IBAction)startClicked:(id)sender;

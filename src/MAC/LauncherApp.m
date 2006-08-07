@@ -52,20 +52,11 @@
 	{
 		[window setFrameUsingName:@"Launcher"];
 		if([[defaults objectForKey:@"Wad Drawer State"] boolValue])
-		{
 			[wadDrawer open];
-			[self updateDrawerButton:wadDrawerButton];
-		}
 		if([[defaults objectForKey:@"Debug Drawer State"] boolValue])
-		{
 			[debugDrawer open];
-			[self updateDrawerButton:debugDrawerButton];
-		}
 		if([[defaults objectForKey:@"Demo Drawer State"] boolValue])
-		{
 			[demoDrawer open];
-			[self updateDrawerButton:demoDrawerButton];
-		}
 	}
 
 	[consoleWindow setFrameUsingName:@"Console"];
@@ -180,34 +171,6 @@
         forPath:(NSString *)path
 {
 	[self updateGameWad];
-}
-
-- (NSDrawer *)drawerForButton:(id)button
-{
-	if(button == wadDrawerButton)
-		return wadDrawer;
-	else if(button == demoDrawerButton)
-		return demoDrawer;
-	else if(button == debugDrawerButton)
-		return debugDrawer;
-	else
-		return nil;
-}
-
-- (IBAction)drawerButtonClicked:(id)button
-{
-	NSDrawer *drawer= [self drawerForButton:button];
-	[drawer toggle:button];
-	[self updateDrawerButton:button];
-}
-
-- (void)updateDrawerButton:(id)button
-{
-	int state = [[self drawerForButton:button] state];
-	bool opening = state == NSDrawerOpenState | state == NSDrawerOpeningState;
-	NSString *newText = opening ? @"Hide" : @"Show";
-	AGRegex *re = [AGRegex regexWithPattern:@"^(Show|Hide)"];
-	[button setTitle:[re replaceWithString:newText inString:[button title]]];
 }
 
 - (IBAction)startClicked:(id)sender

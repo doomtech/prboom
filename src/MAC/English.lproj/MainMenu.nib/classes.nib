@@ -1,12 +1,17 @@
 {
     IBClasses = (
+        {
+            CLASS = DrawerButton; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {drawer = NSDrawer; }; 
+            SUPERCLASS = NSButton; 
+        }, 
         {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
         {
             ACTIONS = {
                 chooseDemoFileClicked = id; 
                 demoButtonClicked = id; 
                 disableSoundClicked = id; 
-                drawerButtonClicked = id; 
                 gameButtonClicked = id; 
                 openWebsite = id; 
                 showConsoleClicked = id; 
@@ -21,9 +26,7 @@
                 consoleTextView = id; 
                 consoleWindow = id; 
                 debugDrawer = id; 
-                debugDrawerButton = id; 
                 demoDrawer = id; 
-                demoDrawerButton = id; 
                 demoFileField = id; 
                 demoMatrix = id; 
                 disableGraphicsButton = id; 
@@ -45,7 +48,6 @@
                 respawnMonstersButton = id; 
                 timeDemoButton = id; 
                 wadDrawer = id; 
-                wadDrawerButton = id; 
                 wadViewController = id; 
                 window = id; 
             }; 
