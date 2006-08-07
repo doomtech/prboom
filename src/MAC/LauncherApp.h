@@ -72,6 +72,7 @@
         forPath:(NSString *)path;
 
 // Game
+- (void)tryToLaunch;
 - (IBAction)startClicked:(id)sender;
 - (void)taskReadTimer:(NSTimer *)timer;
 - (IBAction)gameButtonClicked:(id)sender;

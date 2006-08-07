@@ -7,6 +7,8 @@
 
 #include <fcntl.h>
 
+static LauncherApp *LApp;
+
 @implementation LauncherApp
 
 - (NSString *)wadPath
@@ -16,6 +18,8 @@
 
 - (void)awakeFromNib
 {
+	LApp = self;
+
 	[[NSFileManager defaultManager] createDirectoryAtPath:[self wadPath]
 	                                attributes:nil];
 	[[UKKQueue sharedQueue] setDelegate:self];
@@ -171,6 +175,12 @@
         forPath:(NSString *)path
 {
 	[self updateGameWad];
+}
+
+- (void)tryToLaunch
+{
+	if([launchButton isEnabled])
+		[self startClicked:self];
 }
 
 - (IBAction)startClicked:(id)sender
@@ -392,7 +402,7 @@ static NSString *readPipe(NSPipe *pipe)
 
 - (id)performDefaultImplementation
 {
-	// TODO: Factor out the launch code from startClicked: for use here, too.
+	[LApp tryToLaunch];
 }
 
 @end
