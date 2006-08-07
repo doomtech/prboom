@@ -1,5 +1,6 @@
 // This file is hereby placed in the Public Domain -- Neil Stevens
 
+#import "ConsoleController.h"
 #import "LauncherApp.h"
 #import "RMUDAnsiTextView.h"
 #import "UKKQueue.h"
@@ -26,11 +27,6 @@ static LauncherApp *LApp;
 	[[UKKQueue sharedQueue] addPath:[self wadPath]];
 
 	[self loadDefaults];
-
-	// Check if the task printed any output
-	// And also check its status
-	[NSTimer scheduledTimerWithTimeInterval:0.1 target:self
-	         selector:@selector(taskReadTimer:) userInfo:nil repeats:true];
 
 	// Save Prefs on exit
 	[[NSNotificationCenter defaultCenter] addObserver:self
@@ -63,7 +59,7 @@ static LauncherApp *LApp;
 			[demoDrawer open];
 	}
 
-	[consoleWindow setFrameUsingName:@"Console"];
+	[[consoleController window] setFrameUsingName:@"Console"];
 
 	if([defaults boolForKey:@"Saved"] == true)
 	{
@@ -106,7 +102,7 @@ static LauncherApp *LApp;
 	[defaults setBool:true forKey:@"Saved 2.4.5"];
 
 	[window saveFrameUsingName:@"Launcher"];
-	[consoleWindow saveFrameUsingName:@"Console"];
+	[[consoleController window] saveFrameUsingName:@"Console"];
 
 	[defaults setObject:[NSNumber numberWithBool:[wadDrawer state]] forKey:@"Wad Drawer State"];
 	[defaults setObject:[NSNumber numberWithBool:[debugDrawer state]] forKey:@"Debug Drawer State"];
@@ -277,74 +273,13 @@ static LauncherApp *LApp;
 		}
 	}
 
-	// Execute
-	standardOutput = [[NSPipe alloc] init];
-	standardError = [[NSPipe alloc] init];
-	[standardOutput retain];
-	[standardError retain];
-	[consoleTextView clear];
-
-	doomTask = [[NSTask alloc] init];
-	[doomTask retain];
-	[doomTask setLaunchPath:path];
-	[doomTask setArguments:args];
-	[doomTask setStandardOutput:standardOutput];
-	[doomTask setStandardError:standardError];
-
 	[launchButton setEnabled:false];
-	[doomTask launch];
+	[consoleController launch:path args:args delegate:self];
 }
 
-static void *buffer = 0;
-static NSString *readPipe(NSPipe *pipe)
+- (void)taskEnded:(id)sender
 {
-	// NSFileHandle doesn't do nonblocking IO, so we'll do it ourselves
-	int fd = [[pipe fileHandleForReading] fileDescriptor];
-	int flags = fcntl(fd, F_GETFL, 0);
-	flags |= O_NONBLOCK;
-	fcntl(fd, F_SETFL, flags);
-
-	if(!buffer)
-		buffer = malloc(1000000);
-	int size = read(fd, buffer, 1000000);
-
-	if(size > 0)
-	{
-		NSData *data = [NSData dataWithBytesNoCopy:buffer length:size
-		                freeWhenDone:false];
-
-		// Stick the data into the console text view
-		NSString *string = [[NSString alloc] initWithData:data
-		                    encoding:NSUTF8StringEncoding];
-		[string retain];
-		return string;
-	}
-	return @"";
-}
-
-- (void)taskReadTimer:(NSTimer *)timer
-{
-	if(doomTask == nil)
-		return;
-
-	NSString *stdoutString = readPipe(standardOutput);
-	[consoleTextView appendAnsiString:stdoutString];
-	[stdoutString release];
-
-	NSString *stderrString = readPipe(standardError);
-	// Ignore for now
-	[stderrString release];
-
-	if(![doomTask isRunning])
-	{
-		if ([doomTask terminationStatus] != 0)
-			[[consoleWindow windowController] showWindow:nil];
-		[doomTask release];
-		doomTask = nil;
-		[standardError release];
-		[standardOutput release];
-		[launchButton setEnabled:true];
-	}
+	[launchButton setEnabled:true];
 }
 
 - (IBAction)gameButtonClicked:(id)sender
@@ -359,7 +294,7 @@ static NSString *readPipe(NSPipe *pipe)
 
 - (IBAction)showConsoleClicked:(id)sender
 {
-	[[consoleWindow windowController] showWindow:sender];
+	[consoleController showWindow:sender];
 }
 
 - (IBAction)disableSoundClicked:(id)sender

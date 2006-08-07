@@ -1,6 +1,12 @@
 {
     IBClasses = (
         {
+            CLASS = ConsoleController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {textView = RMUDAnsiTextView; }; 
+            SUPERCLASS = NSWindowController; 
+        }, 
+        {
             CLASS = DrawerButton; 
             LANGUAGE = ObjC; 
             OUTLETS = {drawer = NSDrawer; }; 
@@ -23,8 +29,7 @@
             OUTLETS = {
                 chooseDemoFileButton = id; 
                 compatibilityLevelButton = id; 
-                consoleTextView = id; 
-                consoleWindow = id; 
+                consoleController = id; 
                 debugDrawer = id; 
                 demoDrawer = id; 
                 demoFileField = id; 

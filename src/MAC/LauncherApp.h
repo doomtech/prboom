@@ -38,22 +38,16 @@
 	IBOutlet id chooseDemoFileButton;
 	IBOutlet id demoFileField;
 
+	// Wad options
+	IBOutlet id wadViewController;
+
 	// Drawers
 	IBOutlet id wadDrawer;
 	IBOutlet id demoDrawer;
 	IBOutlet id debugDrawer;
 
-	// Wad stuff
-	IBOutlet id wadViewController;
-
 	// Console
-	IBOutlet id consoleWindow;
-	IBOutlet id consoleTextView;
-
-	// Launch management
-	NSTask *doomTask;
-	NSPipe *standardOutput;
-	NSPipe *standardError;
+	IBOutlet id consoleController;
 }
 
 - (NSString *)wadPath;
@@ -74,7 +68,7 @@
 // Game
 - (void)tryToLaunch;
 - (IBAction)startClicked:(id)sender;
-- (void)taskReadTimer:(NSTimer *)timer;
+- (void)taskEnded:(id)sender;
 - (IBAction)gameButtonClicked:(id)sender;
 
 // Tools

@@ -113,6 +113,7 @@ z_zone.c
 )
 
 launcherSources = %w(
+MAC/ConsoleController.m
 MAC/DrawerButton.m
 MAC/LauncherApp.m
 MAC/LauncherMain.m
