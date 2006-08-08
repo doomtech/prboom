@@ -7,12 +7,7 @@
 {
 	IBOutlet RMUDAnsiTextView *textView;
 
-	NSTask *task;
 	id launchDelegate;
-
-	NSPipe *standardOutput;
-	NSPipe *standardError;
-	bool timerLaunched;
 }
 
 - (id)initWithWindow:(id)window;
@@ -20,6 +15,7 @@
 
 - (void)launch:(NSString *)launchPath args:(NSArray *)args delegate:(id)delegate;
 
-- (void)readTimer:(NSTimer *)timer;
+- (void)taskComplete:(NSNotification *)notification;
+- (void)dataReady:(NSNotification *)notification;
 
 @end
