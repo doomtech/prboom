@@ -1,11 +1,10 @@
 // This file is hereby placed in the Public Domain -- Neil Stevens
 
 #import <Cocoa/Cocoa.h>
-#import "RMUDAnsiTextView.h"
 
 @interface ConsoleController : NSWindowController
 {
-	IBOutlet RMUDAnsiTextView *textView;
+	IBOutlet NSTextView *textView;
 
 	id launchDelegate;
 }

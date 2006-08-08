@@ -19,7 +19,9 @@
 - (void)launch:(NSString *)path args:(NSArray *)args delegate:(id)delegate
 {
 	launchDelegate = delegate;
-	[textView clear];
+
+	// clear console
+	[textView setString:@""];
 
 	NSTask *task = [[NSTask alloc] init];
 	[task retain];
@@ -51,8 +53,11 @@
 	{
 		NSString *string = [[NSString alloc] initWithData:data
 		                    encoding:NSUTF8StringEncoding];
-		[textView appendAnsiString:string];
+		[textView setString:[[textView string] stringByAppendingString:string]];
 		[string release];
+
+		// Scroll to bottom
+		[textView scrollRangeToVisible:NSMakeRange([[textView string] length], 0)];
 
 		[handle readInBackgroundAndNotify];
 	}

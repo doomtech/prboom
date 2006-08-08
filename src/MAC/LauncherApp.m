@@ -2,7 +2,6 @@
 
 #import "ConsoleController.h"
 #import "LauncherApp.h"
-#import "RMUDAnsiTextView.h"
 #import "UKKQueue.h"
 #import "WadViewController.h"
 

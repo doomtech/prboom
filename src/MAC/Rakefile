@@ -116,7 +116,6 @@ MAC/ConsoleController.m
 MAC/DrawerButton.m
 MAC/LauncherApp.m
 MAC/LauncherMain.m
-MAC/RMUDAnsiTextView.m
 MAC/UKKQueue.m
 MAC/UKMainThreadProxy.m
 MAC/WadViewController.m
