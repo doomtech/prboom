@@ -11,14 +11,13 @@ DOOMWADDIR = File::expand_path('~/Library/Application Support/PrBoom')
 @systemFrameworks += %w(Cocoa Carbon QuickTime OpenGL)
 @frameworks += %w(SDL SDL_net AGRegex)
 @includes += ' -I. -IMAC'
-@defines += ' -DHAVE_CONFIG_H -DGL_DOOM'
-@commonflags += ' -Wno-pointer-sign -Wno-packed'
+@defines += ' -DHAVE_CONFIG_H'
 @objcflags += ' -fobjc-exceptions'
 
 if ENV['DEBUG']
 	@commonflags += ' -g -DDEBUG -Wmissing-noreturn -Wredundant-decls -Wnested-externs -Wold-style-definition -Wshadow'
 else
-	@commonflags += ' -Os'
+	@commonflags += ' -Os -Wno-pointer-sign -Wno-packed'
 end
 
 ####################
