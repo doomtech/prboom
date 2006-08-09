@@ -39,6 +39,55 @@ static int findNext(NSString *string, NSString *needle, int start)
 	}
 }
 
+static NSFont *defaultFont(void)
+{
+	return [[[NSFont userFixedPitchFontOfSize:12] retain] autorelease];
+}
+
+static NSColor *ansiColor(int c, int bold)
+{
+	float shadowLevel = bold ? 0.0 : 0.5;
+	switch(c)
+	{
+	case 0:
+		return [[NSColor blackColor] shadowWithLevel: shadowLevel];
+	case 1:
+		return [[NSColor redColor] shadowWithLevel: shadowLevel];
+	case 2:
+		return [[NSColor greenColor] shadowWithLevel: shadowLevel];
+	case 3:
+		return [[NSColor yellowColor] shadowWithLevel: shadowLevel];
+	case 4:
+		return [[NSColor blueColor] shadowWithLevel: shadowLevel];
+	case 5:
+		return [[NSColor magentaColor] shadowWithLevel: shadowLevel];
+	case 6:
+		return [[NSColor cyanColor] shadowWithLevel: shadowLevel];
+	case 7:
+	default:
+		return [[NSColor whiteColor] shadowWithLevel: shadowLevel];
+	}
+}
+
+static NSDictionary *attributes(bool bold, bool blink, bool reverse, int bg, int fg)
+{
+	// TODO: implement blinking?
+
+	int bgColor = bg;
+	int fgColor = fg;
+	if(reverse)
+	{
+		bgColor = fg;
+		fgColor = bg;
+	}
+
+	NSDictionary *attributes = [NSDictionary dictionaryWithObjectsAndKeys:
+	     defaultFont(), NSFontAttributeName,
+	     ansiColor(fg, bold), NSForegroundColorAttributeName,
+	     ansiColor(bg, false), NSBackgroundColorAttributeName, nil];
+	return [[attributes retain] autorelease];
+}
+
 + (NSAttributedString *)parseColorCodes:(NSString *)ansiString
 {
 	NSMutableAttributedString *retval = [[[NSMutableAttributedString alloc]
@@ -46,14 +95,23 @@ static int findNext(NSString *string, NSString *needle, int start)
 	int length = [ansiString length];
 	int last = 0;
 	int current = -1;
+
+	static const int DefaultFGColor = 7;
+	static const int DefaultBGColor = 0;
+	bool bold = false;
+	bool blink = false;
+	bool reverse = false;
+	int bgColor = DefaultBGColor;
+	int fgColor = DefaultFGColor;
+
 	while((current = findNext(ansiString, @"\e[", current + 1)) != NSNotFound)
 	{
 		int updateLength = current - last + 1;
-		NSAttributedString *update = [[NSAttributedString alloc]
-		              initWithString:[ansiString
-		              substringWithRange:NSMakeRange(last, updateLength)]];
+		NSAttributedString *update = [[[NSAttributedString alloc]
+		  initWithString:[ansiString substringWithRange:NSMakeRange(last, updateLength)]
+		  attributes:attributes(bold, blink, reverse, bgColor, fgColor)]
+		  autorelease];
 		[retval appendAttributedString:update];
-		[update release];
 		last = current;
 
 		int end = findNext(ansiString, @"m", current + 1);
@@ -88,6 +146,53 @@ static int findNext(NSString *string, NSString *needle, int start)
 			}
 			if(valid)
 			{
+				NSArray *codes = [[ansiString substringWithRange:
+				                  NSMakeRange(current + 2, end - current - 2)]
+				                  componentsSeparatedByString:@";"];
+				for(i = 0; i < [codes count]; ++i)
+				{
+					int c = [[codes objectAtIndex:i] intValue];
+					switch(c)
+					{
+					case 0:
+						bold = false;
+						blink = false;
+						reverse = false;
+						bgColor = DefaultBGColor;
+						fgColor = DefaultFGColor;
+						break;
+					case 1:
+						bold = true;
+						break;
+					case 5:
+						blink = true;
+						break;
+					case 7:
+						reverse = true;
+						break;
+					case 30:
+					case 31:
+					case 32:
+					case 33:
+					case 34:
+					case 35:
+					case 36:
+					case 37:
+						fgColor = c & 7;
+						break;
+					case 40:
+					case 41:
+					case 42:
+					case 43:
+					case 44:
+					case 45:
+					case 46:
+					case 47:
+						bgColor = c & 7;
+						break;
+					}
+				}
+
 				int codeLength = end - current + 1;
 				current += codeLength - 1;
 				last = current + 1;
@@ -96,14 +201,12 @@ static int findNext(NSString *string, NSString *needle, int start)
 	}
 	if(last < length)
 	{
-		NSAttributedString *rest = [[NSAttributedString alloc]
-		                            initWithString:[ansiString substringFromIndex:last]];
+		NSAttributedString *rest = [[[NSAttributedString alloc]
+		      initWithString:[ansiString substringFromIndex:last]
+		      attributes:attributes(bold, blink, reverse, bgColor, fgColor)]
+		      autorelease];
 		[retval appendAttributedString:rest];
-		[rest release];
 	}
-	[retval addAttribute:NSFontAttributeName
-	        value:[NSFont userFixedPitchFontOfSize:12]
-	        range:NSMakeRange(0, [retval length])];
 
 	return retval;
 }
