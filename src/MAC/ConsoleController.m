@@ -1,5 +1,6 @@
 // This file is hereby placed in the Public Domain -- Neil Stevens
 
+#import "ANSIString.h"
 #import "ConsoleController.h"
 #import "LauncherApp.h"
 
@@ -8,11 +9,17 @@
 - (id)initWithWindow:(id)window
 {
 	[super initWithWindow:window];
+}
+
+- (void)awakeFromNib
+{
 	launchDelegate = nil;
+	log = [[[NSMutableString alloc] init] retain];
 }
 
 - (void)dealloc
 {
+	[log release];
 	[super dealloc];
 }
 
@@ -21,6 +28,7 @@
 	launchDelegate = delegate;
 
 	// clear console
+	[log setString:@""];
 	[textView setString:@""];
 
 	NSTask *task = [[NSTask alloc] init];
@@ -53,8 +61,12 @@
 	{
 		NSString *string = [[NSString alloc] initWithData:data
 		                    encoding:NSUTF8StringEncoding];
-		[textView setString:[[textView string] stringByAppendingString:string]];
+		[log appendString:string];
 		[string release];
+
+		[[textView textStorage] beginEditing];
+		[[textView textStorage] setAttributedString:[ANSIString parseColorCodes:log]];
+		[[textView textStorage] endEditing];
 
 		// Scroll to bottom
 		[textView scrollRangeToVisible:NSMakeRange([[textView string] length], 0)];
@@ -67,7 +79,6 @@
 		 removeObserver:self
 		 name:NSFileHandleReadCompletionNotification
 		 object:[notification object]];
-		[[notification object] release];
 	}
 }
 
@@ -80,7 +91,6 @@
 	 removeObserver:self
 	 name:NSTaskDidTerminateNotification
 	 object:[notification object]];
-	[task release];
 	if(launchDelegate)
 		[launchDelegate taskEnded:self];
 }

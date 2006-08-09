@@ -6,10 +6,12 @@
 {
 	IBOutlet NSTextView *textView;
 
+	NSMutableString *log;
 	id launchDelegate;
 }
 
 - (id)initWithWindow:(id)window;
+- (void)awakeFromNib;
 - (void)dealloc;
 
 - (void)launch:(NSString *)launchPath args:(NSArray *)args delegate:(id)delegate;
