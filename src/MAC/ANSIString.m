@@ -46,27 +46,20 @@ static NSFont *defaultFont(void)
 
 static NSColor *ansiColor(int c, int bold)
 {
-	float shadowLevel = bold ? 0.0 : 0.5;
-	switch(c)
-	{
-	case 0:
-		return [[NSColor blackColor] shadowWithLevel: shadowLevel];
-	case 1:
-		return [[NSColor redColor] shadowWithLevel: shadowLevel];
-	case 2:
-		return [[NSColor greenColor] shadowWithLevel: shadowLevel];
-	case 3:
-		return [[NSColor yellowColor] shadowWithLevel: shadowLevel];
-	case 4:
-		return [[NSColor blueColor] shadowWithLevel: shadowLevel];
-	case 5:
-		return [[NSColor magentaColor] shadowWithLevel: shadowLevel];
-	case 6:
-		return [[NSColor cyanColor] shadowWithLevel: shadowLevel];
-	case 7:
-	default:
-		return [[NSColor whiteColor] shadowWithLevel: shadowLevel];
-	}
+	float value = bold ? 1.0 : 0.5;
+	float a = 1.0;
+	float r = 0.0;
+	float g = 0.0;
+	float b = 0.0;
+	if(c & 1)
+		r = value;
+	if(c & 2)
+		g = value;
+	if(c & 4)
+		b = value;
+
+	NSColor *color = [NSColor colorWithCalibratedRed:r green:g blue:b alpha:a];
+	return [[color retain] autorelease];
 }
 
 static NSDictionary *attributes(bool bold, bool blink, bool reverse, int bg, int fg)
@@ -178,7 +171,7 @@ static NSDictionary *attributes(bool bold, bool blink, bool reverse, int bg, int
 					case 35:
 					case 36:
 					case 37:
-						fgColor = c & 7;
+						fgColor = c - 30;
 						break;
 					case 40:
 					case 41:
@@ -188,7 +181,7 @@ static NSDictionary *attributes(bool bold, bool blink, bool reverse, int bg, int
 					case 45:
 					case 46:
 					case 47:
-						bgColor = c & 7;
+						bgColor = c - 40;
 						break;
 					}
 				}
