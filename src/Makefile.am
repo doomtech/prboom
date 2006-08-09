@@ -47,7 +47,9 @@ COMMON_SRC = \
  f_finale.c     p_lights.c         r_draw.h         z_bmalloc.c \
  f_finale.h     p_map.c            r_main.c         z_bmalloc.h \
  f_wipe.c       p_map.h            r_main.h         z_zone.c    \
- f_wipe.h       p_maputl.c         r_plane.c        z_zone.h
+ f_wipe.h       p_maputl.c         r_plane.c        z_zone.h	\
+ md5.c          md5.h              p_checksum.h     p_checksum.c \
+ r_patch.c      r_patch.h
 
 NET_CLIENT_SRC = d_client.c i_udp_sdl.c
 
