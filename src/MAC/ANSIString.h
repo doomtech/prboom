@@ -21,7 +21,7 @@
 // used in advertising or otherwise to promote the sale, use or other dealings
 // in this Software without prior written authorization from the author(s).
 
-#include <Cocoa/Cocoa.h>
+#import <Cocoa/Cocoa.h>
 
 @interface ANSIString : NSObject
 

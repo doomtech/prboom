@@ -21,7 +21,7 @@
 // used in advertising or otherwise to promote the sale, use or other dealings
 // in this Software without prior written authorization from the author(s).
 
-#include "ANSIString.h"
+#import "ANSIString.h"
 
 @implementation ANSIString
 
@@ -101,6 +101,9 @@ static int findNext(NSString *string, NSString *needle, int start)
 		[retval appendAttributedString:rest];
 		[rest release];
 	}
+	[retval addAttribute:NSFontAttributeName
+	        value:[NSFont userFixedPitchFontOfSize:12]
+	        range:NSMakeRange(0, [retval length])];
 
 	return retval;
 }
