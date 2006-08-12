@@ -328,6 +328,8 @@ static void R_MakeSpans(int x, unsigned int t1, unsigned int b1,
 static void R_DoDrawPlane(visplane_t *pl)
 {
   register int x;
+  R_DrawColumn_f colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD);
+
   if (pl->minx <= pl->maxx) {
     if (pl->picnum == skyflatnum || pl->picnum & PL_SKYFLAT) { // sky flat
       int texture;

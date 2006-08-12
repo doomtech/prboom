@@ -120,6 +120,7 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
   int      texnum;
   sector_t tempsec;      // killough 4/13/98
   const rpatch_t *patch;
+  R_DrawColumn_f colfunc;
 
   // Calculate light table.
   // Use different light tables
@@ -215,7 +216,8 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
 
         // draw the texture
         R_DrawMaskedColumn(
-          patch, 
+          patch,
+          colfunc,
           R_GetPatchColumnWrapped(patch, maskedtexturecol[dcvars.x])
         );
 
@@ -245,6 +247,7 @@ static int didsolidcol; /* True if at least one column was marked solid */
 static void R_RenderSegLoop (void)
 {
   const rpatch_t *tex_patch;
+  R_DrawColumn_f colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD);
   fixed_t  texturecolumn = 0;   // shut up compiler warning
   rendered_segs++;
   for ( ; rw_x < rw_stopx ; rw_x++)

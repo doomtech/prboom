@@ -38,6 +38,8 @@
 #pragma interface
 #endif
 
+#include "r_draw.h"
+
 /* Constant arrays used for psprite clipping and initializing clipping. */
 
 extern int negonearray[MAX_SCREENWIDTH];       /* killough 2/8/98: */ // dropoff overflow
@@ -54,7 +56,9 @@ extern fixed_t pspriteiscale;
 /* proff 11/06/98: Added for high-res */
 extern fixed_t pspriteyscale;
 
-void R_DrawMaskedColumn(const rpatch_t *patch, const rcolumn_t *column);
+void R_DrawMaskedColumn(const rpatch_t *patch,
+                        R_DrawColumn_f colfunc,
+                        const rcolumn_t *column);
 void R_SortVisSprites(void);
 void R_AddSprites(subsector_t* subsec, int lightlevel);
 void R_DrawPlayerSprites(void);

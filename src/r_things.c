@@ -315,6 +315,7 @@ fixed_t sprtopscreen;
 
 void R_DrawMaskedColumn(
   const rpatch_t *patch,
+  R_DrawColumn_f colfunc,
   const rcolumn_t *column
 )
 {
@@ -364,6 +365,7 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
   int      texturecolumn;
   fixed_t  frac;
   const rpatch_t *patch = R_CachePatchNum(vis->patch+firstspritelump);
+  R_DrawColumn_f colfunc;
 
   dcvars.colormap = vis->colormap;
 
@@ -406,10 +408,10 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
 
       R_DrawMaskedColumn(
         patch,
+        colfunc,
         R_GetPatchColumnClamped(patch, texturecolumn)
       );
     }
-  colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD); // killough 3/14/98
   R_UnlockPatchNum(vis->patch+firstspritelump); // cph - release lump
 }
 

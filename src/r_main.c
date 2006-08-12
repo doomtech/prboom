@@ -104,8 +104,6 @@ const lighttable_t **colormaps;
 
 int extralight;                           // bumped light from gun blasts
 
-void (*colfunc)(void);
-
 //
 // R_PointOnSide
 // Traverse BSP (sub) tree,
@@ -398,7 +396,6 @@ void R_Init (void)
   // CPhipps - R_DrawColumn isn't constant anymore, so must
   //  initialise in code
   // current column draw function
-  colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD);
   lprintf(LO_INFO, "\nR_LoadTrigTables: ");
   R_LoadTrigTables();
   lprintf(LO_INFO, "\nR_InitData: ");
