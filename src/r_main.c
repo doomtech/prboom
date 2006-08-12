@@ -397,7 +397,8 @@ void R_Init (void)
 {
   // CPhipps - R_DrawColumn isn't constant anymore, so must
   //  initialise in code
-  colfunc = R_DrawColumn;     // current column draw function
+  // current column draw function
+  colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD);
   lprintf(LO_INFO, "\nR_LoadTrigTables: ");
   R_LoadTrigTables();
   lprintf(LO_INFO, "\nR_InitData: ");

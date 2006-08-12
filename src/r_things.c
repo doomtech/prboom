@@ -371,22 +371,22 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
   // mixed with translucent/non-translucenct 2s normals
 
   if (!dcvars.colormap)   // NULL colormap = shadow draw
-    colfunc = R_DrawFuzzColumn;    // killough 3/14/98
+    colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_FUZZ);    // killough 3/14/98
   else
     if (vis->mobjflags & MF_TRANSLATION)
       {
-        colfunc = R_DrawTranslatedColumn;
+        colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_TRANSLATED);
         dcvars.translation = translationtables - 256 +
           ((vis->mobjflags & MF_TRANSLATION) >> (MF_TRANSSHIFT-8) );
       }
     else
       if (vis->mobjflags & MF_TRANSLUCENT && general_translucency) // phares
         {
-          colfunc = R_DrawTLColumn;
+          colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_TRANSLUCENT);
           tranmap = main_tranmap;       // killough 4/11/98
         }
       else
-        colfunc = R_DrawColumn;         // killough 3/14/98, 4/11/98
+        colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD); // killough 3/14/98, 4/11/98
 
 // proff 11/06/98: Changed for high-res
   dcvars.iscale = FixedDiv (FRACUNIT, vis->scale);
@@ -409,7 +409,7 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
         R_GetPatchColumnClamped(patch, texturecolumn)
       );
     }
-  colfunc = R_DrawColumn;         // killough 3/14/98
+  colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD); // killough 3/14/98
   R_UnlockPatchNum(vis->patch+firstspritelump); // cph - release lump
 }
 

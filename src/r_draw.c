@@ -194,11 +194,11 @@ byte *translationtables;
 #define RDC_TRANSLATED    4
 #define RDC_FUZZ          8
 
-#define R_DRAWCOLUMN_FUNCNAME R_DrawColumn
+#define R_DRAWCOLUMN_FUNCNAME R_DrawColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
-#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeOpaque
-#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTOpaque
-#define R_FLUSHQUAD_FUNCNAME R_FlushQuadOpaque
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeOpaque8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTOpaque8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadOpaque8
 #include "r_drawcolumn.inl"
 
 // Here is the version of R_DrawColumn that deals with translucent  // phares
@@ -212,11 +212,11 @@ byte *translationtables;
 // Since we're concerned about performance, the 'translucent or
 // opaque' decision is made outside this routine, not down where the
 // actual code differences are.
-#define R_DRAWCOLUMN_FUNCNAME R_DrawTLColumn
+#define R_DRAWCOLUMN_FUNCNAME R_DrawTLColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLUCENT
-#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTL
-#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTL
-#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTL8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTL8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL8
 #include "r_drawcolumn.inl"
 
 //
@@ -228,11 +228,11 @@ byte *translationtables;
 //  of the BaronOfHell, the HellKnight, uses
 //  identical sprites, kinda brightened up.
 //
-#define R_DRAWCOLUMN_FUNCNAME R_DrawTranslatedColumn
+#define R_DRAWCOLUMN_FUNCNAME R_DrawTranslatedColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLATED
-#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTranslated
-#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTranslated
-#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTranslated
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTranslated8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTranslated8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTranslated8
 #include "r_drawcolumn.inl"
 
 //
@@ -243,13 +243,25 @@ byte *translationtables;
 //  could create the SHADOW effect,
 //  i.e. spectres and invisible players.
 //
-#define R_DRAWCOLUMN_FUNCNAME R_DrawFuzzColumn
+#define R_DRAWCOLUMN_FUNCNAME R_DrawFuzzColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_FUZZ
-#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeFuzz
-#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz
-#define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeFuzz8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz8
 #include "r_drawcolumn.inl"
 
+R_DrawColumn_f R_GetDrawColumnFunc(enum column_pipeline_e type) {
+   switch (type) {
+      case RDC_PIPELINE_TRANSLUCENT:
+         return R_DrawTLColumn8;
+      case RDC_PIPELINE_TRANSLATED:
+         return R_DrawTranslatedColumn8;
+      case RDC_PIPELINE_FUZZ:
+         return R_DrawFuzzColumn8;
+      default:
+         return R_DrawColumn8;
+   }
+}
 
 //
 // R_InitTranslationTables
@@ -312,11 +324,12 @@ void R_InitTranslationTables (void)
 //  and the inner loop has to step in texture space u and v.
 //
 
-draw_span_vars_t dsvars;
-
-#define R_DRAWSPAN_FUNCNAME R_DrawSpan
+#define R_DRAWSPAN_FUNCNAME R_DrawSpan8
 #include "r_drawspan.inl"
 
+void R_DrawSpan(draw_span_vars_t *dsvars) {
+   R_DrawSpan8(dsvars);
+}
 
 //
 // R_InitBuffer

@@ -456,13 +456,13 @@ void WRAP_gld_DrawLine(fline_t* fl, int color)
 }
 #endif
 
-void NULL_FillRect(int scrn, int x, int y, int width, int height, byte colour) {}
-void NULL_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty, int destscrn, enum patch_translation_e flags) {}
-void NULL_DrawBackground(const char *flatname, int n) {}
-void NULL_DrawNumPatch(int x, int y, int scrn, int lump, int cm, enum patch_translation_e flags) {}
-void NULL_DrawBlock(int x, int y, int scrn, int width, int height, const byte *src, enum patch_translation_e flags) {}
-void NULL_PlotPixel(int scrn, int x, int y, byte color) {}
-void NULL_DrawLine(fline_t* fl, int color) {}
+static void NULL_FillRect(int scrn, int x, int y, int width, int height, byte colour) {}
+static void NULL_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty, int destscrn, enum patch_translation_e flags) {}
+static void NULL_DrawBackground(const char *flatname, int n) {}
+static void NULL_DrawNumPatch(int x, int y, int scrn, int lump, int cm, enum patch_translation_e flags) {}
+static void NULL_DrawBlock(int x, int y, int scrn, int width, int height, const byte *src, enum patch_translation_e flags) {}
+static void NULL_PlotPixel(int scrn, int x, int y, byte color) {}
+static void NULL_DrawLine(fline_t* fl, int color) {}
 
 video_mode_t default_videomode;
 static video_mode_t current_videomode = VID_MODE8;

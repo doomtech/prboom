@@ -32,18 +32,18 @@
 // R_DrawSpan
 //
 
-void R_DRAWSPAN_FUNCNAME(void)
+static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
 {
-  register unsigned count,xfrac = dsvars.xfrac,yfrac = dsvars.yfrac;
+  register unsigned count,xfrac = dsvars->xfrac,yfrac = dsvars->yfrac;
 
   const byte *source;
   const byte *colormap;
   byte *dest;
 
-  source = dsvars.source;
-  colormap = dsvars.colormap;
-  dest = topleft + dsvars.y*screens[0].pitch + dsvars.x1;
-  count = dsvars.x2 - dsvars.x1 + 1;
+  source = dsvars->source;
+  colormap = dsvars->colormap;
+  dest = topleft + dsvars->y*screens[0].pitch + dsvars->x1;
+  count = dsvars->x2 - dsvars->x1 + 1;
 
   while (count)
     {
@@ -53,8 +53,8 @@ void R_DRAWSPAN_FUNCNAME(void)
       ytemp &= 4032;
       xtemp &= 63;
       spot = xtemp | ytemp;
-      xfrac += dsvars.xstep;
-      yfrac += dsvars.ystep;
+      xfrac += dsvars->xstep;
+      yfrac += dsvars->ystep;
       *dest++ = colormap[source[spot]];
       count--;
     }

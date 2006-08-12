@@ -208,7 +208,7 @@ static void R_FLUSHQUAD_FUNCNAME(void)
    }
 }
 
-void R_DRAWCOLUMN_FUNCNAME(void)
+static void R_DRAWCOLUMN_FUNCNAME(void)
 {
   int              count;
   byte             *dest;            // killough
