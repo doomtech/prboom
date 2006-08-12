@@ -176,10 +176,6 @@ void R_ResetColumnBuffer(void)
 }
 
 
-// made inline for repeatable inclusion with different defines
-#include "r_drawflush.inl"
-
-
 //
 // R_DrawColumn
 //
@@ -200,6 +196,9 @@ byte *translationtables;
 
 #define R_DRAWCOLUMN_FUNCNAME R_DrawColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeOpaque
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTOpaque
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadOpaque
 #include "r_drawcolumn.inl"
 
 // Here is the version of R_DrawColumn that deals with translucent  // phares
@@ -215,6 +214,9 @@ byte *translationtables;
 // actual code differences are.
 #define R_DRAWCOLUMN_FUNCNAME R_DrawTLColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLUCENT
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTL
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTL
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL
 #include "r_drawcolumn.inl"
 
 //
@@ -228,6 +230,9 @@ byte *translationtables;
 //
 #define R_DRAWCOLUMN_FUNCNAME R_DrawTranslatedColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLATED
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTranslated
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTranslated
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTranslated
 #include "r_drawcolumn.inl"
 
 //
@@ -240,6 +245,9 @@ byte *translationtables;
 //
 #define R_DRAWCOLUMN_FUNCNAME R_DrawFuzzColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_FUZZ
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeFuzz
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz
 #include "r_drawcolumn.inl"
 
 
