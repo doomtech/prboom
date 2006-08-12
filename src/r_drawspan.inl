@@ -34,30 +34,24 @@
 
 static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
 {
-  register unsigned count,xfrac = dsvars->xfrac,yfrac = dsvars->yfrac;
+  unsigned count = dsvars->x2 - dsvars->x1 + 1;
+  fixed_t xfrac = dsvars->xfrac;
+  fixed_t yfrac = dsvars->yfrac;
+  fixed_t xstep = dsvars->xstep;
+  fixed_t ystep = dsvars->ystep;
+  const byte *source = dsvars->source;
+  const byte *colormap = dsvars->colormap;
+  byte *dest = topleft + dsvars->y*screens[0].pitch + dsvars->x1;
 
-  const byte *source;
-  const byte *colormap;
-  byte *dest;
-
-  source = dsvars->source;
-  colormap = dsvars->colormap;
-  dest = topleft + dsvars->y*screens[0].pitch + dsvars->x1;
-  count = dsvars->x2 - dsvars->x1 + 1;
-
-  while (count)
-    {
-      register unsigned xtemp = xfrac >> 16;
-      register unsigned ytemp = yfrac >> 10;
-      register unsigned spot;
-      ytemp &= 4032;
-      xtemp &= 63;
-      spot = xtemp | ytemp;
-      xfrac += dsvars->xstep;
-      yfrac += dsvars->ystep;
-      *dest++ = colormap[source[spot]];
-      count--;
-    }
+  while (count) {
+    fixed_t xtemp = (xfrac >> 16) & 63;
+    fixed_t ytemp = (yfrac >> 10) & 4032;
+    fixed_t spot = xtemp | ytemp;
+    xfrac += xstep;
+    yfrac += ystep;
+    *dest++ = colormap[source[spot]];
+    count--;
+  }
 }
 
 #undef R_DRAWSPAN_FUNCNAME
