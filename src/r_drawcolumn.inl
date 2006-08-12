@@ -36,7 +36,7 @@
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED)
-#define GETCOL8_MAPPED(col) (dcvars.translation[(col)])
+#define GETCOL8_MAPPED(col) (translation[(col)])
 #else
 #define GETCOL8_MAPPED(col) (col)
 #endif
@@ -286,12 +286,16 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
 // do nothing else when drawin fuzz columns
 #if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
   {
-    fixed_t frac;
+    fixed_t             frac;
+    fixed_t             fracstep = dcvars.iscale;
+    const byte          *source = dcvars.source;
+    const lighttable_t  *colormap = dcvars.colormap;
+    const byte          *translation = dcvars.translation;
 
     count++;
 
     // Determine scaling, which is the only mapping to be done.
-    frac = dcvars.texturemid + (dcvars.yl-centery)*dcvars.iscale;
+    frac = dcvars.texturemid + (dcvars.yl-centery)*fracstep;
 
     // Inner loop that does the actual texture mapping,
     //  e.g. a DDA-lile scaling.
@@ -301,30 +305,30 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
 
     if (dcvars.texheight == 128) {
       while(count--) {
-        *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS)&127])]);
+        *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[(frac>>FRACBITS)&127])]);
         dest += 4;
-        frac += dcvars.iscale;
+        frac += fracstep;
       }
     } else if (dcvars.texheight == 0) {
       /* cph - another special case */
       while (count--) {
-        *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
+        *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[frac>>FRACBITS])]);
         dest += 4;
-        frac += dcvars.iscale;
+        frac += fracstep;
       }
     } else {
       unsigned heightmask = dcvars.texheight-1; // CPhipps - specify type
       if (! (dcvars.texheight & heightmask) ) { // power of 2 -- killough
         while ((count-=2)>=0) { // texture height is a power of 2 -- killough
-          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
+          *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[(frac>>FRACBITS) & heightmask])]);
           dest += 4;
-          frac += dcvars.iscale;
-          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
+          frac += fracstep;
+          *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[(frac>>FRACBITS) & heightmask])]);
           dest += 4;
-          frac += dcvars.iscale;
+          frac += fracstep;
         }
         if (count & 1)
-          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
+          *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[(frac>>FRACBITS) & heightmask])]);
       } else {
         heightmask++;
         heightmask <<= FRACBITS;
@@ -341,9 +345,9 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
 
           // heightmask is the Tutti-Frutti fix -- killough
 
-          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
+          *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[frac>>FRACBITS])]);
           dest += 4;
-          if ((frac += dcvars.iscale) >= (int)heightmask)
+          if ((frac += fracstep) >= (int)heightmask)
             frac -= heightmask;
         } while (--count);
       }
