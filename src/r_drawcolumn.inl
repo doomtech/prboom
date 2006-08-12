@@ -212,9 +212,6 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
 {
   int              count;
   byte             *dest;            // killough
-#if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
-  fixed_t          frac;            // killough
-#endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
   // Adjust borders. Low...
@@ -243,7 +240,7 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
     return;
 
 #ifdef RANGECHECK
-  if ((unsigned)dcvars.x >= (unsigned)SCREENWIDTH
+  if (dcvars.x >= SCREENWIDTH
       || dcvars.yl < 0
       || dcvars.yh >= SCREENHEIGHT)
     I_Error("R_DrawColumn: %i to %i at %i", dcvars.yl, dcvars.yh, dcvars.x);
@@ -288,74 +285,70 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
 
 // do nothing else when drawin fuzz columns
 #if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
+  {
+    fixed_t frac;
 
-  count++;
+    count++;
 
-  // Determine scaling, which is the only mapping to be done.
-  frac = dcvars.texturemid + (dcvars.yl-centery)*dcvars.iscale;
+    // Determine scaling, which is the only mapping to be done.
+    frac = dcvars.texturemid + (dcvars.yl-centery)*dcvars.iscale;
 
-  // Inner loop that does the actual texture mapping,
-  //  e.g. a DDA-lile scaling.
-  // This is as fast as it gets.       (Yeah, right!!! -- killough)
-  //
-  // killough 2/1/98: more performance tuning
+    // Inner loop that does the actual texture mapping,
+    //  e.g. a DDA-lile scaling.
+    // This is as fast as it gets.       (Yeah, right!!! -- killough)
+    //
+    // killough 2/1/98: more performance tuning
 
     if (dcvars.texheight == 128) {
-        while(count--)
-        {
-                *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS)&127])]);
-                dest += 4;
-                frac += dcvars.iscale;
-        }
+      while(count--) {
+        *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS)&127])]);
+        dest += 4;
+        frac += dcvars.iscale;
+      }
     } else if (dcvars.texheight == 0) {
-  /* cph - another special case */
-  while (count--) {
-    *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
-    dest += 4;
-    frac += dcvars.iscale;
-  }
+      /* cph - another special case */
+      while (count--) {
+        *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
+        dest += 4;
+        frac += dcvars.iscale;
+      }
     } else {
-     unsigned heightmask = dcvars.texheight-1; // CPhipps - specify type
-     if (! (dcvars.texheight & heightmask) )   // power of 2 -- killough
-     {
-         while ((count-=2)>=0)   // texture height is a power of 2 -- killough
-           {
-             *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
-             dest += 4;
-             frac += dcvars.iscale;
-             *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
-             dest += 4;
-             frac += dcvars.iscale;
-           }
-         if (count & 1)
-           *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
-     }
-     else
-     {
-         heightmask++;
-         heightmask <<= FRACBITS;
+      unsigned heightmask = dcvars.texheight-1; // CPhipps - specify type
+      if (! (dcvars.texheight & heightmask) ) { // power of 2 -- killough
+        while ((count-=2)>=0) { // texture height is a power of 2 -- killough
+          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
+          dest += 4;
+          frac += dcvars.iscale;
+          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
+          dest += 4;
+          frac += dcvars.iscale;
+        }
+        if (count & 1)
+          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
+      } else {
+        heightmask++;
+        heightmask <<= FRACBITS;
 
-         if (frac < 0)
-           while ((frac += heightmask) <  0);
-         else
-           while (frac >= (int)heightmask)
-             frac -= heightmask;
+        if (frac < 0)
+          while ((frac += heightmask) <  0);
+        else
+          while (frac >= (int)heightmask)
+            frac -= heightmask;
 
-         do
-           {
-             // Re-map color indices from wall texture column
-             //  using a lighting/special effects LUT.
+        do {
+          // Re-map color indices from wall texture column
+          //  using a lighting/special effects LUT.
 
-             // heightmask is the Tutti-Frutti fix -- killough
+          // heightmask is the Tutti-Frutti fix -- killough
 
-             *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
-             dest += 4;
-             if ((frac += dcvars.iscale) >= (int)heightmask)
-               frac -= heightmask;
-           }
-         while (--count);
-     }
+          *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
+          dest += 4;
+          if ((frac += dcvars.iscale) >= (int)heightmask)
+            frac -= heightmask;
+        } while (--count);
+      }
     }
+  }
 #endif // (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
 }
 
