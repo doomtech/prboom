@@ -201,6 +201,18 @@ byte *translationtables;
 #define R_DRAWCOLUMN_FUNCNAME R_DrawColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
 #include "r_drawcolumn.inl"
+
+// Here is the version of R_DrawColumn that deals with translucent  // phares
+// textures and sprites. It's identical to R_DrawColumn except      //    |
+// for the spot where the color index is stuffed into *dest. At     //    V
+// that point, the existing color index and the new color index
+// are mapped through the TRANMAP lump filters to get a new color
+// index whose RGB values are the average of the existing and new
+// colors.
+//
+// Since we're concerned about performance, the 'translucent or
+// opaque' decision is made outside this routine, not down where the
+// actual code differences are.
 #define R_DRAWCOLUMN_FUNCNAME R_DrawTLColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLUCENT
 #include "r_drawcolumn.inl"

@@ -29,9 +29,11 @@
  *-----------------------------------------------------------------------------*/
 
 
-#if ((R_DRAWCOLUMN_PIPELINE & RDC_STANDARD) || \
-     (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED) || \
-     (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
+#if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
+#define GETDESTCOLOR(col) (tranmap[(*dest<<8)+(col)])
+#else
+#define GETDESTCOLOR(col) (col)
+#endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED)
 #define GETCOL8_MAPPED(col) (dcvars.translation[(col)])
@@ -39,7 +41,9 @@
 #define GETCOL8_MAPPED(col) (col)
 #endif
 
-#if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
+#if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
+#define COLTYPE (COL_TRANS)
+#elif (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
 #define COLTYPE (COL_FUZZ)
 #else
 #define COLTYPE (COL_OPAQUE)
@@ -48,9 +52,9 @@
 void R_DRAWCOLUMN_FUNCNAME(void)
 {
   int              count;
-  register byte    *dest;            // killough
+  byte             *dest;            // killough
 #if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
-  register fixed_t frac;            // killough
+  fixed_t          frac;            // killough
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
@@ -101,7 +105,12 @@ void R_DRAWCOLUMN_FUNCNAME(void)
          *tempyl = commontop = dcvars.yl;
          *tempyh = commonbot = dcvars.yh;
          temptype = COLTYPE;
-#if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
+#if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
+         temptranmap = tranmap;
+         R_FlushWholeColumns = R_FlushWholeTL;
+         R_FlushHTColumns    = R_FlushHTTL;
+         R_FlushQuadColumn   = R_FlushQuadTL;
+#elif (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
          tempfuzzmap = fullcolormap; // SoM 7-28-04: Fix the fuzz problem.
          R_FlushWholeColumns = R_FlushWholeFuzz;
          R_FlushHTColumns    = R_FlushHTFuzz;
@@ -131,8 +140,7 @@ void R_DRAWCOLUMN_FUNCNAME(void)
   count++;
 
   // Determine scaling, which is the only mapping to be done.
-#define  fracstep dcvars.iscale
-  frac = dcvars.texturemid + (dcvars.yl-centery)*fracstep;
+  frac = dcvars.texturemid + (dcvars.yl-centery)*dcvars.iscale;
 
   // Inner loop that does the actual texture mapping,
   //  e.g. a DDA-lile scaling.
@@ -143,28 +151,32 @@ void R_DRAWCOLUMN_FUNCNAME(void)
     if (dcvars.texheight == 128) {
         while(count--)
         {
-                *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS)&127])];
+                *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS)&127])]);
                 dest += 4;
-                frac += fracstep;
+                frac += dcvars.iscale;
         }
     } else if (dcvars.texheight == 0) {
   /* cph - another special case */
   while (count--) {
-    *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])];
+    *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
     dest += 4;
-    frac += fracstep;
+    frac += dcvars.iscale;
   }
     } else {
-     register unsigned heightmask = dcvars.texheight-1; // CPhipps - specify type
+     unsigned heightmask = dcvars.texheight-1; // CPhipps - specify type
      if (! (dcvars.texheight & heightmask) )   // power of 2 -- killough
      {
-         while (count>0)   // texture height is a power of 2 -- killough
+         while ((count-=2)>=0)   // texture height is a power of 2 -- killough
            {
-             *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])];
+             *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
              dest += 4;
-             frac += fracstep;
-            count--;
+             frac += dcvars.iscale;
+             *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
+             dest += 4;
+             frac += dcvars.iscale;
            }
+         if (count & 1)
+           *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])]);
      }
      else
      {
@@ -177,150 +189,25 @@ void R_DRAWCOLUMN_FUNCNAME(void)
            while (frac >= (int)heightmask)
              frac -= heightmask;
 
-         while(count>0)
+         do
            {
              // Re-map color indices from wall texture column
              //  using a lighting/special effects LUT.
 
              // heightmask is the Tutti-Frutti fix -- killough
 
-             *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])];
+             *dest = GETDESTCOLOR(dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])]);
              dest += 4;
-             if ((frac += fracstep) >= (int)heightmask)
+             if ((frac += dcvars.iscale) >= (int)heightmask)
                frac -= heightmask;
-            count--;
            }
+         while (--count);
      }
     }
-#undef fracstep
 #endif // (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
 }
-#endif
 
-// Here is the version of R_DrawColumn that deals with translucent  // phares
-// textures and sprites. It's identical to R_DrawColumn except      //    |
-// for the spot where the color index is stuffed into *dest. At     //    V
-// that point, the existing color index and the new color index
-// are mapped through the TRANMAP lump filters to get a new color
-// index whose RGB values are the average of the existing and new
-// colors.
-//
-// Since we're concerned about performance, the 'translucent or
-// opaque' decision is made outside this routine, not down where the
-// actual code differences are.
-#if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
-void R_DRAWCOLUMN_FUNCNAME(void)
-{
-  int              count;
-  register byte    *dest;           // killough
-  register fixed_t frac;            // killough
-
-  count = dcvars.yh - dcvars.yl + 1;
-
-  // Zero length, column does not exceed a pixel.
-  if (count <= 0)
-    return;
-
-#ifdef RANGECHECK
-  if ((unsigned)dcvars.x >= (unsigned)SCREENWIDTH
-      || dcvars.yl < 0
-      || dcvars.yh >= SCREENHEIGHT)
-    I_Error("R_DrawTLColumn: %i to %i at %i", dcvars.yl, dcvars.yh, dcvars.x);
-#endif
-
-  // Framebuffer destination address.
-  // SoM: MAGIC
-   {
-      // haleyjd: reordered predicates
-      if(temp_x == 4 || tranmap != temptranmap ||
-         (temp_x && (temptype != COL_TRANS || temp_x + startx != dcvars.x)))
-         R_FlushColumns();
-
-      if(!temp_x)
-      {
-         ++temp_x;
-         startx = dcvars.x;
-         *tempyl = commontop = dcvars.yl;
-         *tempyh = commonbot = dcvars.yh;
-         temptype = COL_TRANS;
-         temptranmap = tranmap;
-         R_FlushWholeColumns = R_FlushWholeTL;
-         R_FlushHTColumns    = R_FlushHTTL;
-         R_FlushQuadColumn   = R_FlushQuadTL;
-         dest = &tempbuf[dcvars.yl << 2];
-      } else {
-         tempyl[temp_x] = dcvars.yl;
-         tempyh[temp_x] = dcvars.yh;
-   
-         if(dcvars.yl > commontop)
-            commontop = dcvars.yl;
-         if(dcvars.yh < commonbot)
-            commonbot = dcvars.yh;
-      
-         dest = &tempbuf[(dcvars.yl << 2) + temp_x++];
-      }
-   }
-
-  // Determine scaling,
-  //  which is the only mapping to be done.
-#define  fracstep dcvars.iscale
-  frac = dcvars.texturemid + (dcvars.yl-centery)*fracstep;
-
-  // Inner loop that does the actual texture mapping,
-  //  e.g. a DDA-lile scaling.
-  // This is as fast as it gets.       (Yeah, right!!! -- killough)
-  //
-  // killough 2/1/98, 2/21/98: more performance tuning
-
-  {
-    register const byte *source = dcvars.source;
-    register const lighttable_t *colormap = dcvars.colormap;
-    register unsigned heightmask = dcvars.texheight-1; // CPhipps - specify type
-    if (dcvars.texheight & heightmask)   // not a power of 2 -- killough
-      {
-        heightmask++;
-        heightmask <<= FRACBITS;
-
-        if (frac < 0)
-          while ((frac += heightmask) <  0);
-        else
-          while (frac >= (int)heightmask)
-            frac -= heightmask;
-
-        do
-          {
-            // Re-map color indices from wall texture column
-            //  using a lighting/special effects LUT.
-
-            // heightmask is the Tutti-Frutti fix -- killough
-
-            *dest = tranmap[(*dest<<8)+colormap[source[frac>>FRACBITS]]]; // phares
-            dest += 4;
-            if ((frac += fracstep) >= (int)heightmask)
-              frac -= heightmask;
-          }
-        while (--count);
-      }
-    else
-      {
-	if (heightmask == -1 && frac < 0) frac = 0;
-        while ((count-=2)>=0)   // texture height is a power of 2 -- killough
-          {
-            *dest = tranmap[(*dest<<8)+colormap[source[(frac>>FRACBITS) & heightmask]]]; // phares
-            dest += 4;
-            frac += fracstep;
-            *dest = tranmap[(*dest<<8)+colormap[source[(frac>>FRACBITS) & heightmask]]]; // phares
-            dest += 4;
-            frac += fracstep;
-          }
-        if (count & 1)
-          *dest = tranmap[(*dest<<8)+colormap[source[(frac>>FRACBITS) & heightmask]]]; // phares
-      }
-  }
-}
-#undef fracstep
-#endif
-
+#undef GETDESTCOLOR
 #undef GETCOL8_MAPPED
 #undef COLTYPE
 
