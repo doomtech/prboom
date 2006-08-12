@@ -251,13 +251,13 @@ byte *translationtables;
 R_DrawColumn_f R_GetDrawColumnFunc(enum column_pipeline_e type) {
    switch (type) {
       case RDC_PIPELINE_TRANSLUCENT:
-         return R_DrawTLColumn8;
+         return &R_DrawTLColumn8;
       case RDC_PIPELINE_TRANSLATED:
-         return R_DrawTranslatedColumn8;
+         return &R_DrawTranslatedColumn8;
       case RDC_PIPELINE_FUZZ:
-         return R_DrawFuzzColumn8;
+         return &R_DrawFuzzColumn8;
       default:
-         return R_DrawColumn8;
+         return &R_DrawColumn8;
    }
 }
 
