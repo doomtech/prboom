@@ -30,18 +30,9 @@
 
 //
 // R_DrawSpan
-// With DOOM style restrictions on view orientation,
-//  the floors and ceilings consist of horizontal slices
-//  or spans with constant z depth.
-// However, rotation around the world z axis is possible,
-//  thus this mapping, while simpler and faster than
-//  perspective correct texture mapping, has to traverse
-//  the texture at an angle in all but a few cases.
-// In consequence, flats are not stored by column (like walls),
-//  and the inner loop has to step in texture space u and v.
 //
 
-void R_DrawSpan (void)
+void R_DRAWSPAN_FUNCNAME(void)
 {
   register unsigned count,xfrac = dsvars.xfrac,yfrac = dsvars.yfrac;
 
@@ -68,3 +59,5 @@ void R_DrawSpan (void)
       count--;
     }
 }
+
+#undef R_DRAWSPAN_FUNCNAME

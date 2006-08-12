@@ -29,114 +29,14 @@
  *-----------------------------------------------------------------------------*/
 
 
-// haleyjd 09/12/04: split up R_GetBuffer into various different
-// functions to minimize the number of branches and take advantage
-// of as much precalculated information as possible.
+#if ((R_DRAWCOLUMN_PIPELINE & RDC_STANDARD) || (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED))
 
-static byte *R_GetBufferOpaque(void)
-{
-   // haleyjd: reordered predicates
-   if(temp_x == 4 ||
-      (temp_x && (temptype != COL_OPAQUE || temp_x + startx != dcvars.x)))
-      R_FlushColumns();
-
-   if(!temp_x)
-   {
-      ++temp_x;
-      startx = dcvars.x;
-      *tempyl = commontop = dcvars.yl;
-      *tempyh = commonbot = dcvars.yh;
-      temptype = COL_OPAQUE;
-      R_FlushWholeColumns = R_FlushWholeOpaque;
-      R_FlushHTColumns    = R_FlushHTOpaque;
-      R_FlushQuadColumn   = R_FlushQuadOpaque;
-      return &tempbuf[dcvars.yl << 2];
-   }
-
-   tempyl[temp_x] = dcvars.yl;
-   tempyh[temp_x] = dcvars.yh;
-   
-   if(dcvars.yl > commontop)
-      commontop = dcvars.yl;
-   if(dcvars.yh < commonbot)
-      commonbot = dcvars.yh;
-      
-   return &tempbuf[(dcvars.yl << 2) + temp_x++];
-}
-
-static byte *R_GetBufferTrans(void)
-{
-   // haleyjd: reordered predicates
-   if(temp_x == 4 || tranmap != temptranmap ||
-      (temp_x && (temptype != COL_TRANS || temp_x + startx != dcvars.x)))
-      R_FlushColumns();
-
-   if(!temp_x)
-   {
-      ++temp_x;
-      startx = dcvars.x;
-      *tempyl = commontop = dcvars.yl;
-      *tempyh = commonbot = dcvars.yh;
-      temptype = COL_TRANS;
-      temptranmap = tranmap;
-      R_FlushWholeColumns = R_FlushWholeTL;
-      R_FlushHTColumns    = R_FlushHTTL;
-      R_FlushQuadColumn   = R_FlushQuadTL;
-      return &tempbuf[dcvars.yl << 2];
-   }
-
-   tempyl[temp_x] = dcvars.yl;
-   tempyh[temp_x] = dcvars.yh;
-   
-   if(dcvars.yl > commontop)
-      commontop = dcvars.yl;
-   if(dcvars.yh < commonbot)
-      commonbot = dcvars.yh;
-      
-   return &tempbuf[(dcvars.yl << 2) + temp_x++];
-}
-
-static byte *R_GetBufferFuzz(void)
-{
-   // haleyjd: reordered predicates
-   if(temp_x == 4 ||
-      (temp_x && (temptype != COL_FUZZ || temp_x + startx != dcvars.x)))
-      R_FlushColumns();
-
-   if(!temp_x)
-   {
-      ++temp_x;
-      startx = dcvars.x;
-      *tempyl = commontop = dcvars.yl;
-      *tempyh = commonbot = dcvars.yh;
-      temptype = COL_FUZZ;
-      tempfuzzmap = fullcolormap; // SoM 7-28-04: Fix the fuzz problem.
-      R_FlushWholeColumns = R_FlushWholeFuzz;
-      R_FlushHTColumns    = R_FlushHTFuzz;
-      R_FlushQuadColumn   = R_FlushQuadFuzz;
-      return &tempbuf[dcvars.yl << 2];
-   }
-
-   tempyl[temp_x] = dcvars.yl;
-   tempyh[temp_x] = dcvars.yh;
-   
-   if(dcvars.yl > commontop)
-      commontop = dcvars.yl;
-   if(dcvars.yh < commonbot)
-      commonbot = dcvars.yh;
-      
-   return &tempbuf[(dcvars.yl << 2) + temp_x++];
-}
-
-//
-// A column is a vertical slice/span from a wall texture that,
-//  given the DOOM style restrictions on the view orientation,
-//  will always have constant z depth.
-// Thus a special case loop for very fast rendering can
-//  be used. It has also been used with Wolfenstein 3D.
-//
-
-void R_DrawColumn (void)
+#if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED)
+#define GETCOL8_MAPPED(col) (dcvars.translation[(col)])
+#else
+#define GETCOL8_MAPPED(col) (col)
+#endif
+void R_DRAWCOLUMN_FUNCNAME(void)
 {
   int              count;
   register byte    *dest;            // killough
@@ -169,7 +69,35 @@ void R_DrawColumn (void)
 
   // Framebuffer destination address.
    // SoM: MAGIC
-   dest = R_GetBufferOpaque();
+   {
+      // haleyjd: reordered predicates
+      if(temp_x == 4 ||
+         (temp_x && (temptype != COL_OPAQUE || temp_x + startx != dcvars.x)))
+         R_FlushColumns();
+
+      if(!temp_x)
+      {
+         ++temp_x;
+         startx = dcvars.x;
+         *tempyl = commontop = dcvars.yl;
+         *tempyh = commonbot = dcvars.yh;
+         temptype = COL_OPAQUE;
+         R_FlushWholeColumns = R_FlushWholeOpaque;
+         R_FlushHTColumns    = R_FlushHTOpaque;
+         R_FlushQuadColumn   = R_FlushQuadOpaque;
+         dest = &tempbuf[dcvars.yl << 2];
+      } else {
+         tempyl[temp_x] = dcvars.yl;
+         tempyh[temp_x] = dcvars.yh;
+   
+         if(dcvars.yl > commontop)
+            commontop = dcvars.yl;
+         if(dcvars.yh < commonbot)
+            commonbot = dcvars.yh;
+      
+         dest = &tempbuf[(dcvars.yl << 2) + temp_x++];
+      }
+   }
 
   // Determine scaling, which is the only mapping to be done.
 #define  fracstep dcvars.iscale
@@ -184,14 +112,14 @@ void R_DrawColumn (void)
     if (dcvars.texheight == 128) {
         while(count--)
         {
-                *dest = dcvars.colormap[dcvars.source[(frac>>FRACBITS)&127]];
+                *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS)&127])];
                 dest += 4;
                 frac += fracstep;
         }
     } else if (dcvars.texheight == 0) {
   /* cph - another special case */
   while (count--) {
-    *dest = dcvars.colormap[dcvars.source[frac>>FRACBITS]];
+    *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])];
     dest += 4;
     frac += fracstep;
   }
@@ -201,7 +129,7 @@ void R_DrawColumn (void)
      {
          while (count>0)   // texture height is a power of 2 -- killough
            {
-             *dest = dcvars.colormap[dcvars.source[(frac>>FRACBITS) & heightmask]];
+             *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[(frac>>FRACBITS) & heightmask])];
              dest += 4;
              frac += fracstep;
             count--;
@@ -225,7 +153,7 @@ void R_DrawColumn (void)
 
              // heightmask is the Tutti-Frutti fix -- killough
 
-             *dest = dcvars.colormap[dcvars.source[frac>>FRACBITS]];
+             *dest = dcvars.colormap[GETCOL8_MAPPED(dcvars.source[frac>>FRACBITS])];
              dest += 4;
              if ((frac += fracstep) >= (int)heightmask)
                frac -= heightmask;
@@ -235,6 +163,7 @@ void R_DrawColumn (void)
     }
 }
 #undef fracstep
+#endif
 
 // Here is the version of R_DrawColumn that deals with translucent  // phares
 // textures and sprites. It's identical to R_DrawColumn except      //    |
@@ -247,8 +176,8 @@ void R_DrawColumn (void)
 // Since we're concerned about performance, the 'translucent or
 // opaque' decision is made outside this routine, not down where the
 // actual code differences are.
-
-void R_DrawTLColumn (void)
+#if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
+void R_DRAWCOLUMN_FUNCNAME(void)
 {
   int              count;
   register byte    *dest;           // killough
@@ -269,7 +198,36 @@ void R_DrawTLColumn (void)
 
   // Framebuffer destination address.
   // SoM: MAGIC
-  dest = R_GetBufferTrans();
+   {
+      // haleyjd: reordered predicates
+      if(temp_x == 4 || tranmap != temptranmap ||
+         (temp_x && (temptype != COL_TRANS || temp_x + startx != dcvars.x)))
+         R_FlushColumns();
+
+      if(!temp_x)
+      {
+         ++temp_x;
+         startx = dcvars.x;
+         *tempyl = commontop = dcvars.yl;
+         *tempyh = commonbot = dcvars.yh;
+         temptype = COL_TRANS;
+         temptranmap = tranmap;
+         R_FlushWholeColumns = R_FlushWholeTL;
+         R_FlushHTColumns    = R_FlushHTTL;
+         R_FlushQuadColumn   = R_FlushQuadTL;
+         dest = &tempbuf[dcvars.yl << 2];
+      } else {
+         tempyl[temp_x] = dcvars.yl;
+         tempyh[temp_x] = dcvars.yh;
+   
+         if(dcvars.yl > commontop)
+            commontop = dcvars.yl;
+         if(dcvars.yh < commonbot)
+            commonbot = dcvars.yh;
+      
+         dest = &tempbuf[(dcvars.yl << 2) + temp_x++];
+      }
+   }
 
   // Determine scaling,
   //  which is the only mapping to be done.
@@ -329,6 +287,7 @@ void R_DrawTLColumn (void)
   }
 }
 #undef fracstep
+#endif
 
 //
 // Framebuffer postprocessing.
@@ -338,8 +297,8 @@ void R_DrawTLColumn (void)
 //  could create the SHADOW effect,
 //  i.e. spectres and invisible players.
 //
-
-void R_DrawFuzzColumn(void)
+#if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
+void R_DRAWCOLUMN_FUNCNAME(void)
 {
   int      count;
 
@@ -364,64 +323,38 @@ void R_DrawFuzzColumn(void)
     I_Error("R_DrawFuzzColumn: %i to %i at %i", dcvars.yl, dcvars.yh, dcvars.x);
 #endif
 
-  // SoM: MAGIC
-  R_GetBufferFuzz();
-  return;
+   // SoM: MAGIC
+   {
+      // haleyjd: reordered predicates
+      if(temp_x == 4 ||
+         (temp_x && (temptype != COL_FUZZ || temp_x + startx != dcvars.x)))
+         R_FlushColumns();
 
+      if(!temp_x)
+      {
+         ++temp_x;
+         startx = dcvars.x;
+         *tempyl = commontop = dcvars.yl;
+         *tempyh = commonbot = dcvars.yh;
+         temptype = COL_FUZZ;
+         tempfuzzmap = fullcolormap; // SoM 7-28-04: Fix the fuzz problem.
+         R_FlushWholeColumns = R_FlushWholeFuzz;
+         R_FlushHTColumns    = R_FlushHTFuzz;
+         R_FlushQuadColumn   = R_FlushQuadFuzz;
+      } else {
+         tempyl[temp_x] = dcvars.yl;
+         tempyh[temp_x] = dcvars.yh;
+   
+         if(dcvars.yl > commontop)
+            commontop = dcvars.yl;
+         if(dcvars.yh < commonbot)
+            commonbot = dcvars.yh;
+      }
+   }
 }
-
-//
-// R_DrawTranslatedColumn
-// Used to draw player sprites
-//  with the green colorramp mapped to others.
-// Could be used with different translation
-//  tables, e.g. the lighter colored version
-//  of the BaronOfHell, the HellKnight, uses
-//  identical sprites, kinda brightened up.
-//
-
-byte       *translationtables;
-
-void R_DrawTranslatedColumn (void)
-{
-  int      count;
-  byte     *dest;
-  fixed_t  frac;
-  fixed_t  fracstep;
-
-  count = dcvars.yh - dcvars.yl;
-  if (count < 0)
-    return;
-
-#ifdef RANGECHECK
-  if ((unsigned)dcvars.x >= (unsigned)SCREENWIDTH
-      || dcvars.yl < 0
-      || (unsigned)dcvars.yh >= (unsigned)SCREENHEIGHT)
-    I_Error("R_DrawColumn: %i to %i at %i", dcvars.yl, dcvars.yh, dcvars.x);
 #endif
 
-  // FIXME. As above.
-  // SoM: MAGIC
-  dest = R_GetBufferOpaque();
+#undef GETCOL8_MAPPED
 
-  // Looks familiar.
-  fracstep = dcvars.iscale;
-  frac = dcvars.texturemid + (dcvars.yl-centery)*fracstep;
-
-  // Here we do an additional index re-mapping.
-  do
-    {
-      // Translation tables are used
-      //  to map certain colorramps to other ones,
-      //  used with PLAY sprites.
-      // Thus the "green" ramp of the player 0 sprite
-      //  is mapped to gray, red, black/indigo.
-
-      *dest = dcvars.colormap[dcvars.translation[dcvars.source[frac>>FRACBITS]]];
-      dest += 4;
-
-      frac += fracstep;
-    }
-  while (count--);
-}
-
+#undef R_DRAWCOLUMN_FUNCNAME
+#undef R_DRAWCOLUMN_PIPELINE

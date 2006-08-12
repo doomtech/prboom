@@ -180,7 +180,45 @@ void R_ResetColumnBuffer(void)
 #include "r_drawflush.inl"
 
 
-// made inline for repeatable inclusion with different defines
+//
+// R_DrawColumn
+//
+
+//
+// A column is a vertical slice/span from a wall texture that,
+//  given the DOOM style restrictions on the view orientation,
+//  will always have constant z depth.
+// Thus a special case loop for very fast rendering can
+//  be used. It has also been used with Wolfenstein 3D.
+//
+
+byte *translationtables;
+#define RDC_STANDARD      1
+#define RDC_TRANSLUCENT   2
+#define RDC_TRANSLATED    4
+#define RDC_FUZZ          8
+
+#define R_DRAWCOLUMN_FUNCNAME R_DrawColumn
+#define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
+#include "r_drawcolumn.inl"
+#define R_DRAWCOLUMN_FUNCNAME R_DrawTLColumn
+#define R_DRAWCOLUMN_PIPELINE RDC_TRANSLUCENT
+#include "r_drawcolumn.inl"
+
+//
+// R_DrawTranslatedColumn
+// Used to draw player sprites
+//  with the green colorramp mapped to others.
+// Could be used with different translation
+//  tables, e.g. the lighter colored version
+//  of the BaronOfHell, the HellKnight, uses
+//  identical sprites, kinda brightened up.
+//
+#define R_DRAWCOLUMN_FUNCNAME R_DrawTranslatedColumn
+#define R_DRAWCOLUMN_PIPELINE RDC_TRANSLATED
+#include "r_drawcolumn.inl"
+#define R_DRAWCOLUMN_FUNCNAME R_DrawFuzzColumn
+#define R_DRAWCOLUMN_PIPELINE RDC_FUZZ
 #include "r_drawcolumn.inl"
 
 
@@ -247,7 +285,7 @@ void R_InitTranslationTables (void)
 
 draw_span_vars_t dsvars;
 
-// made inline for repeatable inclusion with different defines
+#define R_DRAWSPAN_FUNCNAME R_DrawSpan
 #include "r_drawspan.inl"
 
 
