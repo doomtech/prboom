@@ -217,6 +217,15 @@ byte *translationtables;
 #define R_DRAWCOLUMN_FUNCNAME R_DrawTranslatedColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLATED
 #include "r_drawcolumn.inl"
+
+//
+// Framebuffer postprocessing.
+// Creates a fuzzy image by copying pixels
+//  from adjacent ones to left and right.
+// Used with an all black colormap, this
+//  could create the SHADOW effect,
+//  i.e. spectres and invisible players.
+//
 #define R_DRAWCOLUMN_FUNCNAME R_DrawFuzzColumn
 #define R_DRAWCOLUMN_PIPELINE RDC_FUZZ
 #include "r_drawcolumn.inl"

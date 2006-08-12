@@ -29,18 +29,39 @@
  *-----------------------------------------------------------------------------*/
 
 
-#if ((R_DRAWCOLUMN_PIPELINE & RDC_STANDARD) || (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED))
+#if ((R_DRAWCOLUMN_PIPELINE & RDC_STANDARD) || \
+     (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED) || \
+     (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED)
 #define GETCOL8_MAPPED(col) (dcvars.translation[(col)])
 #else
 #define GETCOL8_MAPPED(col) (col)
 #endif
+
+#if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
+#define COLTYPE (COL_FUZZ)
+#else
+#define COLTYPE (COL_OPAQUE)
+#endif
+
 void R_DRAWCOLUMN_FUNCNAME(void)
 {
   int              count;
   register byte    *dest;            // killough
+#if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
   register fixed_t frac;            // killough
+#endif
+
+#if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
+  // Adjust borders. Low...
+  if (!dcvars.yl)
+    dcvars.yl = 1;
+
+  // .. and high.
+  if (dcvars.yh == viewheight-1)
+    dcvars.yh = viewheight - 2;
+#endif
 
   // leban 1/17/99:
   // removed the + 1 here, adjusted the if test, and added an increment
@@ -58,8 +79,6 @@ void R_DRAWCOLUMN_FUNCNAME(void)
   if (count < 0)    // Zero length, column does not exceed a pixel.
     return;
 
-  count++;
-
 #ifdef RANGECHECK
   if ((unsigned)dcvars.x >= (unsigned)SCREENWIDTH
       || dcvars.yl < 0
@@ -72,7 +91,7 @@ void R_DRAWCOLUMN_FUNCNAME(void)
    {
       // haleyjd: reordered predicates
       if(temp_x == 4 ||
-         (temp_x && (temptype != COL_OPAQUE || temp_x + startx != dcvars.x)))
+         (temp_x && (temptype != COLTYPE || temp_x + startx != dcvars.x)))
          R_FlushColumns();
 
       if(!temp_x)
@@ -81,10 +100,17 @@ void R_DRAWCOLUMN_FUNCNAME(void)
          startx = dcvars.x;
          *tempyl = commontop = dcvars.yl;
          *tempyh = commonbot = dcvars.yh;
-         temptype = COL_OPAQUE;
+         temptype = COLTYPE;
+#if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
+         tempfuzzmap = fullcolormap; // SoM 7-28-04: Fix the fuzz problem.
+         R_FlushWholeColumns = R_FlushWholeFuzz;
+         R_FlushHTColumns    = R_FlushHTFuzz;
+         R_FlushQuadColumn   = R_FlushQuadFuzz;
+#else
          R_FlushWholeColumns = R_FlushWholeOpaque;
          R_FlushHTColumns    = R_FlushHTOpaque;
          R_FlushQuadColumn   = R_FlushQuadOpaque;
+#endif
          dest = &tempbuf[dcvars.yl << 2];
       } else {
          tempyl[temp_x] = dcvars.yl;
@@ -98,6 +124,11 @@ void R_DRAWCOLUMN_FUNCNAME(void)
          dest = &tempbuf[(dcvars.yl << 2) + temp_x++];
       }
    }
+
+// do nothing else when drawin fuzz columns
+#if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
+
+  count++;
 
   // Determine scaling, which is the only mapping to be done.
 #define  fracstep dcvars.iscale
@@ -161,8 +192,9 @@ void R_DRAWCOLUMN_FUNCNAME(void)
            }
      }
     }
-}
 #undef fracstep
+#endif // (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
+}
 #endif
 
 // Here is the version of R_DrawColumn that deals with translucent  // phares
@@ -289,72 +321,8 @@ void R_DRAWCOLUMN_FUNCNAME(void)
 #undef fracstep
 #endif
 
-//
-// Framebuffer postprocessing.
-// Creates a fuzzy image by copying pixels
-//  from adjacent ones to left and right.
-// Used with an all black colormap, this
-//  could create the SHADOW effect,
-//  i.e. spectres and invisible players.
-//
-#if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
-void R_DRAWCOLUMN_FUNCNAME(void)
-{
-  int      count;
-
-  // Adjust borders. Low...
-  if (!dcvars.yl)
-    dcvars.yl = 1;
-
-  // .. and high.
-  if (dcvars.yh == viewheight-1)
-    dcvars.yh = viewheight - 2;
-
-  count = dcvars.yh - dcvars.yl;
-
-  // Zero length.
-  if (count < 0)
-    return;
-
-#ifdef RANGECHECK
-  if ((unsigned) dcvars.x >= (unsigned)SCREENWIDTH
-      || dcvars.yl < 0
-      || (unsigned)dcvars.yh >= (unsigned)SCREENHEIGHT)
-    I_Error("R_DrawFuzzColumn: %i to %i at %i", dcvars.yl, dcvars.yh, dcvars.x);
-#endif
-
-   // SoM: MAGIC
-   {
-      // haleyjd: reordered predicates
-      if(temp_x == 4 ||
-         (temp_x && (temptype != COL_FUZZ || temp_x + startx != dcvars.x)))
-         R_FlushColumns();
-
-      if(!temp_x)
-      {
-         ++temp_x;
-         startx = dcvars.x;
-         *tempyl = commontop = dcvars.yl;
-         *tempyh = commonbot = dcvars.yh;
-         temptype = COL_FUZZ;
-         tempfuzzmap = fullcolormap; // SoM 7-28-04: Fix the fuzz problem.
-         R_FlushWholeColumns = R_FlushWholeFuzz;
-         R_FlushHTColumns    = R_FlushHTFuzz;
-         R_FlushQuadColumn   = R_FlushQuadFuzz;
-      } else {
-         tempyl[temp_x] = dcvars.yl;
-         tempyh[temp_x] = dcvars.yh;
-   
-         if(dcvars.yl > commontop)
-            commontop = dcvars.yl;
-         if(dcvars.yh < commonbot)
-            commonbot = dcvars.yh;
-      }
-   }
-}
-#endif
-
 #undef GETCOL8_MAPPED
+#undef COLTYPE
 
 #undef R_DRAWCOLUMN_FUNCNAME
 #undef R_DRAWCOLUMN_PIPELINE
