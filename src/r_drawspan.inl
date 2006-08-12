@@ -1,0 +1,70 @@
+/* Emacs style mode select   -*- C++ -*-
+ *-----------------------------------------------------------------------------
+ *
+ *
+ *  PrBoom: a Doom port merged with LxDoom and LSDLDoom
+ *  based on BOOM, a modified and improved DOOM engine
+ *  Copyright (C) 1999 by
+ *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+ *  Copyright (C) 1999-2000 by
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
+ *  Copyright 2005, 2006 by
+ *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ *  02111-1307, USA.
+ *
+ *-----------------------------------------------------------------------------*/
+
+//
+// R_DrawSpan
+// With DOOM style restrictions on view orientation,
+//  the floors and ceilings consist of horizontal slices
+//  or spans with constant z depth.
+// However, rotation around the world z axis is possible,
+//  thus this mapping, while simpler and faster than
+//  perspective correct texture mapping, has to traverse
+//  the texture at an angle in all but a few cases.
+// In consequence, flats are not stored by column (like walls),
+//  and the inner loop has to step in texture space u and v.
+//
+
+void R_DrawSpan (void)
+{
+  register unsigned count,xfrac = dsvars.xfrac,yfrac = dsvars.yfrac;
+
+  const byte *source;
+  const byte *colormap;
+  byte *dest;
+
+  source = dsvars.source;
+  colormap = dsvars.colormap;
+  dest = topleft + dsvars.y*screens[0].pitch + dsvars.x1;
+  count = dsvars.x2 - dsvars.x1 + 1;
+
+  while (count)
+    {
+      register unsigned xtemp = xfrac >> 16;
+      register unsigned ytemp = yfrac >> 10;
+      register unsigned spot;
+      ytemp &= 4032;
+      xtemp &= 63;
+      spot = xtemp | ytemp;
+      xfrac += dsvars.xstep;
+      yfrac += dsvars.ystep;
+      *dest++ = colormap[source[spot]];
+      count--;
+    }
+}
