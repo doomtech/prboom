@@ -58,6 +58,7 @@ extern fixed_t pspriteyscale;
 
 void R_DrawMaskedColumn(const rpatch_t *patch,
                         R_DrawColumn_f colfunc,
+                        draw_column_vars_t *dcvars,
                         const rcolumn_t *column);
 void R_SortVisSprites(void);
 void R_AddSprites(subsector_t* subsec, int lightlevel);

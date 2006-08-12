@@ -53,8 +53,6 @@ typedef struct {
   const byte          *translation;
 } draw_column_vars_t;
 
-extern draw_column_vars_t dcvars;
-
 enum column_pipeline_e {
   RDC_PIPELINE_STANDARD,
   RDC_PIPELINE_TRANSLUCENT,
@@ -62,7 +60,7 @@ enum column_pipeline_e {
   RDC_PIPELINE_FUZZ,
 };
 
-typedef void (*R_DrawColumn_f)(void);
+typedef void (*R_DrawColumn_f)(draw_column_vars_t *dcvars);
 R_DrawColumn_f R_GetDrawColumnFunc(enum column_pipeline_e type);
 
 // The span blitting interface.

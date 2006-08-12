@@ -316,15 +316,16 @@ fixed_t sprtopscreen;
 void R_DrawMaskedColumn(
   const rpatch_t *patch,
   R_DrawColumn_f colfunc,
+  draw_column_vars_t *dcvars,
   const rcolumn_t *column
 )
 {
   int     i;
   int     topscreen;
   int     bottomscreen;
-  fixed_t basetexturemid = dcvars.texturemid;
+  fixed_t basetexturemid = dcvars->texturemid;
 
-  dcvars.texheight = patch->height; // killough 11/98
+  dcvars->texheight = patch->height; // killough 11/98
   for (i=0; i<column->numPosts; i++) {
       const rpost_t *post = &column->posts[i];
 
@@ -332,27 +333,27 @@ void R_DrawMaskedColumn(
       topscreen = sprtopscreen + spryscale*post->topdelta;
       bottomscreen = topscreen + spryscale*post->length;
 
-      dcvars.yl = (topscreen+FRACUNIT-1)>>FRACBITS;
-      dcvars.yh = (bottomscreen-1)>>FRACBITS;
+      dcvars->yl = (topscreen+FRACUNIT-1)>>FRACBITS;
+      dcvars->yh = (bottomscreen-1)>>FRACBITS;
 
-      if (dcvars.yh >= mfloorclip[dcvars.x])
-        dcvars.yh = mfloorclip[dcvars.x]-1;
+      if (dcvars->yh >= mfloorclip[dcvars->x])
+        dcvars->yh = mfloorclip[dcvars->x]-1;
 
-      if (dcvars.yl <= mceilingclip[dcvars.x])
-        dcvars.yl = mceilingclip[dcvars.x]+1;
+      if (dcvars->yl <= mceilingclip[dcvars->x])
+        dcvars->yl = mceilingclip[dcvars->x]+1;
 
       // killough 3/2/98, 3/27/98: Failsafe against overflow/crash:
-      if (dcvars.yl <= dcvars.yh && dcvars.yh < viewheight)
+      if (dcvars->yl <= dcvars->yh && dcvars->yh < viewheight)
         {
-          dcvars.source = column->pixels + post->topdelta;
-          dcvars.texturemid = basetexturemid - (post->topdelta<<FRACBITS);
+          dcvars->source = column->pixels + post->topdelta;
+          dcvars->texturemid = basetexturemid - (post->topdelta<<FRACBITS);
 
           // Drawn by either R_DrawColumn
           //  or (SHADOW) R_DrawFuzzColumn.
-          colfunc ();
+          colfunc (dcvars);
         }
     }
-  dcvars.texturemid = basetexturemid;
+  dcvars->texturemid = basetexturemid;
 }
 
 //
@@ -366,6 +367,7 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
   fixed_t  frac;
   const rpatch_t *patch = R_CachePatchNum(vis->patch+firstspritelump);
   R_DrawColumn_f colfunc;
+  draw_column_vars_t dcvars;
 
   dcvars.colormap = vis->colormap;
 
@@ -409,6 +411,7 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
       R_DrawMaskedColumn(
         patch,
         colfunc,
+        &dcvars,
         R_GetPatchColumnClamped(patch, texturecolumn)
       );
     }

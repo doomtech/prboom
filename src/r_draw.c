@@ -75,8 +75,6 @@ const byte *main_tranmap;     // killough 4/11/98
 // Source is the top of the column to scale.
 //
 
-draw_column_vars_t dcvars;
-
 // SoM: OPTIMIZE for ANYRES
 typedef enum
 {

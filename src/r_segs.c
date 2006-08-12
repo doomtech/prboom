@@ -121,6 +121,7 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
   sector_t tempsec;      // killough 4/13/98
   const rpatch_t *patch;
   R_DrawColumn_f colfunc;
+  draw_column_vars_t dcvars;
 
   // Calculate light table.
   // Use different light tables
@@ -218,6 +219,7 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
         R_DrawMaskedColumn(
           patch,
           colfunc,
+          &dcvars,
           R_GetPatchColumnWrapped(patch, maskedtexturecol[dcvars.x])
         );
 
@@ -248,6 +250,7 @@ static void R_RenderSegLoop (void)
 {
   const rpatch_t *tex_patch;
   R_DrawColumn_f colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD);
+  draw_column_vars_t dcvars;
   fixed_t  texturecolumn = 0;   // shut up compiler warning
   rendered_segs++;
   for ( ; rw_x < rw_stopx ; rw_x++)
@@ -320,7 +323,7 @@ static void R_RenderSegLoop (void)
           tex_patch = R_CacheTextureCompositePatchNum(midtexture);
           dcvars.source = R_GetTextureColumn(tex_patch, texturecolumn);
           dcvars.texheight = midtexheight;
-          colfunc ();
+          colfunc (&dcvars);
           R_UnlockTextureCompositePatchNum(midtexture);
           tex_patch = NULL;
           ceilingclip[rw_x] = viewheight;
@@ -347,7 +350,7 @@ static void R_RenderSegLoop (void)
                   tex_patch = R_CacheTextureCompositePatchNum(toptexture);
                   dcvars.source = R_GetTextureColumn(tex_patch,texturecolumn);
                   dcvars.texheight = toptexheight;
-                  colfunc ();
+                  colfunc (&dcvars);
                   R_UnlockTextureCompositePatchNum(toptexture);
                   tex_patch = NULL;
                   ceilingclip[rw_x] = mid;
@@ -379,7 +382,7 @@ static void R_RenderSegLoop (void)
                   tex_patch = R_CacheTextureCompositePatchNum(bottomtexture);
                   dcvars.source = R_GetTextureColumn(tex_patch, texturecolumn);
                   dcvars.texheight = bottomtexheight;
-                  colfunc ();
+                  colfunc (&dcvars);
                   R_UnlockTextureCompositePatchNum(bottomtexture);
                   tex_patch = NULL;
                   floorclip[rw_x] = mid;

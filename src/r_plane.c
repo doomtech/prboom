@@ -328,6 +328,7 @@ static void R_MakeSpans(int x, unsigned int t1, unsigned int b1,
 static void R_DoDrawPlane(visplane_t *pl)
 {
   register int x;
+  draw_column_vars_t dcvars;
   R_DrawColumn_f colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD);
 
   if (pl->minx <= pl->maxx) {
@@ -398,7 +399,7 @@ static void R_DoDrawPlane(visplane_t *pl)
           if ((dcvars.yl = pl->top[x]) != -1 && dcvars.yl <= (dcvars.yh = pl->bottom[x])) // dropoff overflow
             {
               dcvars.source = R_GetTextureColumn(tex_patch, ((an + xtoviewangle[x])^flip) >> ANGLETOSKYSHIFT);
-              colfunc();
+              colfunc(&dcvars);
             }
 
       R_UnlockTextureCompositePatchNum(texture);

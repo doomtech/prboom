@@ -208,19 +208,19 @@ static void R_FLUSHQUAD_FUNCNAME(void)
    }
 }
 
-static void R_DRAWCOLUMN_FUNCNAME(void)
+static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 {
   int              count;
   byte             *dest;            // killough
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
   // Adjust borders. Low...
-  if (!dcvars.yl)
-    dcvars.yl = 1;
+  if (!dcvars->yl)
+    dcvars->yl = 1;
 
   // .. and high.
-  if (dcvars.yh == viewheight-1)
-    dcvars.yh = viewheight - 2;
+  if (dcvars->yh == viewheight-1)
+    dcvars->yh = viewheight - 2;
 #endif
 
   // leban 1/17/99:
@@ -228,7 +228,7 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
   // later.  this helps a compiler pipeline a bit better.  the x86
   // assembler also does this.
 
-  count = dcvars.yh - dcvars.yl;
+  count = dcvars->yh - dcvars->yl;
 
   // leban 1/17/99:
   // this case isn't executed too often.  depending on how many instructions
@@ -240,10 +240,10 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
     return;
 
 #ifdef RANGECHECK
-  if (dcvars.x >= SCREENWIDTH
-      || dcvars.yl < 0
-      || dcvars.yh >= SCREENHEIGHT)
-    I_Error("R_DrawColumn: %i to %i at %i", dcvars.yl, dcvars.yh, dcvars.x);
+  if (dcvars->x >= SCREENWIDTH
+      || dcvars->yl < 0
+      || dcvars->yh >= SCREENHEIGHT)
+    I_Error("R_DrawColumn: %i to %i at %i", dcvars->yl, dcvars->yh, dcvars->x);
 #endif
 
   // Framebuffer destination address.
@@ -251,15 +251,15 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
    {
       // haleyjd: reordered predicates
       if(temp_x == 4 ||
-         (temp_x && (temptype != COLTYPE || temp_x + startx != dcvars.x)))
+         (temp_x && (temptype != COLTYPE || temp_x + startx != dcvars->x)))
          R_FlushColumns();
 
       if(!temp_x)
       {
          ++temp_x;
-         startx = dcvars.x;
-         *tempyl = commontop = dcvars.yl;
-         *tempyh = commonbot = dcvars.yh;
+         startx = dcvars->x;
+         *tempyl = commontop = dcvars->yl;
+         *tempyh = commonbot = dcvars->yh;
          temptype = COLTYPE;
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
          temptranmap = tranmap;
@@ -269,17 +269,17 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
          R_FlushWholeColumns = R_FLUSHWHOLE_FUNCNAME;
          R_FlushHTColumns    = R_FLUSHHEADTAIL_FUNCNAME;
          R_FlushQuadColumn   = R_FLUSHQUAD_FUNCNAME;
-         dest = &tempbuf[dcvars.yl << 2];
+         dest = &tempbuf[dcvars->yl << 2];
       } else {
-         tempyl[temp_x] = dcvars.yl;
-         tempyh[temp_x] = dcvars.yh;
+         tempyl[temp_x] = dcvars->yl;
+         tempyh[temp_x] = dcvars->yh;
    
-         if(dcvars.yl > commontop)
-            commontop = dcvars.yl;
-         if(dcvars.yh < commonbot)
-            commonbot = dcvars.yh;
+         if(dcvars->yl > commontop)
+            commontop = dcvars->yl;
+         if(dcvars->yh < commonbot)
+            commonbot = dcvars->yh;
       
-         dest = &tempbuf[(dcvars.yl << 2) + temp_x++];
+         dest = &tempbuf[(dcvars->yl << 2) + temp_x++];
       }
    }
 
@@ -287,15 +287,15 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
 #if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
   {
     fixed_t             frac;
-    fixed_t             fracstep = dcvars.iscale;
-    const byte          *source = dcvars.source;
-    const lighttable_t  *colormap = dcvars.colormap;
-    const byte          *translation = dcvars.translation;
+    fixed_t             fracstep = dcvars->iscale;
+    const byte          *source = dcvars->source;
+    const lighttable_t  *colormap = dcvars->colormap;
+    const byte          *translation = dcvars->translation;
 
     count++;
 
     // Determine scaling, which is the only mapping to be done.
-    frac = dcvars.texturemid + (dcvars.yl-centery)*fracstep;
+    frac = dcvars->texturemid + (dcvars->yl-centery)*fracstep;
 
     // Inner loop that does the actual texture mapping,
     //  e.g. a DDA-lile scaling.
@@ -303,13 +303,13 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
     //
     // killough 2/1/98: more performance tuning
 
-    if (dcvars.texheight == 128) {
+    if (dcvars->texheight == 128) {
       while(count--) {
         *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[(frac>>FRACBITS)&127])]);
         dest += 4;
         frac += fracstep;
       }
-    } else if (dcvars.texheight == 0) {
+    } else if (dcvars->texheight == 0) {
       /* cph - another special case */
       while (count--) {
         *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[frac>>FRACBITS])]);
@@ -317,8 +317,8 @@ static void R_DRAWCOLUMN_FUNCNAME(void)
         frac += fracstep;
       }
     } else {
-      unsigned heightmask = dcvars.texheight-1; // CPhipps - specify type
-      if (! (dcvars.texheight & heightmask) ) { // power of 2 -- killough
+      unsigned heightmask = dcvars->texheight-1; // CPhipps - specify type
+      if (! (dcvars->texheight & heightmask) ) { // power of 2 -- killough
         while ((count-=2)>=0) { // texture height is a power of 2 -- killough
           *dest = GETDESTCOLOR(colormap[GETCOL8_MAPPED(source[(frac>>FRACBITS) & heightmask])]);
           dest += 4;
