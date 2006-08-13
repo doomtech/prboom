@@ -175,8 +175,10 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
 
   dcvars.texturemid += curline->sidedef->rowoffset;
 
-  if (fixedcolormap)
+  if (fixedcolormap) {
     dcvars.colormap = fixedcolormap;
+    dcvars.nextcolormap = dcvars.colormap; // for filtering -- POPE
+  }
 
   patch = R_CacheTextureCompositePatchNum(texnum);
 
@@ -184,7 +186,10 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
   for (dcvars.x = x1 ; dcvars.x <= x2 ; dcvars.x++, spryscale += rw_scalestep)
     if (maskedtexturecol[dcvars.x] != INT_MAX) // dropoff overflow
       {
+        if (!fixedcolormap)
+          dcvars.z = spryscale; // for filtering -- POPE
         dcvars.colormap = R_ColourMap(rw_lightlevel,spryscale);
+        dcvars.nextcolormap = R_ColourMap(rw_lightlevel+1,spryscale); // for filtering -- POPE
 
         // killough 3/2/98:
         //
@@ -309,6 +314,9 @@ static void R_RenderSegLoop (void)
           texturecolumn >>= FRACBITS;
 
           dcvars.colormap = R_ColourMap(rw_lightlevel,rw_scale);
+          dcvars.nextcolormap = R_ColourMap(rw_lightlevel+1,rw_scale); // for filtering -- POPE
+          dcvars.z = rw_scale; // for filtering -- POPE
+
           dcvars.x = rw_x;
           dcvars.iscale = 0xffffffffu / (unsigned)rw_scale;
         }

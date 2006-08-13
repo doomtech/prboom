@@ -37,6 +37,7 @@
 #include "w_wad.h"
 #include "r_main.h"
 #include "r_draw.h"
+#include "r_filter.h"
 #include "v_video.h"
 #include "st_stuff.h"
 #include "g_game.h"
@@ -187,10 +188,13 @@ void R_ResetColumnBuffer(void)
 //
 
 byte *translationtables;
+// render pipelines
 #define RDC_STANDARD      1
 #define RDC_TRANSLUCENT   2
 #define RDC_TRANSLATED    4
 #define RDC_FUZZ          8
+// filter modes
+#define RDC_DITHERZ      16
 
 #define R_DRAWCOLUMN_FUNCNAME R_DrawColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
@@ -323,6 +327,11 @@ void R_InitTranslationTables (void)
 //
 
 #define R_DRAWSPAN_FUNCNAME R_DrawSpan8
+#define R_DRAWSPAN_PIPELINE (RDC_STANDARD)
+#include "r_drawspan.inl"
+
+#define R_DRAWSPAN_FUNCNAME R_DrawSpan8_LinearZ
+#define R_DRAWSPAN_PIPELINE (RDC_STANDARD | RDC_DITHERZ)
 #include "r_drawspan.inl"
 
 void R_DrawSpan(draw_span_vars_t *dsvars) {

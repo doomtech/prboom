@@ -162,11 +162,17 @@ static void R_MapPlane(int y, int x1, int x2, draw_span_vars_t *dsvars)
 
   if (!(dsvars->colormap = fixedcolormap))
     {
+      dsvars->z = distance;
       index = distance >> LIGHTZSHIFT;
       if (index >= MAXLIGHTZ )
         index = MAXLIGHTZ-1;
       dsvars->colormap = planezlight[index];
+      dsvars->nextcolormap = planezlight[index+1 >= MAXLIGHTZ ? MAXLIGHTZ-1 : index+1];
     }
+  else
+   {
+      dsvars->z = 0;
+   }
 
   dsvars->y = y;
   dsvars->x1 = x1;
@@ -387,6 +393,9 @@ static void R_DoDrawPlane(visplane_t *pl)
 
       if (comp[comp_skymap] || !(dcvars.colormap = fixedcolormap))
         dcvars.colormap = fullcolormap;          // killough 3/20/98
+
+      dcvars.nextcolormap = dcvars.colormap; // for filtering -- POPE
+
       //dcvars.texturemid = skytexturemid;
       dcvars.texheight = textureheight[skytexture]>>FRACBITS; // killough
       // proff 09/21/98: Changed for high-res

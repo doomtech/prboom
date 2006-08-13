@@ -370,6 +370,7 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
   draw_column_vars_t dcvars;
 
   dcvars.colormap = vis->colormap;
+  dcvars.nextcolormap = dcvars.colormap; // for filtering -- POPE
 
   // killough 4/11/98: rearrange and handle translucent sprites
   // mixed with translucent/non-translucenct 2s normals

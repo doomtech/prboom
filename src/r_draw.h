@@ -45,11 +45,13 @@ typedef struct {
   int                 x;
   int                 yl;
   int                 yh;
+  fixed_t             z; // the current column z coord
   fixed_t             iscale;
   fixed_t             texturemid;
   int                 texheight;    // killough
   const byte          *source; // first pixel in a column
   const lighttable_t  *colormap;
+  const lighttable_t  *nextcolormap;
   const byte          *translation;
 } draw_column_vars_t;
 
@@ -81,12 +83,14 @@ typedef struct {
   int                 y;
   int                 x1;
   int                 x2;
+  fixed_t             z; // the current span z coord
   fixed_t             xfrac;
   fixed_t             yfrac;
   fixed_t             xstep;
   fixed_t             ystep;
   const byte          *source; // start of a 64*64 tile image
   const lighttable_t  *colormap;
+  const lighttable_t  *nextcolormap;
 } draw_span_vars_t;
 
 extern byte playernumtotrans[MAXPLAYERS]; // CPhipps - what translation table for what player

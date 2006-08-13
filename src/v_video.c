@@ -42,6 +42,7 @@
 #include "w_wad.h"   /* needed for color translation lump lookup */
 #include "v_video.h"
 #include "i_video.h"
+#include "r_filter.h"
 #include "lprintf.h"
 
 // Each screen is [SCREENWIDTH*SCREENHEIGHT];
@@ -350,7 +351,8 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
 
     dcvars.texheight = patch->height;
     dcvars.iscale = DYI;
-    dcvars.colormap = colormaps[0];
+    dcvars.colormap = dcvars.nextcolormap = colormaps[0];
+    dcvars.z = 0;
 
     for (dcvars.x=left, col=0; dcvars.x<right; dcvars.x++, col+=DXI) {
       int i;
@@ -513,6 +515,7 @@ void V_InitMode(video_mode_t mode) {
       break;
 #endif
   }
+  R_FilterInit();
 }
 
 //
