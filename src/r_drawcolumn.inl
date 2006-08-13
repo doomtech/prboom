@@ -81,6 +81,8 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 {
   int              count;
   byte             *dest;            // killough
+  fixed_t          frac;
+  const fixed_t    fracstep = dcvars->iscale;
 
   // drop back to point filtering if we're minifying
 #if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
@@ -125,6 +127,46 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
     I_Error("R_DrawColumn: %i to %i at %i", dcvars->yl, dcvars->yh, dcvars->x);
 #endif
 
+  // Determine scaling, which is the only mapping to be done.
+  frac = dcvars->texturemid + (dcvars->yl-centery)*fracstep;
+
+  if (dcvars->drawingmasked && drawvars.edgetype == RDRAW_MASKEDCOLUMNEDGE_SLOPED) {
+    // slope the top and bottom column edge based on the fractional u coordinate
+    // and dcvars->edgeslope, which were set in R_DrawMaskedColumn
+    // in r_things.c
+    if (dcvars->yl != 0) {
+      if (dcvars->edgeslope & RDRAW_EDGESLOPE_TOP_UP) {
+        // [/#]
+        int shift = ((0xffff-(dcvars->texu & 0xffff))/dcvars->iscale);
+        dcvars->yl += shift;
+        count -= shift;
+        frac += 0xffff-(dcvars->texu & 0xffff);
+      }
+      else if (dcvars->edgeslope & RDRAW_EDGESLOPE_TOP_DOWN) {
+        // [#\]
+        int shift = ((dcvars->texu & 0xffff)/dcvars->iscale);
+        dcvars->yl += shift;
+        count -= shift;
+        frac += dcvars->texu & 0xffff;
+      }
+    }
+    if (dcvars->yh != viewheight-1) {
+      if (dcvars->edgeslope & RDRAW_EDGESLOPE_BOT_UP) {
+        // [#/]
+        int shift = ((0xffff-(dcvars->texu & 0xffff))/dcvars->iscale);
+        dcvars->yh -= shift;
+        count -= shift;
+      }
+      else if (dcvars->edgeslope & RDRAW_EDGESLOPE_BOT_DOWN) {
+        // [\#]
+        int shift = ((dcvars->texu & 0xffff)/dcvars->iscale);
+        dcvars->yh -= shift;
+        count -= shift;
+      }
+    }
+    if (count <= 0) return;  
+  }
+
   // Framebuffer destination address.
    // SoM: MAGIC
    {
@@ -165,8 +207,6 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 // do nothing else when drawin fuzz columns
 #if (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
   {
-    fixed_t             frac;
-    fixed_t             fracstep = dcvars->iscale;
     const byte          *source = dcvars->source;
     const lighttable_t  *colormap = dcvars->colormap;
     const byte          *translation = dcvars->translation;
@@ -191,9 +231,6 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 #endif
 
     count++;
-
-    // Determine scaling, which is the only mapping to be done.
-    frac = dcvars->texturemid + (dcvars->yl-centery)*fracstep;
 
     // Inner loop that does the actual texture mapping,
     //  e.g. a DDA-lile scaling.
@@ -254,7 +291,7 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
       
 #define INCFRAC(f) if ((f += fracstep) >= (int)heightmask) f -= heightmask;
 
-        do {
+        while (count--) {
           // Re-map color indices from wall texture column
           //  using a lighting/special effects LUT.
 
@@ -266,8 +303,8 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
           INCFRAC(frac);
 #if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
           INCFRAC(nextfrac); 
-#endif     
-        } while (--count);
+#endif
+        }
       }
     }
   }

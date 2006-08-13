@@ -335,6 +335,8 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
     extern byte *topleft;
     byte *oldtopleft = topleft;
 
+    R_SetDefaultDrawColumnVars(&dcvars);
+
     topleft = screens[scrn].data;
 
     if (flags & VPT_TRANS) {
@@ -351,8 +353,7 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
 
     dcvars.texheight = patch->height;
     dcvars.iscale = DYI;
-    dcvars.colormap = dcvars.nextcolormap = colormaps[0];
-    dcvars.z = 0;
+    dcvars.drawingmasked = max(patch->width, patch->height) > 8;
 
     if (drawvars.filterpatch == RDRAW_FILTER_LINEAR) {
       // bias the texture u coordinate
@@ -386,11 +387,16 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
 
         dcvars.yl = (((y + post->topdelta) * DY)>>FRACBITS);
         dcvars.yh = (((y + post->topdelta + post->length) * DY)>>FRACBITS);
+        dcvars.edgeslope = post->slope;
 
-        if (dcvars.yh >= bottom)
+        if (dcvars.yh >= bottom) {
           dcvars.yh = bottom-1;
-        if (dcvars.yh >= SCREENHEIGHT)
+          dcvars.edgeslope &= ~RDRAW_EDGESLOPE_BOT_MASK;
+        }
+        if (dcvars.yh >= SCREENHEIGHT) {
           dcvars.yh = SCREENHEIGHT-1;
+          dcvars.edgeslope &= ~RDRAW_EDGESLOPE_BOT_MASK;
+        }
 
         dcvars.source = column->pixels + post->topdelta;
         dcvars.prevsource = prevcolumn ? prevcolumn->pixels + post->topdelta : dcvars.source;

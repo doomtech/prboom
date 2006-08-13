@@ -56,7 +56,12 @@ typedef struct {
   const lighttable_t  *colormap;
   const lighttable_t  *nextcolormap;
   const byte          *translation;
+  int                 edgeslope; // OR'ed RDRAW_EDGESLOPE_*
+  // 1 if R_DrawColumn* is currently drawing a masked column, otherwise 0
+  int                 drawingmasked;
 } draw_column_vars_t;
+
+void R_SetDefaultDrawColumnVars(draw_column_vars_t *dcvars);
 
 enum column_pipeline_e {
   RDC_PIPELINE_STANDARD,
@@ -103,6 +108,14 @@ enum draw_filter_type_e {
   RDRAW_FILTER_MAXFILTERS
 };
 
+// Used to specify what kind of column edge rendering to use on masked 
+// columns. SQUARE = standard, SLOPED = slope the column edge up or down
+// based on neighboring columns
+enum sloped_edge_type_e {
+  RDRAW_MASKEDCOLUMNEDGE_SQUARE,
+  RDRAW_MASKEDCOLUMNEDGE_SLOPED
+};
+
 typedef struct {
   byte  *topleft;
 
@@ -111,6 +124,8 @@ typedef struct {
   enum draw_filter_type_e filtersprite;
   enum draw_filter_type_e filterz;
   enum draw_filter_type_e filterpatch;
+
+  enum sloped_edge_type_e edgetype;
 
   // Used to specify an early-out magnification threshold for filtering.
   // If a texture is being minified (dcvars.iscale > rdraw_magThresh), then it

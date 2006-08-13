@@ -124,6 +124,8 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
   draw_column_vars_t dcvars;
   angle_t angle;
 
+  R_SetDefaultDrawColumnVars(&dcvars);
+
   // Calculate light table.
   // Use different light tables
   //   for horizontal / vertical / diagonal. Diagonal?
@@ -266,6 +268,9 @@ static void R_RenderSegLoop (void)
   R_DrawColumn_f colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD, drawvars.filterwall, drawvars.filterz);
   draw_column_vars_t dcvars;
   fixed_t  texturecolumn = 0;   // shut up compiler warning
+
+  R_SetDefaultDrawColumnVars(&dcvars);
+
   rendered_segs++;
   for ( ; rw_x < rw_stopx ; rw_x++)
     {

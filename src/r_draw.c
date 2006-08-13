@@ -138,7 +138,9 @@ draw_vars_t drawvars = {
   RDRAW_FILTER_POINT, // filterfloor
   RDRAW_FILTER_POINT, // filtersprite
   RDRAW_FILTER_POINT, // filterz
-  RDRAW_FILTER_POINT, // filterpatch
+  RDRAW_FILTER_ROUNDED, // filterpatch
+
+  RDRAW_MASKEDCOLUMNEDGE_SLOPED, // edgetype
 
   // 49152 = FRACUNIT * 0.75
   // 81920 = FRACUNIT * 1.25
@@ -622,6 +624,15 @@ R_DrawColumn_f R_GetDrawColumnFunc(enum column_pipeline_e type,
     I_Error("R_GetDrawColumnFunc: undefined function (%d, %d, %d)",
             type, filter, filterz);
   return result;
+}
+
+void R_SetDefaultDrawColumnVars(draw_column_vars_t *dcvars) {
+  dcvars->x = dcvars->yl = dcvars->yh = dcvars->z = 0;
+  dcvars->iscale = dcvars->texturemid = dcvars->texheight = dcvars->texu = 0;
+  dcvars->source = dcvars->prevsource = dcvars->nextsource = NULL;
+  dcvars->colormap = dcvars->nextcolormap = colormaps[0];
+  dcvars->translation = NULL;
+  dcvars->edgeslope = dcvars->drawingmasked = 0;
 }
 
 //

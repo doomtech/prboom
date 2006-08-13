@@ -342,6 +342,8 @@ static void R_DoDrawPlane(visplane_t *pl)
   draw_column_vars_t dcvars;
   R_DrawColumn_f colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD, drawvars.filterwall, drawvars.filterz);
 
+  R_SetDefaultDrawColumnVars(&dcvars);
+
   if (pl->minx <= pl->maxx) {
     if (pl->picnum == skyflatnum || pl->picnum & PL_SKYFLAT) { // sky flat
       int texture;

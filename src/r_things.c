@@ -353,9 +353,12 @@ void R_DrawMaskedColumn(
 
           dcvars->texturemid = basetexturemid - (post->topdelta<<FRACBITS);
 
+          dcvars->edgeslope = post->slope;
           // Drawn by either R_DrawColumn
           //  or (SHADOW) R_DrawFuzzColumn.
+          dcvars->drawingmasked = 1; // POPE
           colfunc (dcvars);
+          dcvars->drawingmasked = 0; // POPE
         }
     }
   dcvars->texturemid = basetexturemid;
@@ -373,6 +376,8 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
   const rpatch_t *patch = R_CachePatchNum(vis->patch+firstspritelump);
   R_DrawColumn_f colfunc;
   draw_column_vars_t dcvars;
+
+  R_SetDefaultDrawColumnVars(&dcvars);
 
   dcvars.colormap = vis->colormap;
   dcvars.nextcolormap = dcvars.colormap; // for filtering -- POPE
@@ -402,7 +407,7 @@ static void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
   dcvars.iscale = FixedDiv (FRACUNIT, vis->scale);
   dcvars.texturemid = vis->texturemid;
   frac = vis->startfrac;
-  if (drawvars.filterwall == RDRAW_FILTER_LINEAR)
+  if (drawvars.filtersprite == RDRAW_FILTER_LINEAR)
     frac -= (FRACUNIT>>1);
   spryscale = vis->scale;
   sprtopscreen = centeryfrac - FixedMul(dcvars.texturemid,spryscale);
