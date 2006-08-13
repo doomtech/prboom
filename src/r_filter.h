@@ -80,29 +80,6 @@ void R_FilterInit(void);
     ] ]
 
 
-static inline byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d) {
-  // A B C
-  // D E F
-  // G H I
-  // perform the Scale2x algorithm (quickly) to get the new quad to represent E
-  static byte quad[5];
-  static byte rowColors[3];
-  int code;
-  
-  rowColors[0] = d;
-  rowColors[1] = e;
-  rowColors[2] = f;
-  
-  #define getCode(b,f,h,d) ( (b == f)<<0 | (f == h)<<1 | (h == d)<<2 | (d == b)<<3 )
-
-  code = getCode(b,f,h,d);
-  quad[0] = rowColors[filter_roundedRowMap[0*16+code]];
-  quad[1] = rowColors[filter_roundedRowMap[1*16+code]];
-  quad[2] = rowColors[filter_roundedRowMap[2*16+code]];
-  quad[3] = rowColors[filter_roundedRowMap[3*16+code]];
-  quad[4] = e;
-  
-  return quad;
-}
+byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
 
 #endif
