@@ -59,20 +59,20 @@ void R_FilterInit(void);
 // derived. the "-dcvars.yl" is apparently required to offset some minor
 // shaking in coordinate y-axis and prevents dithering seams
 #define FILTER_GETV(x,y,texV,nextRowTexV) \
-  (filter_getDitheredPixelLevel(x, y, (((texV) - dcvars.yl) >> 8)&0xff) ? ((nextRowTexV)>>FRACBITS) : ((texV)>>FRACBITS))
+  (filter_getDitheredPixelLevel(x, y, (((texV) - yl) >> 8)&0xff) ? ((nextRowTexV)>>FRACBITS) : ((texV)>>FRACBITS))
 
 // Choose current column or next column to the right based on dither of the 
 // fractional texture U coord
 #define filter_getDitheredForColumn(x, y, texV, nextRowTexV) \
-  sourceAndNextSource[(filter_getDitheredPixelLevel(x, y, filter_fracu))][FILTER_GETV(x,y,texV,nextRowTexV)]
+  dither_sources[(filter_getDitheredPixelLevel(x, y, filter_fracu))][FILTER_GETV(x,y,texV,nextRowTexV)]
 
 #define filter_getRoundedForColumn(texV, nextRowTexV) \
   filter_getScale2xQuadColors( \
-    dcvars.source[      ((texV)>>FRACBITS)              ], \
-    dcvars.source[      (max(0, ((texV)>>FRACBITS)-1))  ], \
-    dcvars.nextsource[  ((texV)>>FRACBITS)              ], \
-    dcvars.source[      ((nextRowTexV)>>FRACBITS)       ], \
-    dcvars.prevsource[  ((texV)>>FRACBITS)              ] \
+    source[      ((texV)>>FRACBITS)              ], \
+    source[      (max(0, ((texV)>>FRACBITS)-1))  ], \
+    nextsource[  ((texV)>>FRACBITS)              ], \
+    source[      ((nextRowTexV)>>FRACBITS)       ], \
+    prevsource[  ((texV)>>FRACBITS)              ] \
   ) \
     [ filter_roundedUVMap[ \
       ((filter_fracu>>(8-FILTER_UVBITS))<<FILTER_UVBITS) + \

@@ -338,10 +338,10 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
     topleft = screens[scrn].data;
 
     if (flags & VPT_TRANS) {
-      colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_TRANSLATED);
+      colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_TRANSLATED, drawvars.filterpatch, RDRAW_FILTER_NONE);
       dcvars.translation = trans;
     } else {
-      colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD);
+      colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_STANDARD, drawvars.filterpatch, RDRAW_FILTER_NONE);
     }
 
     left = ( x * DX ) >> FRACBITS;
@@ -354,15 +354,31 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
     dcvars.colormap = dcvars.nextcolormap = colormaps[0];
     dcvars.z = 0;
 
-    for (dcvars.x=left, col=0; dcvars.x<right; dcvars.x++, col+=DXI) {
+    if (drawvars.filterpatch == RDRAW_FILTER_LINEAR) {
+      // bias the texture u coordinate
+      if (patch->isNotTileable)
+        col = -(FRACUNIT>>1);
+      else
+        col = (patch->width<<FRACBITS)-(FRACUNIT>>1);
+    }
+    else {
+      col = 0;
+    }
+
+    for (dcvars.x=left; dcvars.x<right; dcvars.x++, col+=DXI) {
       int i;
-      const rcolumn_t *column = R_GetPatchColumn(patch, (flags & VPT_FLIP) ? ((w - col)>>16): (col>>16));
+      const int colindex = (flags & VPT_FLIP) ? ((w - col)>>16): (col>>16);
+      const rcolumn_t *column = R_GetPatchColumn(patch, colindex);
+      const rcolumn_t *prevcolumn = R_GetPatchColumn(patch, colindex-1);
+      const rcolumn_t *nextcolumn = R_GetPatchColumn(patch, colindex+1);
 
       // ignore this column if it's to the left of our clampRect
       if (dcvars.x < 0)
         continue;
       if (dcvars.x >= SCREENWIDTH)
         break;
+
+      dcvars.texu = ((flags & VPT_FLIP) ? ((patch->width<<FRACBITS)-col) : col) % (patch->width<<FRACBITS);
 
       // step through the posts in a column
       for (i=0; i<column->numPosts; i++) {
@@ -377,6 +393,9 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
           dcvars.yh = SCREENHEIGHT-1;
 
         dcvars.source = column->pixels + post->topdelta;
+        dcvars.prevsource = prevcolumn ? prevcolumn->pixels + post->topdelta : dcvars.source;
+        dcvars.nextsource = nextcolumn ? nextcolumn->pixels + post->topdelta : dcvars.source;
+
         dcvars.texturemid = -((dcvars.yl-centery)*dcvars.iscale);
 
         colfunc(&dcvars);

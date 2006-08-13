@@ -41,11 +41,31 @@
 #define GETCOL8_MAPPED(col) (col)
 #endif
 
-#if (R_DRAWCOLUMN_PIPELINE & RDC_DITHERZ)  
-  #define GETCOL(col) (colormaps[filter_getDitheredPixelLevel(x, y, fracz)][GETCOL8_MAPPED(col)])
+#if (R_DRAWCOLUMN_PIPELINE & RDC_NOCOLMAP)
+  #if (R_DRAWCOLUMN_PIPELINE & RDC_DITHERZ)  
+    #define GETCOL8_DEPTH(col) (filter_getDitheredPixelLevel(x, y, fracz)][GETCOL8_MAPPED(col))
+  #else
+    #define GETCOL8_DEPTH(col) GETCOL8_MAPPED(col)
+  #endif
+#else
+  #if (R_DRAWCOLUMN_PIPELINE & RDC_DITHERZ)  
+    #define GETCOL8_DEPTH(col) (dither_colormaps[filter_getDitheredPixelLevel(x, y, fracz)][GETCOL8_MAPPED(col)])
+  #else
+    #define GETCOL8_DEPTH(col) colormap[GETCOL8_MAPPED(col)]
+  #endif
+#endif
+
+#if (R_DRAWCOLUMN_PIPELINE & RDC_BILINEAR)
+ #define GETCOL(frac, nextfrac) GETCOL8_DEPTH(filter_getDitheredForColumn(x,y,frac,nextfrac))
+#elif (R_DRAWCOLUMN_PIPELINE & RDC_ROUNDED)
+ #define GETCOL(frac, nextfrac) GETCOL8_DEPTH(filter_getRoundedForColumn(frac,nextfrac))
+#else
+ #define GETCOL(frac, nextfrac) GETCOL8_DEPTH(source[(frac)>>FRACBITS])
+#endif
+
+#if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED|RDC_DITHERZ))
   #define INCY(y) (y++)
 #else
-  #define GETCOL(col) colormap[GETCOL8_MAPPED(col)]
   #define INCY(y)
 #endif
 
@@ -61,6 +81,16 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 {
   int              count;
   byte             *dest;            // killough
+
+  // drop back to point filtering if we're minifying
+#if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
+  if (dcvars->iscale > drawvars.mag_threshold) {
+    R_GetDrawColumnFunc(R_DRAWCOLUMN_PIPELINE_TYPE,
+                        RDRAW_FILTER_POINT,
+                        drawvars.filterz)(dcvars);
+    return;
+  }
+#endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
   // Adjust borders. Low...
@@ -140,11 +170,24 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
     const byte          *source = dcvars->source;
     const lighttable_t  *colormap = dcvars->colormap;
     const byte          *translation = dcvars->translation;
-#if (R_DRAWCOLUMN_PIPELINE & RDC_DITHERZ)
+#if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED|RDC_DITHERZ))
     int y = dcvars->yl;
     const int x = dcvars->x;
+#endif
+#if (R_DRAWCOLUMN_PIPELINE & RDC_DITHERZ)
     const int fracz = (dcvars->z >> 6) & 255;
-    const byte *colormaps[2] = { dcvars->colormap, dcvars->nextcolormap };
+    const byte *dither_colormaps[2] = { dcvars->colormap, dcvars->nextcolormap };
+#endif
+#if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
+    const unsigned int filter_fracu = (dcvars->source == dcvars->nextsource) ? 0 : (dcvars->texu>>8) & 0xff;
+#endif
+#if (R_DRAWCOLUMN_PIPELINE & RDC_BILINEAR)
+    const int yl = dcvars->yl;
+    const byte *dither_sources[2] = { dcvars->source, dcvars->nextsource };
+#endif
+#if (R_DRAWCOLUMN_PIPELINE & RDC_ROUNDED)
+    const byte          *prevsource = dcvars->prevsource;
+    const byte          *nextsource = dcvars->nextsource;
 #endif
 
     count++;
@@ -159,8 +202,9 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
     // killough 2/1/98: more performance tuning
 
     if (dcvars->texheight == 128) {
+      #define FIXEDT_128MASK ((127<<FRACBITS)|0xffff)
       while(count--) {
-        *dest = GETDESTCOLOR(GETCOL(GETCOL8_MAPPED(source[(frac>>FRACBITS)&127])));
+        *dest = GETDESTCOLOR(GETCOL(frac & FIXEDT_128MASK, (frac+FRACUNIT) & FIXEDT_128MASK));
         INCY(y);
         dest += 4;
         frac += fracstep;
@@ -168,7 +212,7 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
     } else if (dcvars->texheight == 0) {
       /* cph - another special case */
       while (count--) {
-        *dest = GETDESTCOLOR(GETCOL(GETCOL8_MAPPED(source[frac>>FRACBITS])));
+        *dest = GETDESTCOLOR(GETCOL(frac, (frac+FRACUNIT)));
         INCY(y);
         dest += 4;
         frac += fracstep;
@@ -176,20 +220,23 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
     } else {
       unsigned heightmask = dcvars->texheight-1; // CPhipps - specify type
       if (! (dcvars->texheight & heightmask) ) { // power of 2 -- killough
+        fixed_t fixedt_heightmask = (heightmask<<FRACBITS)|0xffff;
         while ((count-=2)>=0) { // texture height is a power of 2 -- killough
-          *dest = GETDESTCOLOR(GETCOL(GETCOL8_MAPPED(source[(frac>>FRACBITS) & heightmask])));
+          *dest = GETDESTCOLOR(GETCOL(frac & fixedt_heightmask, (frac+FRACUNIT) & fixedt_heightmask));
           INCY(y);
           dest += 4;
           frac += fracstep;
-          *dest = GETDESTCOLOR(GETCOL(GETCOL8_MAPPED(source[(frac>>FRACBITS) & heightmask])));
+          *dest = GETDESTCOLOR(GETCOL(frac & fixedt_heightmask, (frac+FRACUNIT) & fixedt_heightmask));
           INCY(y);
           dest += 4;
           frac += fracstep;
         }
         if (count & 1)
-          *dest = GETDESTCOLOR(GETCOL(GETCOL8_MAPPED(source[(frac>>FRACBITS) & heightmask])));
+          *dest = GETDESTCOLOR(GETCOL(frac & fixedt_heightmask, (frac+FRACUNIT) & fixedt_heightmask));
           INCY(y);
       } else {
+        fixed_t nextfrac = 0;
+
         heightmask++;
         heightmask <<= FRACBITS;
 
@@ -199,17 +246,27 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
           while (frac >= (int)heightmask)
             frac -= heightmask;
 
+#if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
+        nextfrac = frac + FRACUNIT;
+        while (nextfrac >= (int)heightmask)
+          nextfrac -= heightmask;
+#endif
+      
+#define INCFRAC(f) if ((f += fracstep) >= (int)heightmask) f -= heightmask;
+
         do {
           // Re-map color indices from wall texture column
           //  using a lighting/special effects LUT.
 
           // heightmask is the Tutti-Frutti fix -- killough
 
-          *dest = GETDESTCOLOR(GETCOL(GETCOL8_MAPPED(source[frac>>FRACBITS])));
+          *dest = GETDESTCOLOR(GETCOL(frac, nextfrac));
           INCY(y);
           dest += 4;
-          if ((frac += fracstep) >= (int)heightmask)
-            frac -= heightmask;
+          INCFRAC(frac);
+#if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
+          INCFRAC(nextfrac); 
+#endif     
         } while (--count);
       }
     }
@@ -219,8 +276,10 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 
 #undef GETDESTCOLOR
 #undef GETCOL8_MAPPED
+#undef GETCOL8_DEPTH
 #undef GETCOL
 #undef INCY
+#undef INCFRAC
 #undef COLTYPE
 
 #undef R_DRAWCOLUMN_FUNCNAME
