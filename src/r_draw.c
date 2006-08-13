@@ -120,6 +120,14 @@ static int fuzzoffset[FUZZTABLE];
 
 static int fuzzpos = 0;
 
+// render pipelines
+#define RDC_STANDARD      1
+#define RDC_TRANSLUCENT   2
+#define RDC_TRANSLATED    4
+#define RDC_FUZZ          8
+// filter modes
+#define RDC_DITHERZ      16
+
 //
 // Error functions that will abort if R_FlushColumns tries to flush 
 // columns without a column type.
@@ -174,6 +182,23 @@ void R_ResetColumnBuffer(void)
    R_FlushQuadColumn   = R_QuadFlushError;
 }
 
+#define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWhole8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHT8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuad8
+#include "r_drawflush.inl"
+
+#define R_DRAWCOLUMN_PIPELINE RDC_TRANSLUCENT
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTL8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTL8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL8
+#include "r_drawflush.inl"
+
+#define R_DRAWCOLUMN_PIPELINE RDC_FUZZ
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeFuzz8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz8
+#include "r_drawflush.inl"
 
 //
 // R_DrawColumn
@@ -188,19 +213,21 @@ void R_ResetColumnBuffer(void)
 //
 
 byte *translationtables;
-// render pipelines
-#define RDC_STANDARD      1
-#define RDC_TRANSLUCENT   2
-#define RDC_TRANSLATED    4
-#define RDC_FUZZ          8
-// filter modes
-#define RDC_DITHERZ      16
 
+// standard
 #define R_DRAWCOLUMN_FUNCNAME R_DrawColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_STANDARD
-#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeOpaque8
-#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTOpaque8
-#define R_FLUSHQUAD_FUNCNAME R_FlushQuadOpaque8
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWhole8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHT8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuad8
+#include "r_drawcolumn.inl"
+
+// standard + z-dither
+#define R_DRAWCOLUMN_FUNCNAME R_DrawColumn8_LinearZ
+#define R_DRAWCOLUMN_PIPELINE (RDC_STANDARD | RDC_DITHERZ)
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWhole8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHT8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuad8
 #include "r_drawcolumn.inl"
 
 // Here is the version of R_DrawColumn that deals with translucent  // phares
@@ -214,8 +241,18 @@ byte *translationtables;
 // Since we're concerned about performance, the 'translucent or
 // opaque' decision is made outside this routine, not down where the
 // actual code differences are.
+
+// translucent
 #define R_DRAWCOLUMN_FUNCNAME R_DrawTLColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLUCENT
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTL8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTL8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL8
+#include "r_drawcolumn.inl"
+
+// translucent + z-dither
+#define R_DRAWCOLUMN_FUNCNAME R_DrawTLColumn8_LinearZ
+#define R_DRAWCOLUMN_PIPELINE (RDC_TRANSLUCENT | RDC_DITHERZ)
 #define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTL8
 #define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTL8
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadTL8
@@ -230,11 +267,21 @@ byte *translationtables;
 //  of the BaronOfHell, the HellKnight, uses
 //  identical sprites, kinda brightened up.
 //
+
+// translated
 #define R_DRAWCOLUMN_FUNCNAME R_DrawTranslatedColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_TRANSLATED
-#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeTranslated8
-#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTTranslated8
-#define R_FLUSHQUAD_FUNCNAME R_FlushQuadTranslated8
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWhole8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHT8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuad8
+#include "r_drawcolumn.inl"
+
+// translated + z-dither
+#define R_DRAWCOLUMN_FUNCNAME R_DrawTranslatedColumn8_LinearZ
+#define R_DRAWCOLUMN_PIPELINE (RDC_TRANSLATED | RDC_DITHERZ)
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWhole8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHT8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuad8
 #include "r_drawcolumn.inl"
 
 //
@@ -245,8 +292,18 @@ byte *translationtables;
 //  could create the SHADOW effect,
 //  i.e. spectres and invisible players.
 //
+
+// fuzz
 #define R_DRAWCOLUMN_FUNCNAME R_DrawFuzzColumn8
 #define R_DRAWCOLUMN_PIPELINE RDC_FUZZ
+#define R_FLUSHWHOLE_FUNCNAME R_FlushWholeFuzz8
+#define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz8
+#define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz8
+#include "r_drawcolumn.inl"
+
+// fuzz + z-dither
+#define R_DRAWCOLUMN_FUNCNAME R_DrawFuzzColumn8_LinearZ
+#define R_DRAWCOLUMN_PIPELINE (RDC_FUZZ | RDC_DITHERZ)
 #define R_FLUSHWHOLE_FUNCNAME R_FlushWholeFuzz8
 #define R_FLUSHHEADTAIL_FUNCNAME R_FlushHTFuzz8
 #define R_FLUSHQUAD_FUNCNAME R_FlushQuadFuzz8
