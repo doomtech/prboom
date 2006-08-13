@@ -33,7 +33,7 @@
 //
 
 #if (R_DRAWSPAN_PIPELINE & RDC_DITHERZ)  
-  #define GETCOL(col) (colormaps[filter_getDitheredPixelLevel(x1, y, fracz)][(col)])
+  #define GETCOL(col) (dither_colormaps[filter_getDitheredPixelLevel(x1, y, fracz)][(col)])
 #else
   #define GETCOL(col) colormap[(col)]
 #endif
@@ -52,7 +52,7 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
   const int y = dsvars->y;
   int x1 = dsvars->x1;
   const int fracz = (dsvars->z >> 12) & 255;
-  const byte *colormaps[2] = { dsvars->colormap, dsvars->nextcolormap };
+  const byte *dither_colormaps[2] = { dsvars->colormap, dsvars->nextcolormap };
 #endif
 
   while (count) {
