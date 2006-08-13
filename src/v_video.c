@@ -352,7 +352,7 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
     bottom = ( (y + patch->height) * DY ) >> FRACBITS;
 
     dcvars.texheight = patch->height;
-    dcvars.iscale = DYI;
+    dcvars.iscale = DYI - 8;
     dcvars.drawingmasked = max(patch->width, patch->height) > 8;
 
     if (drawvars.filterpatch == RDRAW_FILTER_LINEAR) {
