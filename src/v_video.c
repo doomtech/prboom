@@ -332,12 +332,12 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
     int   DYI = (200<<16)          / SCREENHEIGHT;
     R_DrawColumn_f colfunc;
     draw_column_vars_t dcvars;
-    extern byte *topleft;
-    byte *oldtopleft = topleft;
+    draw_vars_t olddrawvars = drawvars;
 
     R_SetDefaultDrawColumnVars(&dcvars);
 
-    topleft = screens[scrn].data;
+    drawvars.topleft = screens[scrn].data;
+    drawvars.pitch = screens[scrn].pitch;
 
     if (flags & VPT_TRANS) {
       colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_TRANSLATED, drawvars.filterpatch, RDRAW_FILTER_NONE);
@@ -409,7 +409,7 @@ static void V_DrawMemPatch8(int x, int y, int scrn, const rpatch_t *patch,
     }
 
     R_ResetColumnBuffer();
-    topleft = oldtopleft;
+    drawvars = olddrawvars;
   }
 }
 

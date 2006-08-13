@@ -118,6 +118,7 @@ enum sloped_edge_type_e {
 
 typedef struct {
   byte  *topleft;
+  int   pitch;
 
   enum draw_filter_type_e filterwall;
   enum draw_filter_type_e filterfloor;

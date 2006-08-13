@@ -47,7 +47,7 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
   const fixed_t ystep = dsvars->ystep;
   const byte *source = dsvars->source;
   const byte *colormap = dsvars->colormap;
-  byte *dest = topleft + dsvars->y*screens[0].pitch + dsvars->x1;
+  byte *dest = drawvars.topleft + dsvars->y*drawvars.pitch + dsvars->x1;
 #if (R_DRAWSPAN_PIPELINE & RDC_DITHERZ)
   const int y = dsvars->y;
   int x1 = dsvars->x1;

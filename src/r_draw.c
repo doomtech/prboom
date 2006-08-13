@@ -60,8 +60,6 @@ int  viewheight;
 int  viewwindowx;
 int  viewwindowy;
 
-byte *topleft;
-
 // Color tables for different players,
 //  translate a limited part to another
 //  (color ramps used for  suit colors).
@@ -134,10 +132,11 @@ static int fuzzpos = 0;
 
 draw_vars_t drawvars = { 
   NULL, // topleft
+  0, // pitch
   RDRAW_FILTER_POINT, // filterwall
   RDRAW_FILTER_POINT, // filterfloor
   RDRAW_FILTER_POINT, // filtersprite
-  RDRAW_FILTER_POINT, // filterz
+  RDRAW_FILTER_LINEAR, // filterz
   RDRAW_FILTER_ROUNDED, // filterpatch
 
   RDRAW_MASKEDCOLUMNEDGE_SLOPED, // edgetype
@@ -736,7 +735,8 @@ void R_InitBuffer(int width, int height)
 
   viewwindowy = width==SCREENWIDTH ? 0 : (SCREENHEIGHT-(ST_SCALED_HEIGHT-1)-height)>>1;
 
-  topleft = screens[0].data + viewwindowy*screens[0].pitch + viewwindowx;
+  drawvars.topleft = screens[0].data + viewwindowy*screens[0].pitch + viewwindowx;
+  drawvars.pitch = screens[0].pitch;
 
   for (i=0; i<FUZZTABLE; i++)
     fuzzoffset[i] = fuzzoffset_org[i]*screens[0].pitch;
