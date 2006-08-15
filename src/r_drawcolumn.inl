@@ -130,7 +130,7 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
   // Determine scaling, which is the only mapping to be done.
   frac = dcvars->texturemid + (dcvars->yl-centery)*fracstep;
 
-  if (dcvars->drawingmasked && drawvars.edgetype == RDRAW_MASKEDCOLUMNEDGE_SLOPED) {
+  if (dcvars->drawingmasked && dcvars->edgetype == RDRAW_MASKEDCOLUMNEDGE_SLOPED) {
     // slope the top and bottom column edge based on the fractional u coordinate
     // and dcvars->edgeslope, which were set in R_DrawMaskedColumn
     // in r_things.c

@@ -139,7 +139,8 @@ draw_vars_t drawvars = {
   RDRAW_FILTER_POINT, // filterz
   RDRAW_FILTER_POINT, // filterpatch
 
-  RDRAW_MASKEDCOLUMNEDGE_SLOPED, // edgetype
+  RDRAW_MASKEDCOLUMNEDGE_SQUARE, // sprite_edges
+  RDRAW_MASKEDCOLUMNEDGE_SQUARE, // patch_edges
 
   // 49152 = FRACUNIT * 0.75
   // 81920 = FRACUNIT * 1.25
@@ -632,6 +633,7 @@ void R_SetDefaultDrawColumnVars(draw_column_vars_t *dcvars) {
   dcvars->colormap = dcvars->nextcolormap = colormaps[0];
   dcvars->translation = NULL;
   dcvars->edgeslope = dcvars->drawingmasked = 0;
+  dcvars->edgetype = drawvars.sprite_edges;
 }
 
 //
