@@ -51,6 +51,7 @@
 #include "lprintf.h" //jff 10/6/98 for debug outputs
 #include "v_video.h"
 #include "r_demo.h"
+#include "r_fps.h"
 
 //
 // MAP related Lookup tables.
@@ -1353,6 +1354,7 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   char  gl_lumpname[9];
   int   gl_lumpnum;
 
+  R_StopAllInterpolations();
 
   totallive = totalkills = totalitems = totalsecret = wminfo.maxfrags = 0;
   wminfo.partime = 180;

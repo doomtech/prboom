@@ -57,6 +57,7 @@
 #include "r_plane.h"
 #include "r_data.h"
 #include "r_things.h"
+#include "r_fps.h"
 #include "p_maputl.h"
 #include "m_bbox.h"
 #include "lprintf.h"
@@ -2446,7 +2447,7 @@ static void gld_AddFlat(int sectornum, boolean ceiling, visplane_t *plane)
   gld_drawinfo.flats[gld_drawinfo.num_flats++]=flat;
 }
 
-void gld_AddPlane(int subsectornum, visplane_t *floorplane, visplane_t *ceilingplane)
+void gld_AddPlane(int subsectornum, visplane_t *floor, visplane_t *ceiling)
 {
   subsector_t *subsector;
 
@@ -2460,11 +2461,11 @@ void gld_AddPlane(int subsectornum, visplane_t *floorplane, visplane_t *ceilingp
   if (sectorrendered[subsector->sector->iSectorID]!=rendermarker) // if not already rendered
   {
     // render the floor
-    if (floorplane)
-      gld_AddFlat(subsector->sector->iSectorID, false, floorplane);
+    if (floor)
+      gld_AddFlat(subsector->sector->iSectorID, false, floor);
     // render the ceiling
-    if (ceilingplane)
-      gld_AddFlat(subsector->sector->iSectorID, true, ceilingplane);
+    if (ceiling)
+      gld_AddFlat(subsector->sector->iSectorID, true, ceiling);
     // set rendered true
     sectorrendered[subsector->sector->iSectorID]=rendermarker;
   }
@@ -2531,9 +2532,18 @@ void gld_AddSprite(vissprite_t *vspr)
     return;
   sprite.shadow = (pSpr->flags & MF_SHADOW) != 0;
   sprite.trans  = (pSpr->flags & MF_TRANSLUCENT) != 0;
-  sprite.x=-(float)pSpr->x/MAP_SCALE;
-  sprite.y= (float)pSpr->z/MAP_SCALE;
-  sprite.z= (float)pSpr->y/MAP_SCALE;
+  if (movement_smooth)
+  {
+    sprite.x = (float)(-pSpr->PrevX + FixedMul (tic_vars.frac, -pSpr->x - (-pSpr->PrevX)))/MAP_SCALE;
+    sprite.y = (float)(pSpr->PrevZ + FixedMul (tic_vars.frac, pSpr->z - pSpr->PrevZ))/MAP_SCALE;
+    sprite.z = (float)(pSpr->PrevY + FixedMul (tic_vars.frac, pSpr->y - pSpr->PrevY))/MAP_SCALE;
+  }
+  else
+  {
+    sprite.x=-(float)pSpr->x/MAP_SCALE;
+    sprite.y= (float)pSpr->z/MAP_SCALE;
+    sprite.z= (float)pSpr->y/MAP_SCALE;
+  }
 
   sprite.vt=0.0f;
   sprite.vb=(float)sprite.gltexture->height/(float)sprite.gltexture->tex_height;

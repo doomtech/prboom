@@ -136,8 +136,8 @@ draw_vars_t drawvars = {
   RDRAW_FILTER_POINT, // filterwall
   RDRAW_FILTER_POINT, // filterfloor
   RDRAW_FILTER_POINT, // filtersprite
-  RDRAW_FILTER_LINEAR, // filterz
-  RDRAW_FILTER_ROUNDED, // filterpatch
+  RDRAW_FILTER_POINT, // filterz
+  RDRAW_FILTER_POINT, // filterpatch
 
   RDRAW_MASKEDCOLUMNEDGE_SLOPED, // edgetype
 

@@ -24,7 +24,18 @@ end
 # Bundle structure #
 ####################
 
-installTask(:setup, CONTENTSDIR, 'mac/Info.plist')
+file("#{CONTENTSDIR}/Info.plist" => ['mac/Info.plist', CONTENTSDIR, 'mac/Rakefile']) do |t|
+	plist = []
+	File.open(t.prerequisites[0], 'r') do |file|
+		plist = file.readlines
+	end
+	File.open(t.name, 'w') do |f|
+		for line in plist
+			f.write(line.gsub(/%VERSION%/, APPVERSION))
+		end
+	end
+end
+task(:setup => "#{CONTENTSDIR}/Info.plist")
 task(:bundle => :setup)
 
 installFrameworks(:frameworks)
@@ -95,6 +106,7 @@ r_data.c
 r_demo.c
 r_draw.c
 r_filter.c
+r_fps.c
 r_main.c
 r_patch.c
 r_plane.c
@@ -122,6 +134,7 @@ MAC/DrawerButton.m
 MAC/FileButtonController.m
 MAC/LauncherApp.m
 MAC/LauncherMain.m
+MAC/ResolutionDataSource.m
 MAC/UKKQueue.m
 MAC/UKMainThreadProxy.m
 MAC/WadViewController.m

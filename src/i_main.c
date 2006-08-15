@@ -43,6 +43,7 @@
 #include "doomdef.h"
 #include "m_argv.h"
 #include "d_main.h"
+#include "m_fixed.h"
 #include "i_system.h"
 #include "i_video.h"
 #include "z_zone.h"
@@ -53,6 +54,7 @@
 #include "m_misc.h"
 #include "i_sound.h"
 #include "i_main.h"
+#include "r_fps.h"
 #include "lprintf.h"
 #ifdef USE_SDL
 #include "SDL.h"
@@ -116,6 +118,8 @@ void I_Init(void)
     if (!(nomusicparm && nosfxparm))
       I_InitSound();
   }
+
+  R_InitInterpolation();
 }
 
 /* cleanup handling -- killough:

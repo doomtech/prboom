@@ -7,7 +7,7 @@
  *  Copyright (C) 1999 by
  *  id Software, Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
  *  Copyright (C) 1999-2000 by
- *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
+ *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze, Andrey Budko
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
  *
@@ -27,37 +27,51 @@
  *  02111-1307, USA.
  *
  * DESCRIPTION:
+ *      Uncapped framerate stuff
  *
  *---------------------------------------------------------------------
  */
 
-#ifndef _GL_STRUCT_H
-#define _GL_STRUCT_H
+#ifndef __R_FPS__
+#define __R_FPS__
 
-extern boolean usingGLNodes;
+#include "doomstat.h"
 
-void gld_Init(int width, int height);
-void gld_InitCommandLine();
+extern int movement_smooth;
 
-void gld_DrawNumPatch(int x, int y, int lump, int cm, enum patch_translation_e flags);
-void gld_DrawBackground(const char* name);
-void gld_DrawLine(int x0, int y0, int x1, int y1, int BaseColor);
-void gld_DrawWeapon(int weaponlump, vissprite_t *vis, int lightlevel);
-void gld_FillBlock(int x, int y, int width, int height, int col);
-void gld_SetPalette(int palette);
-void gld_ReadScreen (byte* scr);
+typedef struct {
+  fixed_t viewx;
+  fixed_t viewy;
+  fixed_t viewz;
+  angle_t viewangle;
+  angle_t viewpitch;
+} view_vars_t;
 
-void gld_CleanMemory(void);
-void gld_PreprocessLevel(void);
+extern view_vars_t original_view_vars;
 
-void gld_Set2DMode();
-void gld_InitDrawScene(void);
-void gld_StartDrawScene(void);
-void gld_AddPlane(int subsectornum, visplane_t *floor, visplane_t *ceiling);
-void gld_AddWall(seg_t *seg);
-void gld_AddSprite(vissprite_t *vspr);
-void gld_DrawScene(player_t *player);
-void gld_EndDrawScene(void);
-void gld_Finish();
+typedef struct {
+  unsigned int start;
+  unsigned int next;
+  unsigned int step;
+  fixed_t frac;
+  float msec;
+} tic_vars_t;
 
-#endif // _GL_STRUCT_H
+extern tic_vars_t tic_vars;
+
+void R_InitInterpolation(void);
+void R_InterpolateView (player_t *player, fixed_t frac);
+
+extern boolean r_NoInterpolate;
+extern boolean WasRenderedInTryRunTics;
+
+void R_ResetViewInterpolation ();
+void R_UpdateInterpolations();
+void R_StopAllInterpolations(void);
+void R_DoInterpolations(fixed_t smoothratio);
+void R_RestoreInterpolations();
+void R_ActivateSectorInterpolations();
+void R_ActivateThinkerInterpolations(thinker_t *th);
+void R_StopInterpolationIfNeeded(thinker_t *th);
+
+#endif
