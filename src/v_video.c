@@ -781,11 +781,11 @@ static void V_PlotPixel8(int scrn, int x, int y, byte color) {
 }
 
 static void V_PlotPixel16(int scrn, int x, int y, byte color) {
-  screens[scrn].data[x*V_GetPixelDepth()+screens[scrn].short_pitch*y] = VID_SHORTPAL(color, VID_COLORWEIGHTMASK);
+  *(unsigned short *)(&screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_SHORTPAL(color, VID_COLORWEIGHTMASK);
 }
 
 static void V_PlotPixel32(int scrn, int x, int y, byte color) {
-  screens[scrn].data[x*V_GetPixelDepth()+screens[scrn].int_pitch*y] = VID_INTPAL(color, VID_COLORWEIGHTMASK);
+  *(unsigned int *)(&screens[scrn].data)[x+screens[scrn].int_pitch*y] = VID_INTPAL(color, VID_COLORWEIGHTMASK);
 }
 
 //

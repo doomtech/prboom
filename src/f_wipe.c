@@ -68,8 +68,8 @@ static int wipe_initMelt(int ticks)
 
   // copy start screen to main screen
   for(i=0;i<SCREENHEIGHT;i++)
-    memcpy(wipe_scr.data+i*wipe_scr.byte_pitch*V_GetPixelDepth(),
-           wipe_scr_start.data+i*wipe_scr.byte_pitch*V_GetPixelDepth(),
+    memcpy(wipe_scr.data+i*wipe_scr.byte_pitch,
+           wipe_scr_start.data+i*wipe_scr.byte_pitch,
            SCREENWIDTH*V_GetPixelDepth());
 
   // setup initial column positions (y<0 => not ready to scroll yet)

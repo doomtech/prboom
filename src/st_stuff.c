@@ -383,14 +383,13 @@ static void ST_Stop(void);
 static void ST_refreshBackground(void)
 {
   int y=0;
-  int screen=BG;
 
   if (st_statusbaron)
     {
       // proff 05/17/2000: draw to the frontbuffer in OpenGL
       if (V_GetMode() == VID_MODEGL)
         y=ST_Y;
-      V_DrawNamePatch(ST_X, y, screen, "STBAR", CR_DEFAULT, VPT_STRETCH);
+      V_DrawNamePatch(ST_X, y, BG, "STBAR", CR_DEFAULT, VPT_STRETCH);
 
       // killough 3/7/98: make face background change with displayplayer
       if (netgame)
@@ -400,7 +399,7 @@ static void ST_refreshBackground(void)
            displayplayer ? (VPT_TRANS | VPT_STRETCH) : VPT_STRETCH);
       }
 
-      V_CopyRect(ST_X, y, screen, ST_SCALED_WIDTH, ST_SCALED_HEIGHT, ST_X, ST_SCALED_Y, FG, VPT_NONE);
+      V_CopyRect(ST_X, y, BG, ST_SCALED_WIDTH, ST_SCALED_HEIGHT, ST_X, ST_SCALED_Y, FG, VPT_NONE);
     }
 }
 
