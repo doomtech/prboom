@@ -916,9 +916,9 @@ void R_FillBackScreen (void)
 void R_VideoErase(int x, int y, int count)
 {
   if (V_GetMode() != VID_MODEGL)
-    memcpy(screens[0].data+y*screens[0].byte_pitch+x,
-           screens[1].data+y*screens[1].byte_pitch+x,
-           count);   // LFB copy.
+    memcpy(screens[0].data+y*screens[0].byte_pitch+x*V_GetPixelDepth(),
+           screens[1].data+y*screens[1].byte_pitch+x*V_GetPixelDepth(),
+           count*V_GetPixelDepth());   // LFB copy.
 }
 
 //

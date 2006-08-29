@@ -388,7 +388,7 @@ void I_FinishUpdate (void)
       h=screen->h;
       for (; h>0; h--)
       {
-        memcpy(dest,src,SCREENWIDTH);
+        memcpy(dest,src,SCREENWIDTH*V_GetPixelDepth());
         dest+=screen->pitch;
         src+=screens[0].byte_pitch;
       }

@@ -158,7 +158,6 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
 {
   /* erase the entire screen to a tiled background */
   const byte *src;
-  byte       *dest;
   int         x,y;
   int         width,height;
   int         lump;
@@ -168,12 +167,36 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
 
   /* V_DrawBlock(0, 0, scrn, 64, 64, src, 0); */
   width = height = 64;
-  dest = screens[scrn].data;
+  if (V_GetMode() == VID_MODE8) {
+    byte *dest = screens[scrn].data;
 
-  while (height--) {
-    memcpy (dest, src, width);
-    src += width;
-    dest += screens[scrn].byte_pitch;
+    while (height--) {
+      memcpy (dest, src, width);
+      src += width;
+      dest += screens[scrn].byte_pitch;
+    }
+  } else if (V_GetMode() == VID_MODE16) {
+    unsigned short *dest = (unsigned short *)screens[scrn].data;
+
+    while (height--) {
+      int i;
+      for (i=0; i<width; i++) {
+        dest[i] = VID_SHORTPAL(src[i], VID_COLORWEIGHTMASK);
+      }
+      src += width;
+      dest += screens[scrn].short_pitch;
+    }
+  } else if (V_GetMode() == VID_MODE32) {
+    unsigned int *dest = (unsigned int *)screens[scrn].data;
+
+    while (height--) {
+      int i;
+      for (i=0; i<width; i++) {
+        dest[i] = VID_INTPAL(src[i], VID_COLORWEIGHTMASK);
+      }
+      src += width;
+      dest += screens[scrn].int_pitch;
+    }
   }
   /* end V_DrawBlock */
 
@@ -254,7 +277,8 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
 
     for (col=0 ; (unsigned int)col<=w ; desttop++, col++, x++) {
       int i;
-      const rcolumn_t *column = &patch->columns[(flags & VPT_FLIP) ? w-col : col];
+      const int colindex = (flags & VPT_FLIP) ? ((w - col)>>16): (col>>16);
+      const rcolumn_t *column = R_GetPatchColumn(patch, colindex);
 
       if (x < 0)
         continue;
@@ -264,60 +288,60 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
       // step through the posts in a column
       for (i=0; i<column->numPosts; i++) {
         const rpost_t *post = &column->posts[i];
-  // killough 2/21/98: Unrolled and performance-tuned
+        // killough 2/21/98: Unrolled and performance-tuned
 
-  register const byte *source = column->pixels + post->topdelta;
-  register byte *dest = desttop + post->topdelta*screens[scrn].byte_pitch;
-  register int count = post->length;
+        const byte *source = column->pixels + post->topdelta;
+        byte *dest = desttop + post->topdelta*screens[scrn].byte_pitch;
+        int count = post->length;
 
-  if (!(flags & VPT_TRANS)) {
-    if ((count-=4)>=0)
-      do {
-        register byte s0,s1;
-        s0 = source[0];
-        s1 = source[1];
-        dest[0] = s0;
-        dest[screens[scrn].byte_pitch] = s1;
-        dest += screens[scrn].byte_pitch*2;
-        s0 = source[2];
-        s1 = source[3];
-        source += 4;
-        dest[0] = s0;
-        dest[screens[scrn].byte_pitch] = s1;
-        dest += screens[scrn].byte_pitch*2;
-      } while ((count-=4)>=0);
-    if (count+=4)
-      do {
-        *dest = *source++;
-        dest += screens[scrn].byte_pitch;
-      } while (--count);
-  } else {
-    // CPhipps - merged translation code here
-    if ((count-=4)>=0)
-      do {
-        register byte s0,s1;
-        s0 = source[0];
-        s1 = source[1];
-        s0 = trans[s0];
-        s1 = trans[s1];
-        dest[0] = s0;
-        dest[screens[scrn].byte_pitch] = s1;
-        dest += screens[scrn].byte_pitch*2;
-        s0 = source[2];
-        s1 = source[3];
-        s0 = trans[s0];
-        s1 = trans[s1];
-        source += 4;
-        dest[0] = s0;
-        dest[screens[scrn].byte_pitch] = s1;
-        dest += screens[scrn].byte_pitch*2;
-      } while ((count-=4)>=0);
-    if (count+=4)
-      do {
-        *dest = trans[*source++];
-        dest += screens[scrn].byte_pitch;
-      } while (--count);
-  }
+        if (!(flags & VPT_TRANS)) {
+          if ((count-=4)>=0)
+            do {
+              register byte s0,s1;
+              s0 = source[0];
+              s1 = source[1];
+              dest[0] = s0;
+              dest[screens[scrn].byte_pitch] = s1;
+              dest += screens[scrn].byte_pitch*2;
+              s0 = source[2];
+              s1 = source[3];
+              source += 4;
+              dest[0] = s0;
+              dest[screens[scrn].byte_pitch] = s1;
+              dest += screens[scrn].byte_pitch*2;
+            } while ((count-=4)>=0);
+          if (count+=4)
+            do {
+              *dest = *source++;
+              dest += screens[scrn].byte_pitch;
+            } while (--count);
+        } else {
+          // CPhipps - merged translation code here
+          if ((count-=4)>=0)
+            do {
+              register byte s0,s1;
+              s0 = source[0];
+              s1 = source[1];
+              s0 = trans[s0];
+              s1 = trans[s1];
+              dest[0] = s0;
+              dest[screens[scrn].byte_pitch] = s1;
+              dest += screens[scrn].byte_pitch*2;
+              s0 = source[2];
+              s1 = source[3];
+              s0 = trans[s0];
+              s1 = trans[s1];
+              source += 4;
+              dest[0] = s0;
+              dest[screens[scrn].byte_pitch] = s1;
+              dest += screens[scrn].byte_pitch*2;
+            } while ((count-=4)>=0);
+          if (count+=4)
+            do {
+              *dest = trans[*source++];
+              dest += screens[scrn].byte_pitch;
+            } while (--count);
+        }
       }
     }
   }
@@ -344,6 +368,13 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
     drawvars.byte_pitch = screens[scrn].byte_pitch;
     drawvars.short_pitch = screens[scrn].short_pitch;
     drawvars.int_pitch = screens[scrn].int_pitch;
+
+    if (!(flags & VPT_STRETCH)) {
+      DX = 1 << 16;
+      DXI = 1 << 16;
+      DY = 1 << 16;
+      DYI = 1 << 16;
+    }
 
     if (flags & VPT_TRANS) {
       colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_TRANSLATED, drawvars.filterpatch, RDRAW_FILTER_NONE);
@@ -588,12 +619,38 @@ void V_SetPalette(int pal)
 // V_FillRect
 //
 // CPhipps - New function to fill a rectangle with a given colour
-static void FUNC_V_FillRect(int scrn, int x, int y, int width, int height, byte colour)
+static void V_FillRect8(int scrn, int x, int y, int width, int height, byte colour)
 {
   byte* dest = screens[scrn].data + x + y*screens[scrn].byte_pitch;
   while (height--) {
     memset(dest, colour, width);
     dest += screens[scrn].byte_pitch;
+  }
+}
+
+static void V_FillRect16(int scrn, int x, int y, int width, int height, byte colour)
+{
+  unsigned short* dest = (unsigned short *)screens[scrn].data + x + y*screens[scrn].short_pitch;
+  int w;
+  short c = VID_SHORTPAL(colour, VID_COLORWEIGHTMASK);
+  while (height--) {
+    for (w=0; w<width; w++) {
+      dest[w] = c;
+    }
+    dest += screens[scrn].short_pitch;
+  }
+}
+
+static void V_FillRect32(int scrn, int x, int y, int width, int height, byte colour)
+{
+  unsigned int* dest = (unsigned int *)screens[scrn].data + x + y*screens[scrn].int_pitch;
+  int w;
+  int c = VID_INTPAL(colour, VID_COLORWEIGHTMASK);
+  while (height--) {
+    for (w=0; w<width; w++) {
+      dest[w] = c;
+    }
+    dest += screens[scrn].int_pitch;
   }
 }
 
@@ -661,7 +718,7 @@ void V_InitMode(video_mode_t mode) {
     case VID_MODE8:
       lprintf(LO_INFO, "V_InitMode: using 8 bit video mode\n");
       V_CopyRect = FUNC_V_CopyRect;
-      V_FillRect = FUNC_V_FillRect;
+      V_FillRect = V_FillRect8;
       V_DrawNumPatch = FUNC_V_DrawNumPatch;
       V_DrawBackground = FUNC_V_DrawBackground;
       V_PlotPixel = V_PlotPixel8;
@@ -671,7 +728,7 @@ void V_InitMode(video_mode_t mode) {
     case VID_MODE16:
       lprintf(LO_INFO, "V_InitMode: using 16 bit video mode\n");
       V_CopyRect = FUNC_V_CopyRect;
-      V_FillRect = FUNC_V_FillRect;
+      V_FillRect = V_FillRect16;
       V_DrawNumPatch = FUNC_V_DrawNumPatch;
       V_DrawBackground = FUNC_V_DrawBackground;
       V_PlotPixel = V_PlotPixel16;
@@ -681,7 +738,7 @@ void V_InitMode(video_mode_t mode) {
     case VID_MODE32:
       lprintf(LO_INFO, "V_InitMode: using 32 bit video mode\n");
       V_CopyRect = FUNC_V_CopyRect;
-      V_FillRect = FUNC_V_FillRect;
+      V_FillRect = V_FillRect32;
       V_DrawNumPatch = FUNC_V_DrawNumPatch;
       V_DrawBackground = FUNC_V_DrawBackground;
       V_PlotPixel = V_PlotPixel32;
