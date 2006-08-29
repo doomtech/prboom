@@ -312,7 +312,7 @@ default_t defaults[] =
     {"videomode",{&default_videomode},{VID_MODE8}, VID_MODE8, VID_MODEGL, def_int,ss_none},
   #endif
 #else
-  {"videomode",{&default_videomode},{VID_MODE8}, VID_MODE8, VID_MODE8, def_int,ss_none},
+  {"videomode",{&default_videomode},{VID_MODE8}, VID_MODE8, VID_MODE32, def_int,ss_none},
 #endif
   /* 640x480 default resolution */
   {"screen_width",{&desired_screenwidth},{640}, 320, MAX_SCREENWIDTH,
@@ -1041,7 +1041,7 @@ static void WritePNGfile(FILE* fp, const byte* data,
 {
   png_structp png_ptr;
   png_infop info_ptr;
-  boolean gl = !palette;
+  boolean gl = V_GetMode() == VID_MODEGL;
 
   png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, png_error_ptr_NULL, error_fn, NULL);
   png_set_compression_level(png_ptr, 2);
@@ -1309,8 +1309,7 @@ void M_DoScreenShot (const char* fname)
   #ifdef HAVE_LIBPNG
     WritePNGfile(fp, screenshot.data, SCREENWIDTH, SCREENHEIGHT, NULL);
   #else
-    WriteTGAfile
-      (fp, screenshot.data, SCREENWIDTH, SCREENHEIGHT);
+    WriteTGAfile(fp, screenshot.data, SCREENWIDTH, SCREENHEIGHT);
   #endif
   } else {
     screenshot.width = screens[0].width;
@@ -1330,8 +1329,7 @@ void M_DoScreenShot (const char* fname)
   #ifdef HAVE_LIBPNG
     WritePNGfile(fp, screenshot.data, SCREENWIDTH, SCREENHEIGHT, pal + 3*256*st_palette);
   #else
-    WriteBMPfile
-      (fp, screenshot.data, SCREENWIDTH, SCREENHEIGHT, pal + 3*256*st_palette);
+    WriteBMPfile(fp, screenshot.data, SCREENWIDTH, SCREENHEIGHT, pal + 3*256*st_palette);
   #endif
 
     // cph - free the palette

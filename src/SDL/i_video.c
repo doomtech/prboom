@@ -602,18 +602,18 @@ void I_UpdateVideoMode(void)
 
   mode = default_videomode;
   if ((i=M_CheckParm("-vidmode")) && i<myargc-1) {
-    /*if (!stricmp(myargv[i+1],"16")) {
+    if (!stricmp(myargv[i+1],"16")) {
       mode = VID_MODE16;
     } else if (!stricmp(myargv[i+1],"32")) {
       mode = VID_MODE32;
-    } else*/ if (!stricmp(myargv[i+1],"gl")) {
+    } else if (!stricmp(myargv[i+1],"gl")) {
       mode = VID_MODEGL;
     } else {
       mode = VID_MODE8;
     }
   }
   V_InitMode(mode);
-
+  V_DestroyUnusedTrueColorPalettes();
   V_FreeScreens();
 
   I_SetRes();
@@ -656,7 +656,7 @@ void I_UpdateVideoMode(void)
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, gl_depthbuffer_bits );
     screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, gl_colorbuffer_bits, init_flags);
   } else {
-    screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, 8, init_flags);
+    screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, V_GetNumPixelBits(), init_flags);
   }
 
   if(screen == NULL) {
@@ -672,7 +672,7 @@ void I_UpdateVideoMode(void)
   {
     screens[0].not_on_heap = true;
     screens[0].data = (unsigned char *) (screen->pixels);
-    screens[0].pitch = screen->pitch;
+    screens[0].pitch = screen->pitch / V_GetPixelDepth();
   }
   else
   {

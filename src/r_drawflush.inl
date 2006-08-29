@@ -28,6 +28,19 @@
  *
  *-----------------------------------------------------------------------------*/
 
+#if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
+#define SCREENTYPE byte
+#define TOPLEFT byte_topleft
+#define TEMPBUF byte_tempbuf
+#elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
+#define SCREENTYPE unsigned short
+#define TOPLEFT short_topleft
+#define TEMPBUF short_tempbuf
+#elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
+#define SCREENTYPE unsigned int
+#define TOPLEFT int_topleft
+#define TEMPBUF int_tempbuf
+#endif
 
 //
 // R_FlushWholeOpaque
@@ -38,15 +51,15 @@
 //
 static void R_FLUSHWHOLE_FUNCNAME(void)
 {
-   register byte *source;
-   register byte *dest;
-   register int  count, yl;
+   SCREENTYPE *source;
+   SCREENTYPE *dest;
+   int  count, yl;
 
    while(--temp_x >= 0)
    {
       yl     = tempyl[temp_x];
-      source = &tempbuf[temp_x + (yl << 2)];
-      dest   = drawvars.topleft + yl*drawvars.pitch + startx + temp_x;
+      source = &TEMPBUF[temp_x + (yl << 2)];
+      dest   = drawvars.TOPLEFT + yl*drawvars.pitch + startx + temp_x;
       count  = tempyh[temp_x] - yl + 1;
       
       while(--count >= 0)
@@ -79,9 +92,9 @@ static void R_FLUSHWHOLE_FUNCNAME(void)
 //
 static void R_FLUSHHEADTAIL_FUNCNAME(void)
 {
-   register byte *source;
-   register byte *dest;
-   register int count, colnum = 0;
+   SCREENTYPE *source;
+   SCREENTYPE *dest;
+   int count, colnum = 0;
    int yl, yh;
 
    while(colnum < 4)
@@ -92,8 +105,8 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
       // flush column head
       if(yl < commontop)
       {
-         source = &tempbuf[colnum + (yl << 2)];
-         dest   = drawvars.topleft + yl*drawvars.pitch + startx + colnum;
+         source = &TEMPBUF[colnum + (yl << 2)];
+         dest   = drawvars.TOPLEFT + yl*drawvars.pitch + startx + colnum;
          count  = commontop - yl;
          
          while(--count >= 0)
@@ -120,8 +133,8 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
       // flush column tail
       if(yh > commonbot)
       {
-         source = &tempbuf[colnum + ((commonbot + 1) << 2)];
-         dest   = drawvars.topleft + (commonbot + 1)*drawvars.pitch + startx + colnum;
+         source = &TEMPBUF[colnum + ((commonbot + 1) << 2)];
+         dest   = drawvars.TOPLEFT + (commonbot + 1)*drawvars.pitch + startx + colnum;
          count  = yh - commonbot;
          
          while(--count >= 0)
@@ -150,8 +163,8 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
 
 static void R_FLUSHQUAD_FUNCNAME(void)
 {
-   byte *source = &tempbuf[commontop << 2];
-   byte *dest = drawvars.topleft + commontop*drawvars.pitch + startx;
+   SCREENTYPE *source = &TEMPBUF[commontop << 2];
+   SCREENTYPE *dest = drawvars.TOPLEFT + commontop*drawvars.pitch + startx;
    int count;
 #if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
    int fuzz1, fuzz2, fuzz3, fuzz4;
@@ -181,13 +194,25 @@ static void R_FLUSHQUAD_FUNCNAME(void)
       fuzz3 = (fuzz3 + 1) % FUZZTABLE;
       fuzz4 = (fuzz4 + 1) % FUZZTABLE;
 #else
+  #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
       *(int *)dest = *(int *)source;
+  #else
+      dest[0] = source[0];
+      dest[1] = source[1];
+      dest[2] = source[2];
+      dest[3] = source[3];
+  #endif
 #endif
       source += 4;
       dest += drawvars.pitch;
    }
 }
 
+#undef TEMPBUF
+#undef TOPLEFT
+#undef SCREENTYPE
+
+#undef R_DRAWCOLUMN_PIPELINE_BITS
 #undef R_DRAWCOLUMN_PIPELINE
 #undef R_FLUSHWHOLE_FUNCNAME
 #undef R_FLUSHHEADTAIL_FUNCNAME

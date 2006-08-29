@@ -70,7 +70,7 @@ static int wipe_initMelt(int ticks)
   for(i=0;i<SCREENHEIGHT;i++)
     memcpy(wipe_scr.data+i*wipe_scr.pitch,
            wipe_scr_start.data+i*wipe_scr.pitch,
-           SCREENWIDTH);
+           SCREENWIDTH*V_GetPixelDepth());
 
   // setup initial column positions (y<0 => not ready to scroll yet)
   y_lookup[0] = -(M_Random()%16);
@@ -91,7 +91,7 @@ static int wipe_doMelt(int ticks)
 {
   boolean done = true;
   int i;
-  const int depth = 1;
+  const int depth = V_GetPixelDepth();
 
   while (ticks--) {
     for (i=0;i<(SCREENWIDTH);i++) {

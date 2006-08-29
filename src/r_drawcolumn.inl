@@ -29,6 +29,20 @@
  *-----------------------------------------------------------------------------*/
 
 
+#if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
+#define SCREENTYPE byte
+#define TOPLEFT byte_topleft
+#define TEMPBUF byte_tempbuf
+#elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
+#define SCREENTYPE unsigned short
+#define TOPLEFT short_topleft
+#define TEMPBUF short_tempbuf
+#elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
+#define SCREENTYPE unsigned int
+#define TOPLEFT int_topleft
+#define TEMPBUF int_tempbuf
+#endif
+
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
 #define GETDESTCOLOR(col) (tranmap[(*dest<<8)+(col)])
 #else
@@ -56,11 +70,11 @@
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_BILINEAR)
- #define GETCOL(frac, nextfrac) GETCOL8_DEPTH(filter_getDitheredForColumn(x,y,frac,nextfrac))
+ #define GETCOL8(frac, nextfrac) GETCOL8_DEPTH(filter_getDitheredForColumn(x,y,frac,nextfrac))
 #elif (R_DRAWCOLUMN_PIPELINE & RDC_ROUNDED)
- #define GETCOL(frac, nextfrac) GETCOL8_DEPTH(filter_getRoundedForColumn(frac,nextfrac))
+ #define GETCOL8(frac, nextfrac) GETCOL8_DEPTH(filter_getRoundedForColumn(frac,nextfrac))
 #else
- #define GETCOL(frac, nextfrac) GETCOL8_DEPTH(source[(frac)>>FRACBITS])
+ #define GETCOL8(frac, nextfrac) GETCOL8_DEPTH(source[(frac)>>FRACBITS])
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED|RDC_DITHERZ))
@@ -77,10 +91,20 @@
 #define COLTYPE (COL_OPAQUE)
 #endif
 
+#if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
+  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
+#elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
+  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
+//  #define GETCOL(frac, nextfrac) VID_SHORTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
+#elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
+  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
+//  #define GETCOL(frac, nextfrac) VID_INTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
+#endif
+
 static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 {
   int              count;
-  byte             *dest;            // killough
+  SCREENTYPE       *dest;            // killough
   fixed_t          frac;
   const fixed_t    fracstep = dcvars->iscale;
 
@@ -190,7 +214,7 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
          R_FlushWholeColumns = R_FLUSHWHOLE_FUNCNAME;
          R_FlushHTColumns    = R_FLUSHHEADTAIL_FUNCNAME;
          R_FlushQuadColumn   = R_FLUSHQUAD_FUNCNAME;
-         dest = &tempbuf[dcvars->yl << 2];
+         dest = &TEMPBUF[dcvars->yl << 2];
       } else {
          tempyl[temp_x] = dcvars->yl;
          tempyh[temp_x] = dcvars->yh;
@@ -200,7 +224,7 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
          if(dcvars->yh < commonbot)
             commonbot = dcvars->yh;
       
-         dest = &tempbuf[(dcvars->yl << 2) + temp_x++];
+         dest = &TEMPBUF[(dcvars->yl << 2) + temp_x++];
       }
    }
 
@@ -314,13 +338,14 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 #undef GETDESTCOLOR
 #undef GETCOL8_MAPPED
 #undef GETCOL8_DEPTH
+#undef GETCOL8
 #undef GETCOL
 #undef INCY
 #undef INCFRAC
 #undef COLTYPE
+#undef TEMPBUF
+#undef TOPLEFT
+#undef SCREENTYPE
 
 #undef R_DRAWCOLUMN_FUNCNAME
 #undef R_DRAWCOLUMN_PIPELINE
-#undef R_FLUSHWHOLE_FUNCNAME
-#undef R_FLUSHHEADTAIL_FUNCNAME
-#undef R_FLUSHQUAD_FUNCNAME

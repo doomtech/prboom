@@ -32,10 +32,29 @@
 // R_DrawSpan
 //
 
+#if (R_DRAWSPAN_PIPELINE_BITS == 8)
+#define SCREENTYPE byte
+#define TOPLEFT byte_topleft
+#elif (R_DRAWSPAN_PIPELINE_BITS == 16)
+#define SCREENTYPE unsigned short
+#define TOPLEFT short_topleft
+#elif (R_DRAWSPAN_PIPELINE_BITS == 32)
+#define SCREENTYPE unsigned int
+#define TOPLEFT int_topleft
+#endif
+
 #if (R_DRAWSPAN_PIPELINE & RDC_DITHERZ)  
-  #define GETCOL(col) (dither_colormaps[filter_getDitheredPixelLevel(x1, y, fracz)][(col)])
+  #define GETCOL8(col) (dither_colormaps[filter_getDitheredPixelLevel(x1, y, fracz)][(col)])
 #else
-  #define GETCOL(col) colormap[(col)]
+  #define GETCOL8(col) colormap[(col)]
+#endif
+
+#if (R_DRAWSPAN_PIPELINE_BITS == 8)
+  #define GETCOL(col) GETCOL8(col)
+#elif (R_DRAWSPAN_PIPELINE_BITS == 16)
+  #define GETCOL(col) VID_SHORTPAL(GETCOL8(col), VID_COLORWEIGHTMASK)
+#elif (R_DRAWSPAN_PIPELINE_BITS == 32)
+  #define GETCOL(col) VID_INTPAL(GETCOL8(col), VID_COLORWEIGHTMASK)
 #endif
 
 static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
@@ -57,7 +76,7 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
   const fixed_t ystep = dsvars->ystep;
   const byte *source = dsvars->source;
   const byte *colormap = dsvars->colormap;
-  byte *dest = drawvars.topleft + dsvars->y*drawvars.pitch + dsvars->x1;
+  SCREENTYPE *dest = drawvars.TOPLEFT + dsvars->y*drawvars.pitch + dsvars->x1;
 #if (R_DRAWSPAN_PIPELINE & (RDC_DITHERZ|RDC_BILINEAR))
   const int y = dsvars->y;
   int x1 = dsvars->x1;
@@ -98,7 +117,11 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
   }
 }
 
+#undef GETCOL8
 #undef GETCOL
+#undef TOPLEFT
+#undef SCREENTYPE
 
+#undef R_DRAWSPAN_PIPELINE_BITS
 #undef R_DRAWSPAN_PIPELINE
 #undef R_DRAWSPAN_FUNCNAME

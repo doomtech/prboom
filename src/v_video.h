@@ -87,12 +87,32 @@ typedef struct {
 extern screeninfo_t screens[NUM_SCREENS];
 extern int          usegamma;
 
+// Varying bit-depth support -POPE
+//
+// For bilinear filtering, each palette color is pre-weighted and put in a
+// table for fast blending operations. These macros decide how many weights
+// to create for each color. The lower the number, the lower the blend
+// accuracy, which can produce very bad artifacts in texture filtering.
+#define VID_NUMCOLORWEIGHTS 64
+#define VID_COLORWEIGHTMASK (VID_NUMCOLORWEIGHTS-1)
+#define VID_COLORWEIGHTBITS 6
+
+// Palettes for converting from 8 bit color to 16 and 32 bit. Also
+// contains the weighted versions of each palette color for filtering
+// operations
+extern int *V_intPalette;
+extern short *V_shortPalette;
+
+#define VID_INTPAL(color, weight) V_intPalette[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
+#define VID_SHORTPAL(color, weight) V_shortPalette[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
+
 // The available bit-depth modes
 typedef enum {
-  VID_MODE8   = 0,
-//  VID_MODE16  = 1,
-//  VID_MODE32  = 2,
-  VID_MODEGL  = 1
+  VID_MODE8,
+  VID_MODE16,
+  VID_MODE32,
+  VID_MODEGL,
+  VID_MODEMAX
 } video_mode_t;
 
 extern video_mode_t default_videomode;
@@ -101,6 +121,8 @@ void V_InitMode(video_mode_t mode);
 
 // video mode query interface
 video_mode_t V_GetMode(void);
+int V_GetNumPixelBits();
+int V_GetPixelDepth();
 
 //jff 4/24/98 loads color translation lumps
 void V_InitColorTranslation(void);
@@ -144,6 +166,7 @@ extern V_DrawNumPatch_f V_DrawNumPatch;
 typedef void (*V_DrawBackground_f)(const char* flatname, int scrn);
 extern V_DrawBackground_f V_DrawBackground;
 
+void V_DestroyUnusedTrueColorPalettes();
 // CPhipps - function to set the palette to palette number pal.
 void V_SetPalette(int pal);
 
