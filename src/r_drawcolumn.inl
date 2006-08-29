@@ -31,15 +31,12 @@
 
 #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
 #define SCREENTYPE byte
-#define TOPLEFT byte_topleft
 #define TEMPBUF byte_tempbuf
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
 #define SCREENTYPE unsigned short
-#define TOPLEFT short_topleft
 #define TEMPBUF short_tempbuf
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
 #define SCREENTYPE unsigned int
-#define TOPLEFT int_topleft
 #define TEMPBUF int_tempbuf
 #endif
 
@@ -94,11 +91,9 @@
 #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
   #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
-  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
-//  #define GETCOL(frac, nextfrac) VID_SHORTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
+  #define GETCOL(frac, nextfrac) VID_SHORTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
-  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
-//  #define GETCOL(frac, nextfrac) VID_INTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
+  #define GETCOL(frac, nextfrac) VID_INTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
 #endif
 
 static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
@@ -344,7 +339,6 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 #undef INCFRAC
 #undef COLTYPE
 #undef TEMPBUF
-#undef TOPLEFT
 #undef SCREENTYPE
 
 #undef R_DRAWCOLUMN_FUNCNAME

@@ -390,7 +390,7 @@ void I_FinishUpdate (void)
       {
         memcpy(dest,src,SCREENWIDTH);
         dest+=screen->pitch;
-        src+=screens[0].pitch;
+        src+=screens[0].byte_pitch;
       }
       SDL_UnlockSurface(screen);
   }
@@ -419,8 +419,8 @@ void I_ReadScreen (screeninfo_t *dest)
   height = min(screens[0].height, dest->height);
   for (h=height; h>0; h--) {
     memcpy(dstofs, srcofs, width);
-    srcofs += screens[0].pitch;
-    dstofs += dest->pitch;
+    srcofs += screens[0].byte_pitch;
+    dstofs += dest->byte_pitch;
   }
 }
 
@@ -555,13 +555,17 @@ void I_SetRes(void)
   for (i=0; i<3; i++) {
     screens[i].width = SCREENWIDTH;
     screens[i].height = SCREENHEIGHT;
-    screens[i].pitch = SCREENPITCH;
+    screens[i].byte_pitch = SCREENPITCH;
+    screens[i].short_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE16);
+    screens[i].int_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE32);
   }
 
   // statusbar
   screens[4].width = SCREENWIDTH;
   screens[4].height = (ST_SCALED_HEIGHT+1);
-  screens[4].pitch = SCREENPITCH;
+  screens[4].byte_pitch = SCREENPITCH;
+  screens[4].short_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE16);
+  screens[4].int_pitch = SCREENPITCH / V_GetModePixelDepth(VID_MODE32);
 
   lprintf(LO_INFO,"I_SetRes: Using resolution %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
 }
@@ -672,7 +676,9 @@ void I_UpdateVideoMode(void)
   {
     screens[0].not_on_heap = true;
     screens[0].data = (unsigned char *) (screen->pixels);
-    screens[0].pitch = screen->pitch / V_GetPixelDepth();
+    screens[0].byte_pitch = screen->pitch;
+    screens[0].short_pitch = screen->pitch / V_GetModePixelDepth(VID_MODE16);
+    screens[0].int_pitch = screen->pitch / V_GetModePixelDepth(VID_MODE32);
   }
   else
   {

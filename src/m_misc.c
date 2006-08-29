@@ -1295,7 +1295,7 @@ void M_DoScreenShot (const char* fname)
   if (V_GetMode() == VID_MODEGL) {
     screenshot.width = screens[0].width;
     screenshot.height = screens[0].height;
-    screenshot.pitch = screens[0].width*3;
+    screenshot.byte_pitch = screens[0].width*3;
     screenshot.not_on_heap = false;
     V_AllocScreen(&screenshot);
     // munge planar buffer to linear
@@ -1314,7 +1314,7 @@ void M_DoScreenShot (const char* fname)
   } else {
     screenshot.width = screens[0].width;
     screenshot.height = screens[0].height;
-    screenshot.pitch = screens[0].width;
+    screenshot.byte_pitch = screens[0].width;
     screenshot.not_on_heap = false;
     V_AllocScreen(&screenshot);
     // munge planar buffer to linear

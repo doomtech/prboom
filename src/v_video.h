@@ -80,7 +80,9 @@ typedef struct {
                        // data never set to NULL. Used i.e. with SDL doublebuffer.
   int width;           // the width of the surface
   int height;          // the height of the surface, used when mallocing
-  int pitch;           // tha actual width of one line, used when mallocing
+  int byte_pitch;      // tha actual width of one line, used when mallocing
+  int short_pitch;     // tha actual width of one line, used when mallocing
+  int int_pitch;       // tha actual width of one line, used when mallocing
 } screeninfo_t;
 
 #define NUM_SCREENS 6
@@ -121,8 +123,9 @@ void V_InitMode(video_mode_t mode);
 
 // video mode query interface
 video_mode_t V_GetMode(void);
-int V_GetNumPixelBits();
-int V_GetPixelDepth();
+int V_GetModePixelDepth(video_mode_t mode);
+int V_GetNumPixelBits(void);
+int V_GetPixelDepth(void);
 
 //jff 4/24/98 loads color translation lumps
 void V_InitColorTranslation(void);
@@ -166,7 +169,7 @@ extern V_DrawNumPatch_f V_DrawNumPatch;
 typedef void (*V_DrawBackground_f)(const char* flatname, int scrn);
 extern V_DrawBackground_f V_DrawBackground;
 
-void V_DestroyUnusedTrueColorPalettes();
+void V_DestroyUnusedTrueColorPalettes(void);
 // CPhipps - function to set the palette to palette number pal.
 void V_SetPalette(int pal);
 

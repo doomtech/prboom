@@ -31,14 +31,17 @@
 #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
 #define SCREENTYPE byte
 #define TOPLEFT byte_topleft
+#define PITCH byte_pitch
 #define TEMPBUF byte_tempbuf
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
 #define SCREENTYPE unsigned short
 #define TOPLEFT short_topleft
+#define PITCH short_pitch
 #define TEMPBUF short_tempbuf
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
 #define SCREENTYPE unsigned int
 #define TOPLEFT int_topleft
+#define PITCH int_pitch
 #define TEMPBUF int_tempbuf
 #endif
 
@@ -59,7 +62,7 @@ static void R_FLUSHWHOLE_FUNCNAME(void)
    {
       yl     = tempyl[temp_x];
       source = &TEMPBUF[temp_x + (yl << 2)];
-      dest   = drawvars.TOPLEFT + yl*drawvars.pitch + startx + temp_x;
+      dest   = drawvars.TOPLEFT + yl*drawvars.PITCH + startx + temp_x;
       count  = tempyh[temp_x] - yl + 1;
       
       while(--count >= 0)
@@ -78,7 +81,7 @@ static void R_FLUSHWHOLE_FUNCNAME(void)
 #endif
 
          source += 4;
-         dest += drawvars.pitch;
+         dest += drawvars.PITCH;
       }
    }
 }
@@ -106,7 +109,7 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
       if(yl < commontop)
       {
          source = &TEMPBUF[colnum + (yl << 2)];
-         dest   = drawvars.TOPLEFT + yl*drawvars.pitch + startx + colnum;
+         dest   = drawvars.TOPLEFT + yl*drawvars.PITCH + startx + colnum;
          count  = commontop - yl;
          
          while(--count >= 0)
@@ -126,7 +129,7 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
 #endif
 
             source += 4;
-            dest += drawvars.pitch;
+            dest += drawvars.PITCH;
          }
       }
       
@@ -134,7 +137,7 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
       if(yh > commonbot)
       {
          source = &TEMPBUF[colnum + ((commonbot + 1) << 2)];
-         dest   = drawvars.TOPLEFT + (commonbot + 1)*drawvars.pitch + startx + colnum;
+         dest   = drawvars.TOPLEFT + (commonbot + 1)*drawvars.PITCH + startx + colnum;
          count  = yh - commonbot;
          
          while(--count >= 0)
@@ -154,7 +157,7 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
 #endif
 
             source += 4;
-            dest += drawvars.pitch;
+            dest += drawvars.PITCH;
          }
       }         
       ++colnum;
@@ -164,7 +167,7 @@ static void R_FLUSHHEADTAIL_FUNCNAME(void)
 static void R_FLUSHQUAD_FUNCNAME(void)
 {
    SCREENTYPE *source = &TEMPBUF[commontop << 2];
-   SCREENTYPE *dest = drawvars.TOPLEFT + commontop*drawvars.pitch + startx;
+   SCREENTYPE *dest = drawvars.TOPLEFT + commontop*drawvars.PITCH + startx;
    int count;
 #if (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
    int fuzz1, fuzz2, fuzz3, fuzz4;
@@ -204,11 +207,12 @@ static void R_FLUSHQUAD_FUNCNAME(void)
   #endif
 #endif
       source += 4;
-      dest += drawvars.pitch;
+      dest += drawvars.PITCH;
    }
 }
 
 #undef TEMPBUF
+#undef PITCH
 #undef TOPLEFT
 #undef SCREENTYPE
 

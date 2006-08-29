@@ -851,13 +851,23 @@ void R_InitBuffer(int width, int height)
 
   viewwindowy = width==SCREENWIDTH ? 0 : (SCREENHEIGHT-(ST_SCALED_HEIGHT-1)-height)>>1;
 
-  drawvars.byte_topleft = screens[0].data + viewwindowy*screens[0].pitch + viewwindowx;
-  drawvars.short_topleft = (unsigned short *)(screens[0].data) + viewwindowy*screens[0].pitch + viewwindowx;
-  drawvars.int_topleft = (unsigned int *)(screens[0].data) + viewwindowy*screens[0].pitch + viewwindowx;
-  drawvars.pitch = screens[0].pitch;
+  drawvars.byte_topleft = screens[0].data + viewwindowy*screens[0].byte_pitch + viewwindowx;
+  drawvars.short_topleft = (unsigned short *)(screens[0].data) + viewwindowy*screens[0].short_pitch + viewwindowx;
+  drawvars.int_topleft = (unsigned int *)(screens[0].data) + viewwindowy*screens[0].int_pitch + viewwindowx;
+  drawvars.byte_pitch = screens[0].byte_pitch;
+  drawvars.short_pitch = screens[0].short_pitch;
+  drawvars.int_pitch = screens[0].int_pitch;
 
-  for (i=0; i<FUZZTABLE; i++)
-    fuzzoffset[i] = fuzzoffset_org[i]*screens[0].pitch;
+  if (V_GetMode() == VID_MODE8) {
+    for (i=0; i<FUZZTABLE; i++)
+      fuzzoffset[i] = fuzzoffset_org[i]*screens[0].byte_pitch;
+  } else if (V_GetMode() == VID_MODE16) {
+    for (i=0; i<FUZZTABLE; i++)
+      fuzzoffset[i] = fuzzoffset_org[i]*screens[0].short_pitch;
+  } else if (V_GetMode() == VID_MODE32) {
+    for (i=0; i<FUZZTABLE; i++)
+      fuzzoffset[i] = fuzzoffset_org[i]*screens[0].int_pitch;
+  }
 }
 
 //
@@ -906,7 +916,9 @@ void R_FillBackScreen (void)
 void R_VideoErase(int x, int y, int count)
 {
   if (V_GetMode() != VID_MODEGL)
-    memcpy(screens[0].data+y*screens[0].pitch+x, screens[1].data+y*screens[1].pitch+x, count);   // LFB copy.
+    memcpy(screens[0].data+y*screens[0].byte_pitch+x,
+           screens[1].data+y*screens[1].byte_pitch+x,
+           count);   // LFB copy.
 }
 
 //

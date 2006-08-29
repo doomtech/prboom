@@ -137,14 +137,14 @@ static void FUNC_V_CopyRect(int srcx, int srcy, int srcscrn, int width,
     I_Error ("V_CopyRect: Bad arguments");
 #endif
 
-  src = screens[srcscrn].data+screens[srcscrn].pitch*srcy+srcx;
-  dest = screens[destscrn].data+screens[destscrn].pitch*desty+destx;
+  src = screens[srcscrn].data+screens[srcscrn].byte_pitch*srcy+srcx*V_GetPixelDepth();
+  dest = screens[destscrn].data+screens[destscrn].byte_pitch*desty+destx*V_GetPixelDepth();
 
   for ( ; height>0 ; height--)
     {
-      memcpy (dest, src, width);
-      src += screens[srcscrn].pitch;
-      dest += screens[destscrn].pitch;
+      memcpy (dest, src, width*V_GetPixelDepth());
+      src += screens[srcscrn].byte_pitch;
+      dest += screens[destscrn].byte_pitch;
     }
 }
 
@@ -173,7 +173,7 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
   while (height--) {
     memcpy (dest, src, width);
     src += width;
-    dest += screens[scrn].pitch;
+    dest += screens[scrn].byte_pitch;
   }
   /* end V_DrawBlock */
 
@@ -201,7 +201,9 @@ void V_Init (void)
     screens[i].not_on_heap = false;
     screens[i].width = 0;
     screens[i].height = 0;
-    screens[i].pitch = 0;
+    screens[i].byte_pitch = 0;
+    screens[i].short_pitch = 0;
+    screens[i].int_pitch = 0;
   }
 }
 
@@ -243,9 +245,9 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
     I_Error("V_DrawMemPatch: Patch (%d,%d)-(%d,%d) exceeds LFB in vertical direction (horizontal is clipped)\n"
             "Bad V_DrawMemPatch (flags=%u)", x, y, x+patch->width, y+patch->height, flags);
 
-  if (!(flags & VPT_STRETCH)) {
+  if (V_GetMode() == VID_MODE8 && !(flags & VPT_STRETCH)) {
     int             col;
-    byte           *desttop = screens[scrn].data+y*screens[scrn].pitch+x;
+    byte           *desttop = screens[scrn].data+y*screens[scrn].byte_pitch+x*V_GetPixelDepth();
     unsigned int    w = patch->width;
 
     w--; // CPhipps - note: w = width-1 now, speeds up flipping
@@ -265,7 +267,7 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
   // killough 2/21/98: Unrolled and performance-tuned
 
   register const byte *source = column->pixels + post->topdelta;
-  register byte *dest = desttop + post->topdelta*screens[scrn].pitch;
+  register byte *dest = desttop + post->topdelta*screens[scrn].byte_pitch;
   register int count = post->length;
 
   if (!(flags & VPT_TRANS)) {
@@ -275,19 +277,19 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
         s0 = source[0];
         s1 = source[1];
         dest[0] = s0;
-        dest[screens[scrn].pitch] = s1;
-        dest += screens[scrn].pitch*2;
+        dest[screens[scrn].byte_pitch] = s1;
+        dest += screens[scrn].byte_pitch*2;
         s0 = source[2];
         s1 = source[3];
         source += 4;
         dest[0] = s0;
-        dest[screens[scrn].pitch] = s1;
-        dest += screens[scrn].pitch*2;
+        dest[screens[scrn].byte_pitch] = s1;
+        dest += screens[scrn].byte_pitch*2;
       } while ((count-=4)>=0);
     if (count+=4)
       do {
         *dest = *source++;
-        dest += screens[scrn].pitch;
+        dest += screens[scrn].byte_pitch;
       } while (--count);
   } else {
     // CPhipps - merged translation code here
@@ -299,21 +301,21 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
         s0 = trans[s0];
         s1 = trans[s1];
         dest[0] = s0;
-        dest[screens[scrn].pitch] = s1;
-        dest += screens[scrn].pitch*2;
+        dest[screens[scrn].byte_pitch] = s1;
+        dest += screens[scrn].byte_pitch*2;
         s0 = source[2];
         s1 = source[3];
         s0 = trans[s0];
         s1 = trans[s1];
         source += 4;
         dest[0] = s0;
-        dest[screens[scrn].pitch] = s1;
-        dest += screens[scrn].pitch*2;
+        dest[screens[scrn].byte_pitch] = s1;
+        dest += screens[scrn].byte_pitch*2;
       } while ((count-=4)>=0);
     if (count+=4)
       do {
         *dest = trans[*source++];
-        dest += screens[scrn].pitch;
+        dest += screens[scrn].byte_pitch;
       } while (--count);
   }
       }
@@ -339,7 +341,9 @@ static void V_DrawMemPatch(int x, int y, int scrn, const rpatch_t *patch,
     drawvars.byte_topleft = screens[scrn].data;
     drawvars.short_topleft = (unsigned short *)screens[scrn].data;
     drawvars.int_topleft = (unsigned int *)screens[scrn].data;
-    drawvars.pitch = screens[scrn].pitch;
+    drawvars.byte_pitch = screens[scrn].byte_pitch;
+    drawvars.short_pitch = screens[scrn].short_pitch;
+    drawvars.int_pitch = screens[scrn].int_pitch;
 
     if (flags & VPT_TRANS) {
       colfunc = R_GetDrawColumnFunc(RDC_PIPELINE_TRANSLATED, drawvars.filterpatch, RDRAW_FILTER_NONE);
@@ -549,7 +553,7 @@ static void V_DestroyTrueColorPalette(video_mode_t mode) {
   }
 }
 
-void V_DestroyUnusedTrueColorPalettes() {
+void V_DestroyUnusedTrueColorPalettes(void) {
   if (V_GetMode() != VID_MODE16) V_DestroyTrueColorPalette(VID_MODE16);
   if (V_GetMode() != VID_MODE32) V_DestroyTrueColorPalette(VID_MODE32);  
 }
@@ -586,10 +590,10 @@ void V_SetPalette(int pal)
 // CPhipps - New function to fill a rectangle with a given colour
 static void FUNC_V_FillRect(int scrn, int x, int y, int width, int height, byte colour)
 {
-  byte* dest = screens[scrn].data + x + y*screens[scrn].pitch;
+  byte* dest = screens[scrn].data + x + y*screens[scrn].byte_pitch;
   while (height--) {
     memset(dest, colour, width);
-    dest += screens[scrn].pitch;
+    dest += screens[scrn].byte_pitch;
   }
 }
 
@@ -710,11 +714,11 @@ video_mode_t V_GetMode(void) {
 //
 // V_GetModePixelDepth
 //
-static int V_GetModePixelDepth(video_mode_t mode) {
+int V_GetModePixelDepth(video_mode_t mode) {
   switch (mode) {
     case VID_MODE8: return 1;
-    //case VID_MODE16: return 2;
-    //case VID_MODE32: return 4;
+    case VID_MODE16: return 2;
+    case VID_MODE32: return 4;
     default: return 0;
   }
 }
@@ -738,8 +742,8 @@ int V_GetPixelDepth(void) {
 //
 void V_AllocScreen(screeninfo_t *scrn) {
   if (!scrn->not_on_heap)
-    if ((scrn->pitch * scrn->height) > 0)
-      scrn->data = malloc(scrn->pitch*scrn->height);
+    if ((scrn->byte_pitch * scrn->height) > 0)
+      scrn->data = malloc(scrn->byte_pitch*scrn->height);
 }
 
 //
@@ -773,15 +777,15 @@ void V_FreeScreens(void) {
 }
 
 static void V_PlotPixel8(int scrn, int x, int y, byte color) {
-  screens[scrn].data[x+screens[scrn].pitch*y] = color;
+  screens[scrn].data[x+screens[scrn].byte_pitch*y] = color;
 }
 
 static void V_PlotPixel16(int scrn, int x, int y, byte color) {
-  screens[scrn].data[x*V_GetPixelDepth()+screens[scrn].pitch*y] = VID_SHORTPAL(color, VID_COLORWEIGHTMASK);
+  screens[scrn].data[x*V_GetPixelDepth()+screens[scrn].short_pitch*y] = VID_SHORTPAL(color, VID_COLORWEIGHTMASK);
 }
 
 static void V_PlotPixel32(int scrn, int x, int y, byte color) {
-  screens[scrn].data[x*V_GetPixelDepth()+screens[scrn].pitch*y] = VID_INTPAL(color, VID_COLORWEIGHTMASK);
+  screens[scrn].data[x*V_GetPixelDepth()+screens[scrn].int_pitch*y] = VID_INTPAL(color, VID_COLORWEIGHTMASK);
 }
 
 //

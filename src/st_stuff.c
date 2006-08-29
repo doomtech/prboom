@@ -739,8 +739,14 @@ static void ST_doPaletteStuff(void)
       else
         palette = 0;
 
-  if (palette != st_palette)
+  if (palette != st_palette) {
     V_SetPalette(st_palette = palette); // CPhipps - use new palette function
+
+    // have to redraw the entire status bar when the palette changes
+    // in truecolor modes - POPE
+    if (V_GetMode() == VID_MODE16 || V_GetMode() == VID_MODE32)
+      st_firsttime = true;
+  }
 }
 
 static void ST_drawWidgets(boolean refresh)
