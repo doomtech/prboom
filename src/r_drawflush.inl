@@ -52,9 +52,9 @@
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
 #define GETDESTCOLOR8(col1, col2) (temptranmap[((col1)<<8)+(col2)])
-#define GETDESTCOLOR15(col1, col2) (GETBLENDED15_5050((col1), (col2)))
-#define GETDESTCOLOR16(col1, col2) (GETBLENDED16_5050((col1), (col2)))
-#define GETDESTCOLOR32(col1, col2) (GETBLENDED32_5050((col1), (col2)))
+#define GETDESTCOLOR15(col1, col2) (GETBLENDED15_3268((col1), (col2)))
+#define GETDESTCOLOR16(col1, col2) (GETBLENDED16_3268((col1), (col2)))
+#define GETDESTCOLOR32(col1, col2) (GETBLENDED32_3268((col1), (col2)))
 #elif (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
 #define GETDESTCOLOR8(col) (tempfuzzmap[6*256+(col)])
 #define GETDESTCOLOR15(col) GETBLENDED15_9406(col, 0)

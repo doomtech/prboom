@@ -45,9 +45,9 @@
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
 #define GETDESTCOLOR8(col) (tranmap[(*dest<<8)+(col)])
-#define GETDESTCOLOR15(col) (GETBLENDED15_5050((*dest), (col)))
-#define GETDESTCOLOR16(col) (GETBLENDED16_5050((*dest), (col)))
-#define GETDESTCOLOR32(col) (GETBLENDED32_5050((*dest), (col)))
+#define GETDESTCOLOR15(col) (GETBLENDED15_3268((*dest), (col)))
+#define GETDESTCOLOR16(col) (GETBLENDED16_3268((*dest), (col)))
+#define GETDESTCOLOR32(col) (GETBLENDED32_3268((*dest), (col)))
 #else
 #define GETDESTCOLOR8(col) (col)
 #define GETDESTCOLOR15(col) (col)

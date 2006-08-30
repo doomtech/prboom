@@ -154,6 +154,18 @@ byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
   ((((col1&0xff00ff)+(col2&0xff00ff))>>1)&0xff00ff) | \
   ((((col1&0x00ff00)+(col2&0x00ff00))>>1)&0x00ff00)
 
+#define GETBLENDED15_3268(col1, col2) \
+  ((((col1&0x7c1f)*5+(col2&0x7c1f)*11)>>4)&0x7c1f) | \
+  ((((col1&0x03e0)*5+(col2&0x03e0)*11)>>4)&0x03e0)
+
+#define GETBLENDED16_3268(col1, col2) \
+  ((((col1&0xf81f)*5+(col2&0xf81f)*11)>>4)&0xf81f) | \
+  ((((col1&0x07e0)*5+(col2&0x07e0)*11)>>4)&0x07e0)
+
+#define GETBLENDED32_3268(col1, col2) \
+  ((((col1&0xff00ff)*5+(col2&0xff00ff)*11)>>4)&0xff00ff) | \
+  ((((col1&0x00ff00)*5+(col2&0x00ff00)*11)>>4)&0x00ff00)
+
 #define GETBLENDED15_9406(col1, col2) \
   ((((col1&0x7c1f)*15+(col2&0x7c1f))>>4)&0x7c1f) | \
   ((((col1&0x03e0)*15+(col2&0x03e0))>>4)&0x03e0)
