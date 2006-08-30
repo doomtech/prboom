@@ -56,10 +56,10 @@
   #define GETCOL_POINT(col) GETDEPTHMAP(col)
   #define GETCOL_LINEAR(col) GETDEPTHMAP(col)
 #elif (R_DRAWSPAN_PIPELINE_BITS == 16)
-  #define GETCOL_POINT(col) VID_SHORTPAL(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
+  #define GETCOL_POINT(col) VID_PAL16(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
   #define GETCOL_LINEAR(col) filter_getFilteredForSpan16(GETDEPTHMAP, xfrac, yfrac)
 #elif (R_DRAWSPAN_PIPELINE_BITS == 32)
-  #define GETCOL_POINT(col) VID_INTPAL(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
+  #define GETCOL_POINT(col) VID_PAL32(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
   #define GETCOL_LINEAR(col) filter_getFilteredForSpan32(GETDEPTHMAP, xfrac, yfrac)
 #endif
 
@@ -74,7 +74,7 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
 #if (R_DRAWSPAN_PIPELINE & (RDC_ROUNDED|RDC_BILINEAR))
   // drop back to point filtering if we're minifying
   // 49152 = FRACUNIT * 0.75
-  if (dsvars->xfrac > drawvars.mag_threshold && dsvars->yfrac > drawvars.mag_threshold) {
+  if ((dsvars->z >> 9) > drawvars.mag_threshold) {
     R_GetDrawSpanFunc(RDRAW_FILTER_POINT,
                       drawvars.filterz)(dsvars);
     return;

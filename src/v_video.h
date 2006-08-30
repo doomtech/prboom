@@ -102,15 +102,16 @@ extern int          usegamma;
 // Palettes for converting from 8 bit color to 16 and 32 bit. Also
 // contains the weighted versions of each palette color for filtering
 // operations
-extern unsigned int *V_intPalette;
-extern unsigned short *V_shortPalette;
+extern unsigned short *V_Palette16;
+extern unsigned int *V_Palette32;
 
-#define VID_INTPAL(color, weight) V_intPalette[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
-#define VID_SHORTPAL(color, weight) V_shortPalette[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
+#define VID_PAL16(color, weight) V_Palette16[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
+#define VID_PAL32(color, weight) V_Palette32[ (color)*VID_NUMCOLORWEIGHTS + (weight) ]
 
 // The available bit-depth modes
 typedef enum {
   VID_MODE8,
+//  VID_MODE15,
   VID_MODE16,
   VID_MODE32,
   VID_MODEGL,

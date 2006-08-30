@@ -136,7 +136,9 @@ draw_vars_t drawvars = {
   NULL, // byte_topleft
   NULL, // short_topleft
   NULL, // int_topleft
-  0, // pitch
+  0, // byte_pitch
+  0, // short_pitch
+  0, // int_pitch
   RDRAW_FILTER_POINT, // filterwall
   RDRAW_FILTER_POINT, // filterfloor
   RDRAW_FILTER_POINT, // filtersprite

@@ -181,7 +181,7 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
     while (height--) {
       int i;
       for (i=0; i<width; i++) {
-        dest[i] = VID_SHORTPAL(src[i], VID_COLORWEIGHTMASK);
+        dest[i] = VID_PAL16(src[i], VID_COLORWEIGHTMASK);
       }
       src += width;
       dest += screens[scrn].short_pitch;
@@ -192,7 +192,7 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
     while (height--) {
       int i;
       for (i=0; i<width; i++) {
-        dest[i] = VID_INTPAL(src[i], VID_COLORWEIGHTMASK);
+        dest[i] = VID_PAL32(src[i], VID_COLORWEIGHTMASK);
       }
       src += width;
       dest += screens[scrn].int_pitch;
@@ -464,10 +464,10 @@ static void FUNC_V_DrawNumPatch(int x, int y, int scrn, int lump,
   R_UnlockPatchNum(lump);
 }
 
-unsigned int *V_intPalette = NULL;
-unsigned short *V_shortPalette = NULL;
-static unsigned int *intPalettes = NULL;
-static unsigned short *shortPalettes = NULL;
+unsigned short *V_Palette16 = NULL;
+unsigned int *V_Palette32 = NULL;
+static unsigned short *Palettes16 = NULL;
+static unsigned int *Palettes32 = NULL;
 static int currentPaletteIndex = 0;
 
 //
@@ -495,17 +495,17 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
   float roundUpR, roundUpG, roundUpB;
   
   if (usegammaOnLastPaletteGeneration != usegamma) {
-    if (intPalettes) free(intPalettes);
-    if (shortPalettes) free(shortPalettes);
-    intPalettes = NULL;
-    shortPalettes = NULL;
+    if (Palettes16) free(Palettes16);
+    if (Palettes32) free(Palettes32);
+    Palettes16 = NULL;
+    Palettes32 = NULL;
     usegammaOnLastPaletteGeneration = usegamma;      
   }
   
   if (mode == VID_MODE32) {
-    if (!intPalettes) {
+    if (!Palettes32) {
       // set int palette
-      intPalettes = (int*)malloc(numPals*256*sizeof(int)*VID_NUMCOLORWEIGHTS);
+      Palettes32 = (int*)malloc(numPals*256*sizeof(int)*VID_NUMCOLORWEIGHTS);
       for (p=0; p<numPals; p++) {
         for (i=0; i<256; i++) {
           r = gtable[pal[(256*p+i)*3+0]];
@@ -523,19 +523,19 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
             nr = (int)(r*t+roundUpR);
             ng = (int)(g*t+roundUpG);
             nb = (int)(b*t+roundUpB);
-            intPalettes[((p*256+i)*VID_NUMCOLORWEIGHTS)+w] = (
+            Palettes32[((p*256+i)*VID_NUMCOLORWEIGHTS)+w] = (
               (nr<<16) | (ng<<8) | nb
             );
           }
         }
       }
     }
-    V_intPalette = intPalettes + paletteNum*256*VID_NUMCOLORWEIGHTS;
+    V_Palette32 = Palettes32 + paletteNum*256*VID_NUMCOLORWEIGHTS;
   }
   else if (mode == VID_MODE16) {
-    if (!shortPalettes) {
+    if (!Palettes16) {
       // set short palette
-      shortPalettes = (short*)malloc(numPals*256*sizeof(short)*VID_NUMCOLORWEIGHTS);
+      Palettes16 = (short*)malloc(numPals*256*sizeof(short)*VID_NUMCOLORWEIGHTS);
       for (p=0; p<numPals; p++) {
         for (i=0; i<256; i++) {
           r = gtable[pal[(256*p+i)*3+0]];
@@ -553,14 +553,14 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
             nr = (int)((r>>3)*t+roundUpR);
             ng = (int)((g>>2)*t+roundUpG);
             nb = (int)((b>>3)*t+roundUpB);
-            shortPalettes[((p*256+i)*VID_NUMCOLORWEIGHTS)+w] = (
+            Palettes16[((p*256+i)*VID_NUMCOLORWEIGHTS)+w] = (
               (nr<<11) | (ng<<5) | nb
             );
           }
         }
       }
     }
-    V_shortPalette = shortPalettes + paletteNum*256*VID_NUMCOLORWEIGHTS;
+    V_Palette16 = Palettes16 + paletteNum*256*VID_NUMCOLORWEIGHTS;
   }       
    
   W_UnlockLumpNum(pplump);
@@ -573,14 +573,14 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
 //---------------------------------------------------------------------------
 static void V_DestroyTrueColorPalette(video_mode_t mode) {
   if (mode == VID_MODE16) {
-    if (shortPalettes) free(shortPalettes);
-    shortPalettes = NULL;
-    V_shortPalette = NULL;
+    if (Palettes16) free(Palettes16);
+    Palettes16 = NULL;
+    V_Palette16 = NULL;
   }
   if (mode == VID_MODE32) {
-    if (intPalettes) free(intPalettes);
-    intPalettes = NULL;
-    V_intPalette = NULL;
+    if (Palettes32) free(Palettes32);
+    Palettes32 = NULL;
+    V_Palette32 = NULL;
   }
 }
 
@@ -632,7 +632,7 @@ static void V_FillRect16(int scrn, int x, int y, int width, int height, byte col
 {
   unsigned short* dest = (unsigned short *)screens[scrn].data + x + y*screens[scrn].short_pitch;
   int w;
-  short c = VID_SHORTPAL(colour, VID_COLORWEIGHTMASK);
+  short c = VID_PAL16(colour, VID_COLORWEIGHTMASK);
   while (height--) {
     for (w=0; w<width; w++) {
       dest[w] = c;
@@ -645,7 +645,7 @@ static void V_FillRect32(int scrn, int x, int y, int width, int height, byte col
 {
   unsigned int* dest = (unsigned int *)screens[scrn].data + x + y*screens[scrn].int_pitch;
   int w;
-  int c = VID_INTPAL(colour, VID_COLORWEIGHTMASK);
+  int c = VID_PAL32(colour, VID_COLORWEIGHTMASK);
   while (height--) {
     for (w=0; w<width; w++) {
       dest[w] = c;
@@ -838,11 +838,11 @@ static void V_PlotPixel8(int scrn, int x, int y, byte color) {
 }
 
 static void V_PlotPixel16(int scrn, int x, int y, byte color) {
-  *(unsigned short *)(&screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_SHORTPAL(color, VID_COLORWEIGHTMASK);
+  *(unsigned short *)(&screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_PAL16(color, VID_COLORWEIGHTMASK);
 }
 
 static void V_PlotPixel32(int scrn, int x, int y, byte color) {
-  *(unsigned int *)(&screens[scrn].data)[x+screens[scrn].int_pitch*y] = VID_INTPAL(color, VID_COLORWEIGHTMASK);
+  *(unsigned int *)(&screens[scrn].data)[x+screens[scrn].int_pitch*y] = VID_PAL32(color, VID_COLORWEIGHTMASK);
 }
 
 //
