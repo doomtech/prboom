@@ -57,11 +57,7 @@
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_NOCOLMAP)
-  #if (R_DRAWCOLUMN_PIPELINE & RDC_DITHERZ)  
-    #define GETCOL8_DEPTH(col) (filter_getDitheredPixelLevel(x, y, fracz)][GETCOL8_MAPPED(col))
-  #else
-    #define GETCOL8_DEPTH(col) GETCOL8_MAPPED(col)
-  #endif
+  #define GETCOL8_DEPTH(col) GETCOL8_MAPPED(col)
 #else
   #if (R_DRAWCOLUMN_PIPELINE & RDC_DITHERZ)  
     #define GETCOL8_DEPTH(col) (dither_colormaps[filter_getDitheredPixelLevel(x, y, fracz)][GETCOL8_MAPPED(col)])
@@ -72,10 +68,16 @@
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_BILINEAR)
  #define GETCOL8(frac, nextfrac) GETCOL8_DEPTH(filter_getDitheredForColumn(x,y,frac,nextfrac))
+ #define GETCOL16(frac, nextfrac) filter_getFilteredForColumn16(GETCOL8_DEPTH,frac,nextfrac)
+ #define GETCOL32(frac, nextfrac) filter_getFilteredForColumn32(GETCOL8_DEPTH,frac,nextfrac)
 #elif (R_DRAWCOLUMN_PIPELINE & RDC_ROUNDED)
  #define GETCOL8(frac, nextfrac) GETCOL8_DEPTH(filter_getRoundedForColumn(frac,nextfrac))
+ #define GETCOL16(frac, nextfrac) VID_SHORTPAL(GETCOL8_DEPTH(filter_getRoundedForColumn(frac,nextfrac)), VID_COLORWEIGHTMASK)
+ #define GETCOL32(frac, nextfrac) VID_INTPAL(GETCOL8_DEPTH(filter_getRoundedForColumn(frac,nextfrac)), VID_COLORWEIGHTMASK)
 #else
  #define GETCOL8(frac, nextfrac) GETCOL8_DEPTH(source[(frac)>>FRACBITS])
+ #define GETCOL16(frac, nextfrac) VID_SHORTPAL(GETCOL8_DEPTH(source[(frac)>>FRACBITS]), VID_COLORWEIGHTMASK)
+ #define GETCOL32(frac, nextfrac) VID_INTPAL(GETCOL8_DEPTH(source[(frac)>>FRACBITS]), VID_COLORWEIGHTMASK)
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED|RDC_DITHERZ))
@@ -96,11 +98,11 @@
   #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
   #define GETDESTCOLOR(col) GETDESTCOLOR8(col)
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
-  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
-  #define GETDESTCOLOR(col) GETDESTCOLOR16(VID_SHORTPAL(col, VID_COLORWEIGHTMASK))
+  #define GETCOL(frac, nextfrac) GETCOL16(frac, nextfrac)
+  #define GETDESTCOLOR(col) GETDESTCOLOR16(col)
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
-  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
-  #define GETDESTCOLOR(col) GETDESTCOLOR32(VID_INTPAL(col, VID_COLORWEIGHTMASK))
+  #define GETCOL(frac, nextfrac) GETCOL32(frac, nextfrac)
+  #define GETDESTCOLOR(col) GETDESTCOLOR32(col)
 #endif
 
 static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
@@ -109,6 +111,11 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
   SCREENTYPE       *dest;            // killough
   fixed_t          frac;
   const fixed_t    fracstep = dcvars->iscale;
+#if ((R_DRAWCOLUMN_PIPELINE & RDC_BILINEAR) && (R_DRAWCOLUMN_PIPELINE_BITS != 8))
+  const fixed_t    slope_texu = (dcvars->source == dcvars->nextsource) ? 0 : dcvars->texu & 0xffff;
+#else
+  const fixed_t    slope_texu = dcvars->texu;
+#endif
 
   // drop back to point filtering if we're minifying
 #if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
@@ -154,7 +161,11 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 #endif
 
   // Determine scaling, which is the only mapping to be done.
-  frac = dcvars->texturemid + (dcvars->yl-centery)*fracstep;
+  #if (R_DRAWCOLUMN_PIPELINE & RDC_BILINEAR)
+    frac = dcvars->texturemid - (FRACUNIT>>1) + (dcvars->yl-centery)*fracstep;
+  #else
+    frac = dcvars->texturemid + (dcvars->yl-centery)*fracstep;
+  #endif
 
   if (dcvars->drawingmasked && dcvars->edgetype == RDRAW_MASKEDCOLUMNEDGE_SLOPED) {
     // slope the top and bottom column edge based on the fractional u coordinate
@@ -163,29 +174,29 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
     if (dcvars->yl != 0) {
       if (dcvars->edgeslope & RDRAW_EDGESLOPE_TOP_UP) {
         // [/#]
-        int shift = ((0xffff-(dcvars->texu & 0xffff))/dcvars->iscale);
+        int shift = ((0xffff-(slope_texu & 0xffff))/dcvars->iscale);
         dcvars->yl += shift;
         count -= shift;
-        frac += 0xffff-(dcvars->texu & 0xffff);
+        frac += 0xffff-(slope_texu & 0xffff);
       }
       else if (dcvars->edgeslope & RDRAW_EDGESLOPE_TOP_DOWN) {
         // [#\]
-        int shift = ((dcvars->texu & 0xffff)/dcvars->iscale);
+        int shift = ((slope_texu & 0xffff)/dcvars->iscale);
         dcvars->yl += shift;
         count -= shift;
-        frac += dcvars->texu & 0xffff;
+        frac += slope_texu & 0xffff;
       }
     }
     if (dcvars->yh != viewheight-1) {
       if (dcvars->edgeslope & RDRAW_EDGESLOPE_BOT_UP) {
         // [#/]
-        int shift = ((0xffff-(dcvars->texu & 0xffff))/dcvars->iscale);
+        int shift = ((0xffff-(slope_texu & 0xffff))/dcvars->iscale);
         dcvars->yh -= shift;
         count -= shift;
       }
       else if (dcvars->edgeslope & RDRAW_EDGESLOPE_BOT_DOWN) {
         // [\#]
-        int shift = ((dcvars->texu & 0xffff)/dcvars->iscale);
+        int shift = ((slope_texu & 0xffff)/dcvars->iscale);
         dcvars->yh -= shift;
         count -= shift;
       }
@@ -244,16 +255,20 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
     const int fracz = (dcvars->z >> 6) & 255;
     const byte *dither_colormaps[2] = { dcvars->colormap, dcvars->nextcolormap };
 #endif
-#if (R_DRAWCOLUMN_PIPELINE & (RDC_BILINEAR|RDC_ROUNDED))
-    const unsigned int filter_fracu = (dcvars->source == dcvars->nextsource) ? 0 : (dcvars->texu>>8) & 0xff;
-#endif
 #if (R_DRAWCOLUMN_PIPELINE & RDC_BILINEAR)
+  #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
     const int yl = dcvars->yl;
     const byte *dither_sources[2] = { dcvars->source, dcvars->nextsource };
+    const unsigned int filter_fracu = (dcvars->source == dcvars->nextsource) ? 0 : (dcvars->texu>>8) & 0xff;
+  #else
+    const byte          *nextsource = dcvars->nextsource;
+    const unsigned int filter_fracu = (dcvars->source == dcvars->nextsource) ? 0 : dcvars->texu & 0xffff;
+  #endif
 #endif
 #if (R_DRAWCOLUMN_PIPELINE & RDC_ROUNDED)
     const byte          *prevsource = dcvars->prevsource;
     const byte          *nextsource = dcvars->nextsource;
+    const unsigned int filter_fracu = (dcvars->source == dcvars->nextsource) ? 0 : (dcvars->texu>>8) & 0xff;
 #endif
 
     count++;
@@ -343,6 +358,8 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 #undef GETDESTCOLOR
 #undef GETCOL8_MAPPED
 #undef GETCOL8_DEPTH
+#undef GETCOL32
+#undef GETCOL16
 #undef GETCOL8
 #undef GETCOL
 #undef INCY

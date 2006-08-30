@@ -47,19 +47,19 @@
 #endif
 
 #if (R_DRAWSPAN_PIPELINE & RDC_DITHERZ)  
-  #define GETDEPTHMAP dither_colormaps[filter_getDitheredPixelLevel(x1, y, fracz)]
+  #define GETDEPTHMAP(col) dither_colormaps[filter_getDitheredPixelLevel(x1, y, fracz)][(col)]
 #else
-  #define GETDEPTHMAP colormap
+  #define GETDEPTHMAP(col) colormap[(col)]
 #endif
 
 #if (R_DRAWSPAN_PIPELINE_BITS == 8)
-  #define GETCOL_POINT(col) GETDEPTHMAP[(col)]
-  #define GETCOL_LINEAR(col) GETDEPTHMAP[(col)]
+  #define GETCOL_POINT(col) GETDEPTHMAP(col)
+  #define GETCOL_LINEAR(col) GETDEPTHMAP(col)
 #elif (R_DRAWSPAN_PIPELINE_BITS == 16)
-  #define GETCOL_POINT(col) VID_SHORTPAL(GETDEPTHMAP[(col)], VID_COLORWEIGHTMASK)
+  #define GETCOL_POINT(col) VID_SHORTPAL(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
   #define GETCOL_LINEAR(col) filter_getFilteredForSpan16(GETDEPTHMAP, xfrac, yfrac)
 #elif (R_DRAWSPAN_PIPELINE_BITS == 32)
-  #define GETCOL_POINT(col) VID_INTPAL(GETDEPTHMAP[(col)], VID_COLORWEIGHTMASK)
+  #define GETCOL_POINT(col) VID_INTPAL(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
   #define GETCOL_LINEAR(col) filter_getFilteredForSpan32(GETDEPTHMAP, xfrac, yfrac)
 #endif
 

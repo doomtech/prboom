@@ -94,20 +94,39 @@ void R_FilterInit(void);
 
 byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
 
+// This is the horrendous macro version of the function commented out of 
+// r_filter.c. It does a bilinear blend on the four source texels for a 
+// given u and v
+#define filter_getFilteredForColumn32(depthmap, texV, nextRowTexV) ( \
+  VID_INTPAL( depthmap(nextsource[(nextRowTexV)>>FRACBITS]),   (filter_fracu*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_INTPAL( depthmap(source[(nextRowTexV)>>FRACBITS]),       ((0xffff-filter_fracu)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_INTPAL( depthmap(source[(texV)>>FRACBITS]),              ((0xffff-filter_fracu)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_INTPAL( depthmap(nextsource[(texV)>>FRACBITS]),          (filter_fracu*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ))
+
+// The 16 bit method of the filtering doesn't really maintain enough 
+// accuracy for discerning viewers, but the alternative requires converting
+// from 32 bit, which is slow and requires both the intPalette and the 
+// shortPalette to be in memory at the same time.
+#define filter_getFilteredForColumn16(depthmap, texV, nextRowTexV) ( \
+  VID_SHORTPAL( depthmap(nextsource[(nextRowTexV)>>FRACBITS]),   (filter_fracu*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_SHORTPAL( depthmap(source[(nextRowTexV)>>FRACBITS]),       ((0xffff-filter_fracu)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_SHORTPAL( depthmap(source[(texV)>>FRACBITS]),              ((0xffff-filter_fracu)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_SHORTPAL( depthmap(nextsource[(texV)>>FRACBITS]),          (filter_fracu*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ))
+
 // Same as for column but wrapping at 64
 #define filter_getFilteredForSpan32(depthmap, texU, texV) ( \
-  VID_INTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],  (((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
-  VID_INTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],             ((0xffff-((texU)&0xffff))*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
-  VID_INTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],                        ((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
-  VID_INTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],             (((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
+  VID_INTPAL( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0)]),  (((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_INTPAL( depthmap(source[ (((texU)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0)]),             ((0xffff-((texU)&0xffff))*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_INTPAL( depthmap(source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),                        ((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_INTPAL( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),             (((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
 
 // Use 16 bit addition here since it's a little faster and the defects from
 // such low-accuracy blending are less visible on spans
 #define filter_getFilteredForSpan16(depthmap, texU, texV) ( \
-  VID_SHORTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],  (((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
-  VID_SHORTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],             ((0xffff-((texU)&0xffff))*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
-  VID_SHORTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],                        ((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
-  VID_SHORTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],             (((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
+  VID_SHORTPAL( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0)]),  (((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_SHORTPAL( depthmap(source[ (((texU)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0)]),             ((0xffff-((texU)&0xffff))*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_SHORTPAL( depthmap(source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),                        ((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_SHORTPAL( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),             (((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
 
 #if 0
 
