@@ -464,10 +464,10 @@ static void FUNC_V_DrawNumPatch(int x, int y, int scrn, int lump,
   R_UnlockPatchNum(lump);
 }
 
-int *V_intPalette = NULL;
-short *V_shortPalette = NULL;
-static int *intPalettes = NULL;
-static short *shortPalettes = NULL;
+unsigned int *V_intPalette = NULL;
+unsigned short *V_shortPalette = NULL;
+static unsigned int *intPalettes = NULL;
+static unsigned short *shortPalettes = NULL;
 static int currentPaletteIndex = 0;
 
 //

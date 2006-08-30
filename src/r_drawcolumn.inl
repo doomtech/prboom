@@ -41,9 +41,13 @@
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
-#define GETDESTCOLOR(col) (tranmap[(*dest<<8)+(col)])
+#define GETDESTCOLOR8(col) (tranmap[(*dest<<8)+(col)])
+#define GETDESTCOLOR16(col) (GETBLENDED16_5050((*dest), (col)))
+#define GETDESTCOLOR32(col) (GETBLENDED32_5050((*dest), (col)))
 #else
-#define GETDESTCOLOR(col) (col)
+#define GETDESTCOLOR8(col) (col)
+#define GETDESTCOLOR16(col) (col)
+#define GETDESTCOLOR32(col) (col)
 #endif
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLATED)
@@ -90,10 +94,13 @@
 
 #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
   #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
+  #define GETDESTCOLOR(col) GETDESTCOLOR8(col)
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
-  #define GETCOL(frac, nextfrac) VID_SHORTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
+  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
+  #define GETDESTCOLOR(col) GETDESTCOLOR16(VID_SHORTPAL(col, VID_COLORWEIGHTMASK))
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
-  #define GETCOL(frac, nextfrac) VID_INTPAL(GETCOL8(frac, nextfrac), VID_COLORWEIGHTMASK)
+  #define GETCOL(frac, nextfrac) GETCOL8(frac, nextfrac)
+  #define GETDESTCOLOR(col) GETDESTCOLOR32(VID_INTPAL(col, VID_COLORWEIGHTMASK))
 #endif
 
 static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
@@ -330,6 +337,9 @@ static void R_DRAWCOLUMN_FUNCNAME(draw_column_vars_t *dcvars)
 #endif // (!(R_DRAWCOLUMN_PIPELINE & RDC_FUZZ))
 }
 
+#undef GETDESTCOLOR32
+#undef GETDESTCOLOR16
+#undef GETDESTCOLOR8
 #undef GETDESTCOLOR
 #undef GETCOL8_MAPPED
 #undef GETCOL8_DEPTH

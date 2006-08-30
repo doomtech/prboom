@@ -47,25 +47,34 @@
 #endif
 
 #if (R_DRAWSPAN_PIPELINE & RDC_DITHERZ)  
-  #define GETCOL8(col) (dither_colormaps[filter_getDitheredPixelLevel(x1, y, fracz)][(col)])
+  #define GETDEPTHMAP dither_colormaps[filter_getDitheredPixelLevel(x1, y, fracz)]
 #else
-  #define GETCOL8(col) colormap[(col)]
+  #define GETDEPTHMAP colormap
 #endif
 
 #if (R_DRAWSPAN_PIPELINE_BITS == 8)
-  #define GETCOL(col) GETCOL8(col)
+  #define GETCOL_POINT(col) GETDEPTHMAP[(col)]
+  #define GETCOL_LINEAR(col) GETDEPTHMAP[(col)]
 #elif (R_DRAWSPAN_PIPELINE_BITS == 16)
-  #define GETCOL(col) VID_SHORTPAL(GETCOL8(col), VID_COLORWEIGHTMASK)
+  #define GETCOL_POINT(col) VID_SHORTPAL(GETDEPTHMAP[(col)], VID_COLORWEIGHTMASK)
+  #define GETCOL_LINEAR(col) filter_getFilteredForSpan16(GETDEPTHMAP, xfrac, yfrac)
 #elif (R_DRAWSPAN_PIPELINE_BITS == 32)
-  #define GETCOL(col) VID_INTPAL(GETCOL8(col), VID_COLORWEIGHTMASK)
+  #define GETCOL_POINT(col) VID_INTPAL(GETDEPTHMAP[(col)], VID_COLORWEIGHTMASK)
+  #define GETCOL_LINEAR(col) filter_getFilteredForSpan32(GETDEPTHMAP, xfrac, yfrac)
+#endif
+
+#if (R_DRAWSPAN_PIPELINE & RDC_BILINEAR)
+ #define GETCOL(col) GETCOL_LINEAR(col)
+#else
+ #define GETCOL(col) GETCOL_POINT(col)
 #endif
 
 static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
 {
-#if (R_DRAWSPAN_PIPELINE & RDC_BILINEAR)
+#if (R_DRAWSPAN_PIPELINE & (RDC_ROUNDED|RDC_BILINEAR))
   // drop back to point filtering if we're minifying
   // 49152 = FRACUNIT * 0.75
-  if (dsvars->xfrac < drawvars.mag_threshold && dsvars->yfrac < drawvars.mag_threshold) {
+  if (dsvars->xfrac > drawvars.mag_threshold && dsvars->yfrac > drawvars.mag_threshold) {
     R_GetDrawSpanFunc(RDRAW_FILTER_POINT,
                       drawvars.filterz)(dsvars);
     return;
@@ -90,7 +99,16 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
 #endif
 
   while (count) {
-#if (R_DRAWSPAN_PIPELINE & RDC_ROUNDED)
+#if ((R_DRAWSPAN_PIPELINE_BITS != 8) && (R_DRAWSPAN_PIPELINE & RDC_BILINEAR))
+    // truecolor bilinear filtered
+    *dest++ = GETCOL(0);
+    xfrac += xstep;
+    yfrac += ystep;
+    count--;
+  #if (R_DRAWSPAN_PIPELINE & RDC_DITHERZ)
+    x1--;
+  #endif
+#elif (R_DRAWSPAN_PIPELINE & RDC_ROUNDED)
     *dest++ = GETCOL(filter_getRoundedForSpan(xfrac, yfrac));
     xfrac += xstep;
     yfrac += ystep;
@@ -102,7 +120,7 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
   #if (R_DRAWSPAN_PIPELINE & RDC_BILINEAR)
     // 8 bit bilinear
     const fixed_t xtemp = ((xfrac >> 16) + (filter_getDitheredPixelLevel(x1, y, ((xfrac>>8)&0xff)))) & 63;
-    const fixed_t ytemp = ((yfrac >> 10) + 0x40*(filter_getDitheredPixelLevel(x1, y, ((yfrac>>8)&0xff)))) & 4032;
+    const fixed_t ytemp = ((yfrac >> 10) + 64*(filter_getDitheredPixelLevel(x1, y, ((yfrac>>8)&0xff)))) & 4032;
   #else
     const fixed_t xtemp = (xfrac >> 16) & 63;
     const fixed_t ytemp = (yfrac >> 10) & 4032;
@@ -120,7 +138,9 @@ static void R_DRAWSPAN_FUNCNAME(draw_span_vars_t *dsvars)
   }
 }
 
-#undef GETCOL8
+#undef GETDEPTHMAP
+#undef GETCOL_LINEAR
+#undef GETCOL_POINT
 #undef GETCOL
 #undef PITCH
 #undef TOPLEFT

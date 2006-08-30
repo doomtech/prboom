@@ -94,4 +94,63 @@ void R_FilterInit(void);
 
 byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
 
+// Same as for column but wrapping at 64
+#define filter_getFilteredForSpan32(depthmap, texU, texV) ( \
+  VID_INTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],  (((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_INTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],             ((0xffff-((texU)&0xffff))*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_INTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],                        ((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_INTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],             (((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
+
+// Use 16 bit addition here since it's a little faster and the defects from
+// such low-accuracy blending are less visible on spans
+#define filter_getFilteredForSpan16(depthmap, texU, texV) ( \
+  VID_SHORTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],  (((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_SHORTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0) ] ],             ((0xffff-((texU)&0xffff))*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_SHORTPAL( depthmap[ source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],                        ((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_SHORTPAL( depthmap[ source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0) ] ],             (((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
+
+#if 0
+
+#define GETBLENDED16_5050(col1, col2) \
+  ((((col1&0xf800)+(col2&0xf800))>>1)&0xf800) | \
+  ((((col1&0x07e0)+(col2&0x07e0))>>1)&0x07e0) | \
+  ((((col1&0x001f)+(col2&0x001f))>>1)&0x001f)
+
+#define GETBLENDED32_5050(col1, col2) \
+  ((((col1&0xff0000)+(col2&0xff0000))>>1)&0xff0000) | \
+  ((((col1&0x00ff00)+(col2&0x00ff00))>>1)&0x00ff00) | \
+  ((((col1&0x0000ff)+(col2&0x0000ff))>>1)&0x0000ff)
+
+#define GETBLENDED16_9406(col1, col2) \
+  ((((col1&0xf800)*15+(col2&0xf800))>>4)&0xf800) | \
+  ((((col1&0x07e0)*15+(col2&0x07e0))>>4)&0x07e0) | \
+  ((((col1&0x001f)*15+(col2&0x001f))>>4)&0x001f)
+
+#define GETBLENDED32_9406(col1, col2) \
+  ((((col1&0xff0000)*15+(col2&0xff0000))>>4)&0xff0000) | \
+  ((((col1&0x00ff00)*15+(col2&0x00ff00))>>4)&0x00ff00) | \
+  ((((col1&0x0000ff)*15+(col2&0x0000ff))>>4)&0x0000ff)
+
+#else
+
+// do red and blue at once for slight speedup
+
+#define GETBLENDED16_5050(col1, col2) \
+  ((((col1&0xf81f)+(col2&0xf81f))>>1)&0xf81f) | \
+  ((((col1&0x07e0)+(col2&0x07e0))>>1)&0x07e0)
+
+#define GETBLENDED32_5050(col1, col2) \
+  ((((col1&0xff00ff)+(col2&0xff00ff))>>1)&0xff00ff) | \
+  ((((col1&0x00ff00)+(col2&0x00ff00))>>1)&0x00ff00)
+
+#define GETBLENDED16_9406(col1, col2) \
+  ((((col1&0xf81f)*15+(col2&0xf81f))>>4)&0xf81f) | \
+  ((((col1&0x07e0)*15+(col2&0x07e0))>>4)&0x07e0)
+
+#define GETBLENDED32_9406(col1, col2) \
+  ((((col1&0xff00ff)*15+(col2&0xff00ff))>>4)&0xff00ff) | \
+  ((((col1&0x00ff00)*15+(col2&0x00ff00))>>4)&0x00ff00)
+
+#endif
+
 #endif
