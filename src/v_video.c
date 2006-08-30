@@ -175,6 +175,17 @@ static void FUNC_V_DrawBackground(const char* flatname, int scrn)
       src += width;
       dest += screens[scrn].byte_pitch;
     }
+  } else if (V_GetMode() == VID_MODE15) {
+    unsigned short *dest = (unsigned short *)screens[scrn].data;
+
+    while (height--) {
+      int i;
+      for (i=0; i<width; i++) {
+        dest[i] = VID_PAL15(src[i], VID_COLORWEIGHTMASK);
+      }
+      src += width;
+      dest += screens[scrn].short_pitch;
+    }
   } else if (V_GetMode() == VID_MODE16) {
     unsigned short *dest = (unsigned short *)screens[scrn].data;
 
@@ -464,8 +475,10 @@ static void FUNC_V_DrawNumPatch(int x, int y, int scrn, int lump,
   R_UnlockPatchNum(lump);
 }
 
+unsigned short *V_Palette15 = NULL;
 unsigned short *V_Palette16 = NULL;
 unsigned int *V_Palette32 = NULL;
+static unsigned short *Palettes15 = NULL;
 static unsigned short *Palettes16 = NULL;
 static unsigned int *Palettes32 = NULL;
 static int currentPaletteIndex = 0;
@@ -495,8 +508,10 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
   float roundUpR, roundUpG, roundUpB;
   
   if (usegammaOnLastPaletteGeneration != usegamma) {
+    if (Palettes15) free(Palettes15);
     if (Palettes16) free(Palettes16);
     if (Palettes32) free(Palettes32);
+    Palettes15 = NULL;
     Palettes16 = NULL;
     Palettes32 = NULL;
     usegammaOnLastPaletteGeneration = usegamma;      
@@ -561,6 +576,36 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
       }
     }
     V_Palette16 = Palettes16 + paletteNum*256*VID_NUMCOLORWEIGHTS;
+  }
+  else if (mode == VID_MODE15) {
+    if (!Palettes15) {
+      // set short palette
+      Palettes15 = (short*)malloc(numPals*256*sizeof(short)*VID_NUMCOLORWEIGHTS);
+      for (p=0; p<numPals; p++) {
+        for (i=0; i<256; i++) {
+          r = gtable[pal[(256*p+i)*3+0]];
+          g = gtable[pal[(256*p+i)*3+1]];
+          b = gtable[pal[(256*p+i)*3+2]];
+          
+          // ideally, we should always round up, but very bright colors
+          // overflow the blending adds, so they don't get rounded.
+          roundUpR = (r > dontRoundAbove) ? 0 : 0.5f;
+          roundUpG = (g > dontRoundAbove) ? 0 : 0.5f;
+          roundUpB = (b > dontRoundAbove) ? 0 : 0.5f;
+                   
+          for (w=0; w<VID_NUMCOLORWEIGHTS; w++) {
+            t = (float)(w)/(float)(VID_NUMCOLORWEIGHTS-1);
+            nr = (int)((r>>3)*t+roundUpR);
+            ng = (int)((g>>3)*t+roundUpG);
+            nb = (int)((b>>3)*t+roundUpB);
+            Palettes15[((p*256+i)*VID_NUMCOLORWEIGHTS)+w] = (
+              (nr<<10) | (ng<<5) | nb
+            );
+          }
+        }
+      }
+    }
+    V_Palette15 = Palettes15 + paletteNum*256*VID_NUMCOLORWEIGHTS;
   }       
    
   W_UnlockLumpNum(pplump);
@@ -572,6 +617,11 @@ void V_UpdateTrueColorPalette(video_mode_t mode) {
 // V_DestroyTrueColorPalette
 //---------------------------------------------------------------------------
 static void V_DestroyTrueColorPalette(video_mode_t mode) {
+  if (mode == VID_MODE15) {
+    if (Palettes15) free(Palettes15);
+    Palettes15 = NULL;
+    V_Palette15 = NULL;
+  }
   if (mode == VID_MODE16) {
     if (Palettes16) free(Palettes16);
     Palettes16 = NULL;
@@ -585,6 +635,7 @@ static void V_DestroyTrueColorPalette(video_mode_t mode) {
 }
 
 void V_DestroyUnusedTrueColorPalettes(void) {
+  if (V_GetMode() != VID_MODE15) V_DestroyTrueColorPalette(VID_MODE15);
   if (V_GetMode() != VID_MODE16) V_DestroyTrueColorPalette(VID_MODE16);
   if (V_GetMode() != VID_MODE32) V_DestroyTrueColorPalette(VID_MODE32);  
 }
@@ -605,7 +656,7 @@ void V_SetPalette(int pal)
 #endif
   } else {
     I_SetPalette(pal);
-    if (V_GetMode() == VID_MODE16 || V_GetMode() == VID_MODE32) {
+    if (V_GetMode() == VID_MODE15 || V_GetMode() == VID_MODE16 || V_GetMode() == VID_MODE32) {
       // V_SetPalette can be called as part of the gamma setting before
       // we've loaded any wads, which prevents us from reading the palette - POPE
       if (W_CheckNumForName("PLAYPAL") >= 0) {
@@ -625,6 +676,19 @@ static void V_FillRect8(int scrn, int x, int y, int width, int height, byte colo
   while (height--) {
     memset(dest, colour, width);
     dest += screens[scrn].byte_pitch;
+  }
+}
+
+static void V_FillRect15(int scrn, int x, int y, int width, int height, byte colour)
+{
+  unsigned short* dest = (unsigned short *)screens[scrn].data + x + y*screens[scrn].short_pitch;
+  int w;
+  short c = VID_PAL15(colour, VID_COLORWEIGHTMASK);
+  while (height--) {
+    for (w=0; w<width; w++) {
+      dest[w] = c;
+    }
+    dest += screens[scrn].short_pitch;
   }
 }
 
@@ -656,6 +720,7 @@ static void V_FillRect32(int scrn, int x, int y, int width, int height, byte col
 
 static void WRAP_V_DrawLine(fline_t* fl, int color);
 static void V_PlotPixel8(int scrn, int x, int y, byte color);
+static void V_PlotPixel15(int scrn, int x, int y, byte color);
 static void V_PlotPixel16(int scrn, int x, int y, byte color);
 static void V_PlotPixel32(int scrn, int x, int y, byte color);
 
@@ -725,6 +790,16 @@ void V_InitMode(video_mode_t mode) {
       V_DrawLine = WRAP_V_DrawLine;
       current_videomode = VID_MODE8;
       break;
+    case VID_MODE15:
+      lprintf(LO_INFO, "V_InitMode: using 15 bit video mode\n");
+      V_CopyRect = FUNC_V_CopyRect;
+      V_FillRect = V_FillRect15;
+      V_DrawNumPatch = FUNC_V_DrawNumPatch;
+      V_DrawBackground = FUNC_V_DrawBackground;
+      V_PlotPixel = V_PlotPixel15;
+      V_DrawLine = WRAP_V_DrawLine;
+      current_videomode = VID_MODE15;
+      break;
     case VID_MODE16:
       lprintf(LO_INFO, "V_InitMode: using 16 bit video mode\n");
       V_CopyRect = FUNC_V_CopyRect;
@@ -774,6 +849,7 @@ video_mode_t V_GetMode(void) {
 int V_GetModePixelDepth(video_mode_t mode) {
   switch (mode) {
     case VID_MODE8: return 1;
+    case VID_MODE15: return 2;
     case VID_MODE16: return 2;
     case VID_MODE32: return 4;
     default: return 0;
@@ -784,7 +860,13 @@ int V_GetModePixelDepth(video_mode_t mode) {
 // V_GetNumPixelBits
 //
 int V_GetNumPixelBits(void) {
-  return V_GetModePixelDepth(current_videomode) * 8;
+  switch (current_videomode) {
+    case VID_MODE8: return 8;
+    case VID_MODE15: return 15;
+    case VID_MODE16: return 16;
+    case VID_MODE32: return 32;
+    default: return 0;
+  }
 }
 
 //
@@ -835,6 +917,10 @@ void V_FreeScreens(void) {
 
 static void V_PlotPixel8(int scrn, int x, int y, byte color) {
   screens[scrn].data[x+screens[scrn].byte_pitch*y] = color;
+}
+
+static void V_PlotPixel15(int scrn, int x, int y, byte color) {
+  *(unsigned short *)(&screens[scrn].data)[x+screens[scrn].short_pitch*y] = VID_PAL15(color, VID_COLORWEIGHTMASK);
 }
 
 static void V_PlotPixel16(int scrn, int x, int y, byte color) {

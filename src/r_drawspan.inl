@@ -36,6 +36,10 @@
 #define SCREENTYPE byte
 #define TOPLEFT byte_topleft
 #define PITCH byte_pitch
+#elif (R_DRAWSPAN_PIPELINE_BITS == 15)
+#define SCREENTYPE unsigned short
+#define TOPLEFT short_topleft
+#define PITCH short_pitch
 #elif (R_DRAWSPAN_PIPELINE_BITS == 16)
 #define SCREENTYPE unsigned short
 #define TOPLEFT short_topleft
@@ -55,6 +59,9 @@
 #if (R_DRAWSPAN_PIPELINE_BITS == 8)
   #define GETCOL_POINT(col) GETDEPTHMAP(col)
   #define GETCOL_LINEAR(col) GETDEPTHMAP(col)
+#elif (R_DRAWSPAN_PIPELINE_BITS == 15)
+  #define GETCOL_POINT(col) VID_PAL15(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
+  #define GETCOL_LINEAR(col) filter_getFilteredForSpan15(GETDEPTHMAP, xfrac, yfrac)
 #elif (R_DRAWSPAN_PIPELINE_BITS == 16)
   #define GETCOL_POINT(col) VID_PAL16(GETDEPTHMAP(col), VID_COLORWEIGHTMASK)
   #define GETCOL_LINEAR(col) filter_getFilteredForSpan16(GETDEPTHMAP, xfrac, yfrac)

@@ -33,6 +33,11 @@
 #define TOPLEFT byte_topleft
 #define PITCH byte_pitch
 #define TEMPBUF byte_tempbuf
+#elif (R_DRAWCOLUMN_PIPELINE_BITS == 15)
+#define SCREENTYPE unsigned short
+#define TOPLEFT short_topleft
+#define PITCH short_pitch
+#define TEMPBUF short_tempbuf
 #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
 #define SCREENTYPE unsigned short
 #define TOPLEFT short_topleft
@@ -47,14 +52,17 @@
 
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
 #define GETDESTCOLOR8(col1, col2) (temptranmap[((col1)<<8)+(col2)])
+#define GETDESTCOLOR15(col1, col2) (GETBLENDED15_5050((col1), (col2)))
 #define GETDESTCOLOR16(col1, col2) (GETBLENDED16_5050((col1), (col2)))
 #define GETDESTCOLOR32(col1, col2) (GETBLENDED32_5050((col1), (col2)))
 #elif (R_DRAWCOLUMN_PIPELINE & RDC_FUZZ)
 #define GETDESTCOLOR8(col) (tempfuzzmap[6*256+(col)])
+#define GETDESTCOLOR15(col) GETBLENDED15_9406(col, 0)
 #define GETDESTCOLOR16(col) GETBLENDED16_9406(col, 0)
 #define GETDESTCOLOR32(col) GETBLENDED32_9406(col, 0)
 #else
 #define GETDESTCOLOR8(col) (col)
+#define GETDESTCOLOR15(col) (col)
 #define GETDESTCOLOR16(col) (col)
 #define GETDESTCOLOR32(col) (col)
 #endif
@@ -62,6 +70,8 @@
 #if (R_DRAWCOLUMN_PIPELINE & RDC_TRANSLUCENT)
   #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
     #define GETDESTCOLOR(col1, col2) GETDESTCOLOR8(col1, col2)
+  #elif (R_DRAWCOLUMN_PIPELINE_BITS == 15)
+    #define GETDESTCOLOR(col1, col2) GETDESTCOLOR15(col1, col2)
   #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
     #define GETDESTCOLOR(col1, col2) GETDESTCOLOR16(col1, col2)
   #elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
@@ -70,6 +80,8 @@
 #else
   #if (R_DRAWCOLUMN_PIPELINE_BITS == 8)
     #define GETDESTCOLOR(col) GETDESTCOLOR8(col)
+  #elif (R_DRAWCOLUMN_PIPELINE_BITS == 15)
+    #define GETDESTCOLOR(col) GETDESTCOLOR15(col)
   #elif (R_DRAWCOLUMN_PIPELINE_BITS == 16)
     #define GETDESTCOLOR(col) GETDESTCOLOR16(col)
   #elif (R_DRAWCOLUMN_PIPELINE_BITS == 32)
@@ -245,6 +257,7 @@ static void R_FLUSHQUAD_FUNCNAME(void)
 
 #undef GETDESTCOLOR32
 #undef GETDESTCOLOR16
+#undef GETDESTCOLOR15
 #undef GETDESTCOLOR8
 #undef GETDESTCOLOR
 

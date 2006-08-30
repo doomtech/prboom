@@ -113,6 +113,12 @@ byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
   VID_PAL16( depthmap(source[(texV)>>FRACBITS]),              ((0xffff-filter_fracu)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ) + \
   VID_PAL16( depthmap(nextsource[(texV)>>FRACBITS]),          (filter_fracu*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ))
 
+#define filter_getFilteredForColumn15(depthmap, texV, nextRowTexV) ( \
+  VID_PAL15( depthmap(nextsource[(nextRowTexV)>>FRACBITS]),   (filter_fracu*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_PAL15( depthmap(source[(nextRowTexV)>>FRACBITS]),       ((0xffff-filter_fracu)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_PAL15( depthmap(source[(texV)>>FRACBITS]),              ((0xffff-filter_fracu)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ) + \
+  VID_PAL15( depthmap(nextsource[(texV)>>FRACBITS]),          (filter_fracu*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS) ))
+
 // Same as for column but wrapping at 64
 #define filter_getFilteredForSpan32(depthmap, texU, texV) ( \
   VID_PAL32( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0)]),  (unsigned int)(((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
@@ -128,31 +134,17 @@ byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
   VID_PAL16( depthmap(source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),                        (unsigned int)((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
   VID_PAL16( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),             (unsigned int)(((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
 
-#if 0
-
-#define GETBLENDED16_5050(col1, col2) \
-  ((((col1&0xf800)+(col2&0xf800))>>1)&0xf800) | \
-  ((((col1&0x07e0)+(col2&0x07e0))>>1)&0x07e0) | \
-  ((((col1&0x001f)+(col2&0x001f))>>1)&0x001f)
-
-#define GETBLENDED32_5050(col1, col2) \
-  ((((col1&0xff0000)+(col2&0xff0000))>>1)&0xff0000) | \
-  ((((col1&0x00ff00)+(col2&0x00ff00))>>1)&0x00ff00) | \
-  ((((col1&0x0000ff)+(col2&0x0000ff))>>1)&0x0000ff)
-
-#define GETBLENDED16_9406(col1, col2) \
-  ((((col1&0xf800)*15+(col2&0xf800))>>4)&0xf800) | \
-  ((((col1&0x07e0)*15+(col2&0x07e0))>>4)&0x07e0) | \
-  ((((col1&0x001f)*15+(col2&0x001f))>>4)&0x001f)
-
-#define GETBLENDED32_9406(col1, col2) \
-  ((((col1&0xff0000)*15+(col2&0xff0000))>>4)&0xff0000) | \
-  ((((col1&0x00ff00)*15+(col2&0x00ff00))>>4)&0x00ff00) | \
-  ((((col1&0x0000ff)*15+(col2&0x0000ff))>>4)&0x0000ff)
-
-#else
+#define filter_getFilteredForSpan15(depthmap, texU, texV) ( \
+  VID_PAL15( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0)]),  (unsigned int)(((texU)&0xffff)*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_PAL15( depthmap(source[ (((texU)>>16)&0x3f) | ((((texV)+FRACUNIT)>>10)&0xfc0)]),             (unsigned int)((0xffff-((texU)&0xffff))*((texV)&0xffff))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_PAL15( depthmap(source[ (((texU)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),                        (unsigned int)((0xffff-((texU)&0xffff))*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)) + \
+  VID_PAL15( depthmap(source[ ((((texU)+FRACUNIT)>>16)&0x3f) | (((texV)>>10)&0xfc0)]),             (unsigned int)(((texU)&0xffff)*(0xffff-((texV)&0xffff)))>>(32-VID_COLORWEIGHTBITS)))
 
 // do red and blue at once for slight speedup
+
+#define GETBLENDED15_5050(col1, col2) \
+  ((((col1&0x7c1f)+(col2&0x7c1f))>>1)&0x7c1f) | \
+  ((((col1&0x03e0)+(col2&0x03e0))>>1)&0x03e0)
 
 #define GETBLENDED16_5050(col1, col2) \
   ((((col1&0xf81f)+(col2&0xf81f))>>1)&0xf81f) | \
@@ -162,6 +154,10 @@ byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
   ((((col1&0xff00ff)+(col2&0xff00ff))>>1)&0xff00ff) | \
   ((((col1&0x00ff00)+(col2&0x00ff00))>>1)&0x00ff00)
 
+#define GETBLENDED15_9406(col1, col2) \
+  ((((col1&0x7c1f)*15+(col2&0x7c1f))>>4)&0x7c1f) | \
+  ((((col1&0x03e0)*15+(col2&0x03e0))>>4)&0x03e0)
+
 #define GETBLENDED16_9406(col1, col2) \
   ((((col1&0xf81f)*15+(col2&0xf81f))>>4)&0xf81f) | \
   ((((col1&0x07e0)*15+(col2&0x07e0))>>4)&0x07e0)
@@ -169,7 +165,5 @@ byte *filter_getScale2xQuadColors(byte e, byte b, byte f, byte h, byte d);
 #define GETBLENDED32_9406(col1, col2) \
   ((((col1&0xff00ff)*15+(col2&0xff00ff))>>4)&0xff00ff) | \
   ((((col1&0x00ff00)*15+(col2&0x00ff00))>>4)&0x00ff00)
-
-#endif
 
 #endif

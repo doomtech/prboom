@@ -606,7 +606,9 @@ void I_UpdateVideoMode(void)
 
   mode = default_videomode;
   if ((i=M_CheckParm("-vidmode")) && i<myargc-1) {
-    if (!stricmp(myargv[i+1],"16")) {
+    if (!stricmp(myargv[i+1],"15")) {
+      mode = VID_MODE15;
+    } else if (!stricmp(myargv[i+1],"16")) {
       mode = VID_MODE16;
     } else if (!stricmp(myargv[i+1],"32")) {
       mode = VID_MODE32;
