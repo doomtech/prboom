@@ -1502,6 +1502,9 @@ void G_LoadGame(int slot, boolean command)
     forced_loadgame = false;
     savegameslot = slot;
     demoplayback = false;
+    // Don't stay in netgame state if loading single player save
+    // while watching multiplayer demo
+    netgame = false;
   }
   command_loadgame = command;
   R_SmoothPlaying_Reset(NULL); // e6y
@@ -1658,12 +1661,14 @@ void G_DoLoadGame(void)
   basetic = gametic - *save_p++;
 
   // dearchive all the modifications
+  P_MapStart();
   P_UnArchivePlayers ();
   P_UnArchiveWorld ();
   P_UnArchiveThinkers ();
   P_UnArchiveSpecials ();
   P_UnArchiveRNG ();    // killough 1/18/98: load RNG information
   P_UnArchiveMap ();    // killough 1/22/98: load automap information
+  P_MapEnd();
   R_SmoothPlaying_Reset(NULL); // e6y
 
   if (*save_p != 0xe6)

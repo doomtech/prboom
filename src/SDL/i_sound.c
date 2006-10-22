@@ -144,39 +144,22 @@ static void stopchan(int i)
 //  (eight, usually) of internal channels.
 // Returns a handle.
 //
-static int addsfx(int sfxid, int channel)
+static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
 {
-    int   oldest = gametic;
-    int   oldestnum = 0;
-
   stopchan(channel);
 
-  // We will handle the new SFX.
-    // Set pointer to raw data.
-    {
-      int lump = S_sfx[sfxid].lumpnum;
-      size_t len = W_LumpLength(lump);
-      // e6y: Crash with zero-length sounds.
-      // Example wad: dakills (http://www.doomworld.com/idgames/index.php?id=2803)
-      // The entries DSBSPWLK, DSBSPACT, DSSWTCHN and DSSWTCHX are all zero-length sounds
-      if (len<=8) return -1;
-
-      /* Find padded length */
-    len -= 8;
-    channelinfo[channel].data = W_CacheLumpNum(lump);
-
-      /* Set pointer to end of raw data. */
-    channelinfo[channel].enddata = channelinfo[channel].data + len - 1;
-    channelinfo[channel].samplerate = (channelinfo[channel].data[3]<<8)+channelinfo[channel].data[2];
-    channelinfo[channel].data += 8; /* Skip header */
-    }
+  channelinfo[channel].data = data;
+  /* Set pointer to end of raw data. */
+  channelinfo[channel].enddata = channelinfo[channel].data + len - 1;
+  channelinfo[channel].samplerate = (channelinfo[channel].data[3]<<8)+channelinfo[channel].data[2];
+  channelinfo[channel].data += 8; /* Skip header */
 
   channelinfo[channel].stepremainder = 0;
-    // Should be gametic, I presume.
+  // Should be gametic, I presume.
   channelinfo[channel].starttime = gametic;
 
-    // Preserve sound SFX id,
-    //  e.g. for avoiding duplicates of chainsaw.
+  // Preserve sound SFX id,
+  //  e.g. for avoiding duplicates of chainsaw.
   channelinfo[channel].id = sfxid;
 
   return channel;
@@ -190,7 +173,7 @@ static void updateSoundParams(int handle, int volume, int seperation, int pitch)
     int         step = steptable[pitch];
 
 #ifdef RANGECHECK
-  if (handle>=MAX_CHANNELS)
+  if ((handle < 0) || (handle >= MAX_CHANNELS))
     I_Error("I_UpdateSoundParams: handle out of range");
 #endif
   // Set stepping
@@ -303,27 +286,45 @@ int I_GetSfxLumpNum(sfxinfo_t* sfx)
 //
 int I_StartSound(int id, int channel, int vol, int sep, int pitch, int priority)
 {
-  int handle;
+  const unsigned char* data;
+  int lump;
+  size_t len;
 
-  // UNUSED
-  priority = 0;
-
-    // Debug.
-    //fprintf( stderr, "starting sound %d", id );
-
-    SDL_LockAudio();
-  // Returns a handle (not used).
-  handle = addsfx(id,channel);
+  if ((channel < 0) || (channel >= MAX_CHANNELS))
 #ifdef RANGECHECK
-  if (handle>=MAX_CHANNELS)
     I_Error("I_StartSound: handle out of range");
+#else
+    return -1;
 #endif
-  updateSoundParams(handle, vol, sep, pitch);
-    SDL_UnlockAudio();
 
-    // fprintf( stderr, "/handle is %d\n", id );
+  lump = S_sfx[id].lumpnum;
 
-  return handle;
+  // We will handle the new SFX.
+  // Set pointer to raw data.
+  len = W_LumpLength(lump);
+
+  // e6y: Crash with zero-length sounds.
+  // Example wad: dakills (http://www.doomworld.com/idgames/index.php?id=2803)
+  // The entries DSBSPWLK, DSBSPACT, DSSWTCHN and DSSWTCHX are all zero-length sounds
+  if (len<=8) return -1;
+
+  /* Find padded length */
+  len -= 8;
+  // do the lump caching outside the SDL_LockAudio/SDL_UnlockAudio pair
+  // use locking which makes sure the sound data is in a malloced area and
+  // not in a memory mapped one
+  data = W_LockLumpNum(lump);
+
+  SDL_LockAudio();
+
+  // Returns a handle (not used).
+  addsfx(id, channel, data, len);
+  updateSoundParams(channel, vol, sep, pitch);
+
+  SDL_UnlockAudio();
+
+
+  return channel;
 }
 
 
@@ -331,7 +332,7 @@ int I_StartSound(int id, int channel, int vol, int sep, int pitch, int priority)
 void I_StopSound (int handle)
 {
 #ifdef RANGECHECK
-  if (handle>=MAX_CHANNELS)
+  if ((handle < 0) || (handle >= MAX_CHANNELS))
     I_Error("I_StopSound: handle out of range");
 #endif
   SDL_LockAudio();
@@ -343,10 +344,22 @@ void I_StopSound (int handle)
 boolean I_SoundIsPlaying(int handle)
 {
 #ifdef RANGECHECK
-  if (handle>=MAX_CHANNELS)
+  if ((handle < 0) || (handle >= MAX_CHANNELS))
     I_Error("I_SoundIsPlaying: handle out of range");
 #endif
   return channelinfo[handle].data != NULL;
+}
+
+
+boolean I_AnySoundStillPlaying(void)
+{
+  boolean result = false;
+  int i;
+
+  for (i=0; i<MAX_CHANNELS; i++)
+    result |= channelinfo[i].data != NULL;
+
+  return result;
 }
 
 
@@ -667,6 +680,8 @@ int I_RegisterSong(const void *data, size_t len)
   MIDI *mididata;
   FILE *midfile;
 
+  if ( len < 32 )
+    return 0; // the data should at least as big as the MUS header
   if ( music_tmp == NULL )
     return 0;
   midfile = fopen(music_tmp, "wb");

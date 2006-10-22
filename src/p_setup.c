@@ -397,9 +397,17 @@ static void P_LoadSegs (int lump)
       li->linedef = ldef;
       side = SHORT(ml->side);
       li->sidedef = &sides[ldef->sidenum[side]];
-      li->frontsector = sides[ldef->sidenum[side]].sector;
 
-      // killough 5/3/98: ignore 2s flag if second sidedef missing:
+      /* cph 2006/09/30 - our frontsector can be the second side of the
+       * linedef, so must check for NO_INDEX in case we are incorrectly
+       * referencing the back of a 1S line */
+      if (ldef->sidenum[side] != NO_INDEX)
+        li->frontsector = sides[ldef->sidenum[side]].sector;
+      else {
+        li->frontsector = 0;
+        lprintf(LO_WARN, "P_LoadSegs: front of seg %i has no sidedef\n", i);
+      }
+
       if (ldef->flags & ML_TWOSIDED && ldef->sidenum[side^1]!=NO_INDEX)
         li->backsector = sides[ldef->sidenum[side^1]].sector;
       else
@@ -684,7 +692,6 @@ static void P_LoadLineDefs (int lump)
           ld->bbox[BOXLEFT] = v2->x;
           ld->bbox[BOXRIGHT] = v1->x;
         }
-
       if (v1->y < v2->y)
         {
           ld->bbox[BOXBOTTOM] = v1->y;
@@ -696,9 +703,42 @@ static void P_LoadLineDefs (int lump)
           ld->bbox[BOXTOP] = v1->y;
         }
 
+      /* calculate sound origin of line to be its midpoint */
+      ld->soundorg.x = (ld->bbox[BOXLEFT] + ld->bbox[BOXRIGHT] ) / 2;
+      ld->soundorg.y = (ld->bbox[BOXTOP]  + ld->bbox[BOXBOTTOM]) / 2;
+
       ld->iLineID=i; // proff 04/05/2000: needed for OpenGL
       ld->sidenum[0] = SHORT(mld->sidenum[0]);
       ld->sidenum[1] = SHORT(mld->sidenum[1]);
+
+      { 
+        /* cph 2006/09/30 - fix sidedef errors right away.
+         * cph 2002/07/20 - these errors are fatal if not fixed, so apply them
+         * in compatibility mode - a desync is better than a crash! */
+        int j;
+        
+        for (j=0; j < 2; j++)
+        {
+          if (ld->sidenum[j] != NO_INDEX && ld->sidenum[j] >= numsides) {
+            ld->sidenum[j] = NO_INDEX;
+            lprintf(LO_WARN, "P_LoadLineDefs: linedef %d has out-of-range sidedef number\n",numlines-i-1);
+          }
+        }
+        
+        // killough 11/98: fix common wad errors (missing sidedefs):
+        
+        if (ld->sidenum[0] == NO_INDEX) {
+          ld->sidenum[0] = 0;  // Substitute dummy sidedef for missing right side
+          // cph - print a warning about the bug
+          lprintf(LO_WARN, "P_LoadLineDefs: linedef %d missing first sidedef\n",numlines-i-1);
+        }
+        
+        if ((ld->sidenum[1] == NO_INDEX) && (ld->flags & ML_TWOSIDED)) {
+          ld->flags &= ~ML_TWOSIDED;  // Clear 2s flag for missing left side
+          // cph - print a warning about the bug
+          lprintf(LO_WARN, "P_LoadLineDefs: linedef %d has two-sided flag set, but no second sidedef\n",numlines-i-1);
+        }
+      }
 
       // killough 4/4/98: support special sidedef interpretation below
       if (ld->sidenum[0] != NO_INDEX && ld->special)
@@ -717,33 +757,6 @@ static void P_LoadLineDefs2(int lump)
   register line_t *ld = lines;
   for (;i--;ld++)
     {
-      { // cph 2002/07/20 - these errors are fatal if not fixed, so apply them in compatibility mode - a desync is better than a crash!
-        int j;
-        
-        for (j=0; j < 2; j++)
-        {
-          if (ld->sidenum[j] != NO_INDEX && ld->sidenum[j] >= numsides) {
-            ld->sidenum[j] = NO_INDEX;
-            lprintf(LO_WARN, "P_LoadSegs: linedef %d has out-of-range sidedef number\n",numlines-i-1);
-          }
-        }
-        
-        // killough 11/98: fix common wad errors (missing sidedefs):
-        
-        if (ld->sidenum[0] == NO_INDEX) {
-          ld->sidenum[0] = 0;  // Substitute dummy sidedef for missing right side
-          // cph - print a warning about the bug
-          lprintf(LO_WARN, "P_LoadSegs: linedef %d missing first sidedef\n",numlines-i-1);
-        }
-        
-        if ((ld->sidenum[1] == NO_INDEX) && (ld->flags & ML_TWOSIDED)) {
-          ld->flags &= ~ML_TWOSIDED;  // Clear 2s flag for missing left side
-          // cph - print a warning about the bug
-          lprintf(LO_WARN, "P_LoadSegs: linedef %d has two-sided flag set, but no second sidedef\n",numlines-i-1);
-        }
-        
-      }
-
       ld->frontsector = sides[ld->sidenum[0]].sector; //e6y: Can't be NO_INDEX here
       ld->backsector  = ld->sidenum[1]!=NO_INDEX ? sides[ld->sidenum[1]].sector : 0;
       switch (ld->special)
@@ -792,11 +805,18 @@ static void P_LoadSideDefs2(int lump)
       sd->textureoffset = SHORT(msd->textureoffset)<<FRACBITS;
       sd->rowoffset = SHORT(msd->rowoffset)<<FRACBITS;
 
+      { /* cph 2006/09/30 - catch out-of-range sector numbers; use sector 0 instead */
+        unsigned short sector_num = SHORT(msd->sector);
+        if (sector_num >= numsectors) {
+          lprintf(LO_WARN,"P_LoadSideDefs2: sidedef %i has out-of-range sector num %u\n", i, sector_num);
+          sector_num = 0;
+        }
+        sd->sector = sec = &sectors[sector_num];
+      }
+
       // killough 4/4/98: allow sidedef texture names to be overloaded
       // killough 4/11/98: refined to allow colormaps to work as wall
       // textures if invalid as colormaps but valid as textures.
-
-      sd->sector = sec = &sectors[SHORT(msd->sector)];
       switch (sd->special)
         {
         case 242:                       // variable colormap via 242 linedef
@@ -1200,6 +1220,70 @@ static void P_LoadBlockMap (int lump)
 }
 
 //
+// P_LoadReject - load the reject table, padding it if it is too short
+// totallines must be the number returned by P_GroupLines()
+// an underflow will be padded with zeroes, or a doom.exe z_zone header
+// 
+// this function incorporates e6y's RejectOverrunAddInt code:
+// e6y: REJECT overrun emulation code
+// It's emulated successfully if the size of overflow no more than 16 bytes.
+// No more desync on teeth-32.wad\teeth-32.lmp.
+// http://www.doomworld.com/vb/showthread.php?s=&threadid=35214
+
+static void P_LoadReject(int lumpnum, int totallines)
+{
+  unsigned int length, required;
+  byte *newreject;
+
+  // dump any old cached reject lump, then cache the new one
+  if (rejectlump != -1)
+    W_UnlockLumpNum(rejectlump);
+  rejectlump = lumpnum + ML_REJECT;
+  rejectmatrix = W_CacheLumpNum(rejectlump);
+
+  required = (numsectors * numsectors + 7) / 8;
+  length = W_LumpLength(rejectlump);
+
+  if (length >= required)
+    return; // nothing to do
+
+  // allocate a new block and copy the reject table into it; zero the rest
+  // PU_LEVEL => will be freed on level exit
+  newreject = Z_Malloc(required, PU_LEVEL, NULL);
+  rejectmatrix = (const byte *)memmove(newreject, rejectmatrix, length);
+  memset(newreject + length, 0, required - length);
+  // unlock the original lump, it is no longer needed
+  W_UnlockLumpNum(rejectlump);
+  rejectlump = -1;
+
+  if (demo_compatibility)
+  {
+    // merged in RejectOverrunAddInt(), and the 4 calls to it, here
+    unsigned int rejectpad[4] = {
+      0,        // size, will be filled in using totallines
+      0,        // part of the header of a doom.exe z_zone block
+      50,       // DOOM_CONST_PU_LEVEL
+      0x1d4a11  // DOOM_CONST_ZONEID
+    };
+    unsigned int i, pad = 0, *src = rejectpad;
+    byte *dest = newreject + length;
+
+    rejectpad[0] = ((totallines*4+3)&~3)+24; // doom.exe zone header size
+
+    // copy at most 16 bytes from rejectpad
+    // emulating a 32-bit, little-endian architecture (can't memmove)
+    for (i = 0; i < required - length && i < 16; i++) { // 16 hard-coded
+      if (!(i&3)) // get the next 4 bytes to copy when i=0,4,8,12
+        pad = *src++;
+      *dest++ = pad & 0xff; // store lowest-significant byte
+      pad >>= 8; // rotate the next byte down
+    }
+  }
+  lprintf(LO_WARN, "P_LoadReject: REJECT too short (%u<%u) - padded\n",
+          length, required);
+}
+
+//
 // P_GroupLines
 // Builds sector line lists and subsector sector numbers.
 // Finds block bounding boxes for sectors.
@@ -1219,27 +1303,8 @@ static void P_AddLineToSector(line_t* li, sector_t* sector)
   M_AddToBox (bbox, li->v2->x, li->v2->y);
 }
 
-// e6y: REJECT overrun emulation code
-// It's emulated successfully if the size of overflow no more than 16 bytes.
-// No more desync on teeth-32.wad\teeth-32.lmp.
-// http://www.doomworld.com/vb/showthread.php?s=&threadid=35214
-int rjreq, rjlen;
-static void RejectOverrunAddInt(int k)
-{
-  int i = 0;
-
-  if (demo_compatibility)
-  {
-    while (rjlen < rjreq)
-    {
-      ((byte*)rejectmatrix)[rjlen++] = (k & 0x000000ff);
-      k >>= 8;
-      if ((++i)==4) break;
-    }
-  }
-}
-
-static void P_GroupLines (void)
+// modified to return totallines (needed by P_LoadReject)
+static int P_GroupLines (void)
 {
   register line_t *li;
   register sector_t *sector;
@@ -1278,16 +1343,7 @@ static void P_GroupLines (void)
     line_t **linebuffer = Z_Malloc(total*sizeof(line_t *), PU_LEVEL, 0);
 
     // e6y: REJECT overrun emulation code
-    // It's emulated successfully if the size of overflow no more than 16 bytes.
-    // No more desync on teeth-32.wad\teeth-32.lmp.
-    // http://www.doomworld.com/vb/showthread.php?s=&threadid=35214
-    if (demo_compatibility)
-    {
-      RejectOverrunAddInt(((total*4+3)&~3)+24);
-      RejectOverrunAddInt(0);
-      RejectOverrunAddInt(50);//DOOM_CONST_PU_LEVEL
-      RejectOverrunAddInt(0x1d4a11);//DOOM_CONST_ZONEID
-    }
+    // moved to P_LoadReject
 
     for (i=0, sector = sectors; i<numsectors; i++, sector++)
     {
@@ -1334,6 +1390,7 @@ static void P_GroupLines (void)
     sector->blockbox[BOXLEFT]=block;
   }
 
+  return total; // this value is needed by the reject overrun emulation code
 }
 
 //
@@ -1528,25 +1585,9 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
 
 #endif
 
-  if (rejectlump != -1)
-    W_UnlockLumpNum(rejectlump);
-  /* CHECKME this code is not in 2.3, but I can't find the place where it was removed
-
-  rejectlump = lumpnum+ML_REJECT;
-  {
-    // e6y: Needed for REJECT overrun emulation
-    rjlen = W_LumpLength(rejectlump);
-    // e6y: Needed for REJECT overrun emulation
-    rjreq = (numsectors*numsectors+7)/8;
-    if (rjlen < rjreq) {
-      lprintf(LO_WARN,"P_SetupLevel: REJECT too short (%d<%d) - padded\n",rjlen,rjreq);
-      rejectmatrix = W_CacheLumpNumPadded(rejectlump,rjreq,0xff);
-    } else {
-      rejectmatrix = W_CacheLumpNum(rejectlump);
-    }
-  }*/
-  rejectmatrix = W_CacheLumpNum(rejectlump = lumpnum+ML_REJECT);
-  P_GroupLines();
+  // reject loading and underflow padding separated out into new function
+  // P_GroupLines modified to return a number the underflow padding needs
+  P_LoadReject(lumpnum, P_GroupLines());
 
   // e6y
   // Correction of desync on dv04-423.lmp/dv.wad
