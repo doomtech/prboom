@@ -597,6 +597,24 @@ void I_InitGraphics(void)
   }
 }
 
+int I_GetModeFromString(const char *modestr)
+{
+  video_mode_t mode;
+
+  if (!stricmp(modestr,"15")) {
+    mode = VID_MODE15;
+  } else if (!stricmp(modestr,"16")) {
+    mode = VID_MODE16;
+  } else if (!stricmp(modestr,"32")) {
+    mode = VID_MODE32;
+  } else if (!stricmp(modestr,"gl")) {
+    mode = VID_MODEGL;
+  } else {
+    mode = VID_MODE8;
+  }
+  return mode;
+}
+
 void I_UpdateVideoMode(void)
 {
   int init_flags;
@@ -605,20 +623,11 @@ void I_UpdateVideoMode(void)
 
   lprintf(LO_INFO, "I_UpdateVideoMode: %dx%d (%s)\n", SCREENWIDTH, SCREENHEIGHT, desired_fullscreen ? "fullscreen" : "nofullscreen");
 
-  mode = default_videomode;
+  mode = I_GetModeFromString(default_videomode);
   if ((i=M_CheckParm("-vidmode")) && i<myargc-1) {
-    if (!stricmp(myargv[i+1],"15")) {
-      mode = VID_MODE15;
-    } else if (!stricmp(myargv[i+1],"16")) {
-      mode = VID_MODE16;
-    } else if (!stricmp(myargv[i+1],"32")) {
-      mode = VID_MODE32;
-    } else if (!stricmp(myargv[i+1],"gl")) {
-      mode = VID_MODEGL;
-    } else {
-      mode = VID_MODE8;
-    }
+    mode = I_GetModeFromString(myargv[i+1]);
   }
+
   V_InitMode(mode);
   V_DestroyUnusedTrueColorPalettes();
   V_FreeScreens();

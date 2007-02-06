@@ -120,7 +120,7 @@ typedef enum {
   VID_MODEMAX
 } video_mode_t;
 
-extern video_mode_t default_videomode;
+extern const char *default_videomode;
 
 void V_InitMode(video_mode_t mode);
 
