@@ -1,6 +1,6 @@
 /**/
 #define PACKAGE "prboom"
-#define VERSION "2.4.6"
+#define VERSION "2.4.8"
 
 #ifdef DEBUG
 
@@ -39,7 +39,6 @@
 
 #endif // DEBUG
 
-#define DOGS 1
 #define MONITOR_VISIBILITY 1
 /*#define DISABLE_LUMP_CACHING*/
 

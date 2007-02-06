@@ -1533,14 +1533,7 @@ const char * comp_lev_str[MAX_COMPATIBILITY_LEVEL] =
   "MBF", "PrBoom 2.03beta", "PrBoom v2.1.0-2.1.1", "PrBoom v2.1.2-v2.2.6",
   "PrBoom v2.3.x", "PrBoom 2.4.0", "Current PrBoom"  };
 
-static byte comp_options_by_version[] =
-{ 0,0,0,0,0, /* Original Doom's don't have comp[] */
-  0,0,0,0,0,0, /* Nor did DosDoom, TAS, Boom (x3), LxDoom */
-  19,19, /* MBF and early PrBoom had 19 */
-  21,22, /* PrBoom v2.1-v2.2 have 21 */
-  23,23,23 /* PrBoom v2.3 has 23 and counting... */
-};
-// FIXME? - prboom 2.3 - r646 - has 24
+// comp_options_by_version removed - see G_Compatibility
 
 static byte map_old_comp_levels[] =
 { 0, 1, 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
@@ -1906,59 +1899,76 @@ void G_DeferedInitNew(skill_t skill, int episode, int map)
  *   comp[i] = compatibility;
  *
  * Instead, we have a lookup table showing at what version a fix was
- *  introduced.
+ *  introduced, and made optional (replaces comp_options_by_version)
  */
 
 void G_Compatibility(void)
 {
-  static const complevel_t fix_levels[COMP_NUM] = {
-    mbf_compatibility, /* comp_telefrag - monsters used to telefrag only
-      * on MAP30, now they do it for spawners only */
-    mbf_compatibility, /* comp_dropoff - MBF encourages things to drop
-      * off of overhangs */
-    boom_compatibility,/* comp_vile - original Doom archville bugs like
-      * ghosts */
-    boom_compatibility,/* comp_pain - original Doom limits Pain Elements
-      * from spawning too many skulls */
-    boom_compatibility,/* comp_skull - original Doom let skulls be spit
-      * through walls by Pain Elementals */
-    boom_compatibility,/* comp_blazing - original Doom duplicated
-      * blazing door sound */
+  static const struct {
+    complevel_t fix; // level at which fix/change was introduced
+    complevel_t opt; // level at which fix/change was made optional
+  } levels[] = {
+    // comp_telefrag - monsters used to telefrag only on MAP30, now they do it for spawners only
+    { mbf_compatibility, mbf_compatibility },
+    // comp_dropoff - MBF encourages things to drop off of overhangs
+    { mbf_compatibility, mbf_compatibility },
+    // comp_vile - original Doom archville bugs like ghosts
+    { boom_compatibility, mbf_compatibility },
+    // comp_pain - original Doom limits Pain Elementals from spawning too many skulls
+    { boom_compatibility, mbf_compatibility },
+    // comp_skull - original Doom let skulls be spit through walls by Pain Elementals
+    { boom_compatibility, mbf_compatibility },
+    // comp_blazing - original Doom duplicated blazing door sound
+    { boom_compatibility, mbf_compatibility },
     // e6y: "Tagged doors don't trigger special lighting" handled wrong
     // http://sourceforge.net/tracker/index.php?func=detail&aid=1411400&group_id=148658&atid=772943
-    boom_compatibility, /* comp_doorlight - MBF made door lighting changes
-      * more gradual */
-    boom_compatibility,/* comp_model - improvements to the game physics */
-    boom_compatibility,/* comp_god - fixes to God mode */
-    mbf_compatibility, /* comp_falloff - MBF encourages things to drop
-      * off of overhangs */
-    boom_compatibility_compatibility,
-                       /* comp_floors - fixes for moving floors bugs */
-    boom_compatibility,/* comp_skymap */
-    mbf_compatibility, /* comp_pursuit - MBF AI change, limited pursuit? */
-    boom_compatibility,/* comp_doorstuck - monsters stuck in doors fix */
-    mbf_compatibility, /* comp_staylift - MBF AI change, monsters try
-      * to stay on lifts */
-    lxdoom_1_compatibility, /* comp_zombie - prevent dead players
-           * triggering stuff */
-    boom_compatibility_compatibility,  /* comp_stairs - see p_floor.c */
-    mbf_compatibility, /* comp_infcheat - FIXME */
-    boom_compatibility,/* comp_zerotags - allow zero tags in wads */
-    lxdoom_1_compatibility, /* comp_moveblock - enables keygrab and
-           * mancubi shots going thru walls */
-    prboom_2_compatibility, /* comp_respawn - objects which aren't on the map
-                             * at game start respawn at (0,0) */
-    boom_compatibility_compatibility,  /* comp_sound - see s_sound.c */
-    ultdoom_compatibility, /* comp_666 - enables tag 666 in non-ExM8 levels */
-    prboom_4_compatibility, /* comp_soul - enables lost souls bouncing (see P_ZMovement */
-    doom_1666_compatibility, /* comp_maskedanim - 2s mid textures don't animate */
+    // comp_doorlight - MBF made door lighting changes more gradual
+    { boom_compatibility, mbf_compatibility },
+    // comp_model - improvements to the game physics
+    { boom_compatibility, mbf_compatibility },
+    // comp_god - fixes to God mode
+    { boom_compatibility, mbf_compatibility },
+    // comp_falloff - MBF encourages things to drop off of overhangs
+    { mbf_compatibility, mbf_compatibility },
+    // comp_floors - fixes for moving floors bugs
+    { boom_compatibility_compatibility, mbf_compatibility },
+    // comp_skymap
+    { boom_compatibility, mbf_compatibility },
+    // comp_pursuit - MBF AI change, limited pursuit?
+    { mbf_compatibility, mbf_compatibility },
+    // comp_doorstuck - monsters stuck in doors fix
+    { boom_compatibility, mbf_compatibility },
+    // comp_staylift - MBF AI change, monsters try to stay on lifts
+    { mbf_compatibility, mbf_compatibility },
+    // comp_zombie - prevent dead players triggering stuff
+    { lxdoom_1_compatibility, mbf_compatibility },
+    // comp_stairs - see p_floor.c
+    { boom_compatibility_compatibility, mbf_compatibility },
+    // comp_infcheat - FIXME
+    { mbf_compatibility, mbf_compatibility },
+    // comp_zerotags - allow zero tags in wads */
+    { boom_compatibility, mbf_compatibility },
+    // comp_moveblock - enables keygrab and mancubi shots going thru walls
+    { lxdoom_1_compatibility, prboom_2_compatibility },
+    // comp_respawn - objects which aren't on the map at game start respawn at (0,0)
+    { prboom_2_compatibility, prboom_2_compatibility },
+    // comp_sound - see s_sound.c
+    { boom_compatibility_compatibility, prboom_3_compatibility },
+    // comp_666 - enables tag 666 in non-ExM8 levels
+    { ultdoom_compatibility, prboom_4_compatibility },
+    // comp_soul - enables lost souls bouncing (see P_ZMovement)
+    { prboom_4_compatibility, prboom_4_compatibility },
+    // comp_maskedanim - 2s mid textures don't animate
+    { doom_1666_compatibility, prboom_4_compatibility },
   };
   int i;
-  if (sizeof(comp_options_by_version) != MAX_COMPATIBILITY_LEVEL)
+
+  if (sizeof(levels)/sizeof(*levels) != COMP_NUM)
     I_Error("G_Compatibility: consistency error");
-  for (i=comp_options_by_version[compatibility_level]; i<COMP_NUM; i++)
-    comp[i] = compatibility_level < fix_levels[i];
-  for (; i<COMP_TOTAL; i++) comp[i] = 1;
+
+  for (i = 0; i < sizeof(levels)/sizeof(*levels); i++)
+    if (compatibility_level < levels[i].opt)
+      comp[i] = (compatibility_level < levels[i].fix);
 
   if (!mbf_features) {
     monster_infighting = 1;
@@ -1967,16 +1977,13 @@ void G_Compatibility(void)
     monster_friction = 0;
     help_friends = 0;
 
-#ifdef DOGS
     dogs = 0;
     dog_jumping = 0;
-#endif
 
     monkeys = 0;
   }
 }
 
-#ifdef DOGS
 /* killough 7/19/98: Marine's best friend :) */
 static int G_GetHelpers(void)
 {
@@ -1986,7 +1993,6 @@ static int G_GetHelpers(void)
     j = M_CheckParm ("-dogs");
   return j ? j+1 < myargc ? atoi(myargv[j+1]) : 1 : default_dogs;
 }
-#endif
 
 // killough 3/1/98: function to reload all the default parameter
 // settings before a new game begins
@@ -2010,10 +2016,8 @@ void G_ReloadDefaults(void)
 
   monster_infighting = default_monster_infighting; // killough 7/19/98
 
-#ifdef DOGS
   dogs = netgame ? 0 : G_GetHelpers();             // killough 7/19/98
   dog_jumping = default_dog_jumping;
-#endif
 
   distfriend = default_distfriend;                 // killough 8/8/98
 
@@ -2332,11 +2336,7 @@ byte *G_WriteOptions(byte *demo_p)
 
   *demo_p++ = monster_infighting;   // killough 7/19/98
 
-#ifdef DOGS
   *demo_p++ = dogs;                 // killough 7/19/98
-#else
-  *demo_p++ = 0;
-#endif
 
   *demo_p++ = 0;
   *demo_p++ = 0;
@@ -2352,11 +2352,7 @@ byte *G_WriteOptions(byte *demo_p)
 
   *demo_p++ = help_friends;             // killough 9/9/98
 
-#ifdef DOGS
   *demo_p++ = dog_jumping;
-#else
-  *demo_p++ = 0;
-#endif
 
   *demo_p++ = monkeys;
 
@@ -2426,11 +2422,7 @@ const byte *G_ReadOptions(const byte *demo_p)
     {
       monster_infighting = *demo_p++;   // killough 7/19/98
 
-#ifdef DOGS
       dogs = *demo_p++;                 // killough 7/19/98
-#else
-      demo_p++;
-#endif
 
       demo_p += 2;
 
@@ -2445,11 +2437,7 @@ const byte *G_ReadOptions(const byte *demo_p)
 
       help_friends = *demo_p++;          // killough 9/9/98
 
-#ifdef DOGS
       dog_jumping = *demo_p++;           // killough 10/98
-#else
-      demo_p++;
-#endif
 
       monkeys = *demo_p++;
 
@@ -2645,10 +2633,8 @@ static const byte* G_ReadDemoHeader(const byte *demo_p)
 
       monster_infighting = 1;           // killough 7/19/98
 
-#ifdef DOGS
       dogs = 0;                         // killough 7/19/98
       dog_jumping = 0;                  // killough 10/98
-#endif
 
       monster_backing = 0;              // killough 9/8/98
 

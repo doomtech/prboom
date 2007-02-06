@@ -55,6 +55,18 @@
 #include "i_system.h"
 #include "m_swap.h"
 
+#ifndef HAVE_NET
+
+int main(void)
+{
+  fprintf(stderr,
+      PACKAGE "-server: You must compile with networking enabled!\n");
+  exit(1);
+  return 1;
+}
+
+#else
+
 #ifndef HAVE_GETOPT
 /* The following code for getopt is from the libc-source of FreeBSD,
  * it might be changed a little bit.
@@ -409,7 +421,7 @@ int main(int argc, char** argv)
   setupinfo.ticdup = ticdup; setupinfo.extratic = xtratics;
   { /* Random number seed
      * Mirrors the corresponding code in G_ReadOptions */
-    int rngseed = time(NULL);
+    int rngseed = (int)time(NULL);
     setupinfo.game_options[13] = rngseed & 0xff;
     rngseed >>= 8;
     setupinfo.game_options[12] = rngseed & 0xff;
@@ -730,3 +742,5 @@ int main(int argc, char** argv)
     }
   }
 }
+
+#endif // HAVE_NET
