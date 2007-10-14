@@ -604,6 +604,7 @@ static void P_NightmareRespawn(mobj_t* mobj)
   subsector_t* ss;
   mobj_t*      mo;
   mapthing_t*  mthing;
+  boolean      checkpos;
 
   x = mobj->spawnpoint.x << FRACBITS;
   y = mobj->spawnpoint.y << FRACBITS;
@@ -629,7 +630,17 @@ static void P_NightmareRespawn(mobj_t* mobj)
 
   // something is occupying its position?
 
-  if (!P_CheckPosition (mobj, x, y) )
+  /* Pretend corpse is solid for a moment, otherwise P_CheckPosition will
+   * allow the respawn and monsters will become stuck together. */
+  if (compatibility_level >= prboom_7_compatibility)
+    mobj->flags |= MF_SOLID;
+
+  checkpos = P_CheckPosition(mobj, x, y);
+
+  if (compatibility_level >= prboom_7_compatibility)
+    mobj->flags &= ~MF_SOLID;
+
+  if (!checkpos)
     return; // no respwan
 
   // spawn a teleport fog at old spot
