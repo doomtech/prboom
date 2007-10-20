@@ -2517,6 +2517,10 @@ void G_BeginRecording (void)
 				     v = 214; 
 				     longtics = 1;
 				     break;
+        case prboom_7_compatibility:
+				     v = 215; 
+				     longtics = 1;
+				     break;
       }
       *demo_p++ = v;
     }
@@ -2757,6 +2761,11 @@ static const byte* G_ReadDemoHeader(const byte *demo_p)
 	break;
       case 214:
 	compatibility_level = prboom_6_compatibility;
+        longtics = 1;
+	demo_p++;
+	break;
+      case 215:
+	compatibility_level = prboom_7_compatibility;
         longtics = 1;
 	demo_p++;
 	break;
