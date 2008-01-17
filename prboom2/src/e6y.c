@@ -664,6 +664,10 @@ void M_ChangeAllowBoomColormaps(void)
     gl_texture_usehires_default = false;
     gl_patch_usehires_default = false;
   }
+  else
+  {
+    gl_shaders_default = false;
+  }
 }
 
 void M_ChangeTextureUseHires(void)
@@ -677,7 +681,10 @@ void M_ChangeTextureUseHires(void)
     gl_patch_usehires = gl_patch_usehires_default;
 
   if (gl_texture_usehires_default || gl_patch_usehires_default)
+  {
     gl_boom_colormaps_default = false;
+    gl_shaders_default = false;
+  }
 }
 
 void M_ChangeLightMode(void)
@@ -692,7 +699,34 @@ void M_ChangeLightMode(void)
     gld_SetGammaRamp(useglgamma);
   }
 }
-#endif
+
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+void M_ChangeAllowShaders(void)
+{
+  if (gl_shaders == -1)
+  {
+    gl_shaders = gl_shaders_default;
+    AllShadersAreOk = gl_shaders_default;
+  }
+
+  if (gl_shaders_default)
+  {
+    gl_texture_usehires_default = false;
+    gl_patch_usehires_default = false;
+    gl_boom_colormaps_default = true;
+    gl_lightmode = gl_lightmode_glboom;
+    M_ChangeLightMode();
+
+    //FIXME!!!
+    movement_mouselook = false;
+    M_ChangeMouseLook();
+    render_fov = FOV90;
+    M_ChangeFOV();
+  }
+}
+#endif // USE_ARB_FRAGMENT_PROGRAM
+
+#endif // GL_DOOM
 
 void M_Mouse(int choice, int *sens);
 void M_MouseMLook(int choice)

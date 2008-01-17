@@ -1,0 +1,58 @@
+//
+// Fragment shader for doom-like lighting on flats
+//
+// Copyright (c) 2007 by Andrey Budko
+//
+// See gl_shader.c for license information
+//
+
+uniform sampler2D tex;
+//uniform sampler2D texDetail;
+uniform sampler2D texColormap;
+uniform sampler2D texData;
+
+uniform vec2 texSizes;
+uniform vec2 texelSizes;
+uniform vec2 halfTexelSizes;
+
+uniform float rgbaScale;
+uniform float rgbaBias;
+
+uniform float cmFixed;
+uniform float cmMinScaled;
+uniform float cmMaxScaled;
+
+uniform float Param1;
+uniform float Param2;
+uniform float Param3;
+uniform float Param4;
+uniform float Param5;
+uniform float Param6;
+
+float cm;
+vec2 texCoord;
+vec4 final;
+
+void DoFiltering();
+
+void main()
+{
+  texCoord = gl_TexCoord[0].st - halfTexelSizes;
+
+  float dx;
+  float fy;
+  float ww;
+  if (cmFixed != -1.0)
+  {
+    cm = cmFixed;
+  }
+  else
+  {
+    dx = Param1 + clamp(Param3 / abs(gl_FragCoord.y * Param4 - Param2), 0.0, 127.0 / 2048.0);
+    cm = (texture2D(texData, vec2(dx, 0.75)).r) * Param5;
+  }
+
+  DoFiltering();
+
+  gl_FragColor = vec4(final.rgb, 1.0) * gl_Color;
+}

@@ -822,6 +822,10 @@ default_t defaults[] =
    def_bool,ss_stat},
   {"gl_render_precise",{(int*)&gl_render_precise},{gl_render_precise_quality},
    gl_render_precise_speed, gl_render_precise_quality, def_int,ss_none},
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+  {"gl_shaders", {&gl_shaders_default},  {0},0,1,
+   def_bool,ss_stat},
+#endif
   {"gl_boom_colormaps", {&gl_boom_colormaps_default},  {1},0,1,
    def_bool,ss_stat},
   {"gl_texture_usehires", {&gl_texture_usehires_default},  {0},0,1,

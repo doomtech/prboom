@@ -254,6 +254,9 @@ void M_ChangeSpriteClip(void);
 void M_ChangeAllowBoomColormaps(void);
 void M_ChangeTextureUseHires(void);
 void M_ChangeLightMode(void);
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+void M_ChangeAllowShaders(void);
+#endif //USE_ARB_FRAGMENT_PROGRAM
 #endif
 void M_ChangeSpeed(void);
 void M_ChangeScreenMultipleFactor(void);

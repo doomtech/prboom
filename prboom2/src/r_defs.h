@@ -274,6 +274,9 @@ typedef struct
   // backsector is NULL for one sided lines
 
   sector_t *frontsector, *backsector;
+
+  fixed_t ScreenStart, ScreenStop;
+  int rw_angle1;
 } seg_t;
 
 

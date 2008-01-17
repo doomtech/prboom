@@ -458,7 +458,7 @@ void gld_AddPatchToTexture(GLTexture *gltexture, unsigned char *buffer, const rp
   W_UnlockLumpName("PLAYPAL");
 }
 
-static void gld_AddFlatToTexture(GLTexture *gltexture, unsigned char *buffer, const unsigned char *flat, int paletted)
+void gld_AddFlatToTexture(GLTexture *gltexture, unsigned char *buffer, const unsigned char *flat, int paletted)
 {
   int x,y,pos;
   const unsigned char *playpal;
@@ -585,6 +585,11 @@ void gld_BindTexture(GLTexture *gltexture)
   int i;
   unsigned char *buffer;
   int *glTexID;
+
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+  if (glsl_BindTexture(gltexture, GLDT_TEXTURE))
+    return;
+#endif
 
   if (gltexture==last_gltexture && boom_cm==last_boom_cm && frame_fixedcolormap==last_fixedcolormap)
     return;
@@ -764,6 +769,11 @@ void gld_BindPatch(GLTexture *gltexture, int cm)
   unsigned char *buffer;
   int *glTexID;
 
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+  if (glsl_BindTexture(gltexture, GLDT_PATCH))
+    return;
+#endif
+
   cm = ((gltexture->flags & GLTEXTURE_HIRES) ? CR_DEFAULT : cm);
 
   if ((gltexture==last_gltexture) && (cm==last_cm) && (boom_cm==last_boom_cm) && (frame_fixedcolormap==last_fixedcolormap))
@@ -935,6 +945,11 @@ void gld_BindFlat(GLTexture *gltexture)
   unsigned char *buffer;
   int *glTexID;
 
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+  if (glsl_BindTexture(gltexture, GLDT_FLAT))
+    return;
+#endif
+
   if (gltexture==last_gltexture && boom_cm==last_boom_cm && frame_fixedcolormap==last_fixedcolormap)
     return;
   last_gltexture=gltexture;
@@ -1059,6 +1074,8 @@ static void gld_CleanTexItems(int count, GLTexture ***items)
   {
     if ((*items)[i])
     {
+      glDeleteTextures(1,&((*items)[i]->glShaderTexID));
+      (*items)[i]->glShaderTexID = 0;
       if (gl_boom_colormaps)
       {
         int cm, n;
@@ -1117,6 +1134,10 @@ void gld_Precache(void)
     size_t size = numflats > numsprites  ? numflats : numsprites;
     hitlist = Z_Malloc((size_t)numtextures > size ? numtextures : size,PU_LEVEL,0);
   }
+
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+  glsl_SetEnable(1);
+#endif
 
   // Precache flats.
 

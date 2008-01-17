@@ -385,7 +385,6 @@ static void R_AddLine (seg_t *line)
         gld_clipper_SafeAddClipRange(angle2, angle1);
       }
     }
-    
     if (ds_p == drawsegs+maxdrawsegs)   // killough 1/98 -- fix 2s line HOM
     {
       unsigned pos = ds_p - drawsegs; // jff 8/9/98 fix from ZDOOM1.14a
@@ -400,6 +399,34 @@ static void R_AddLine (seg_t *line)
     
     // proff 11/99: the rest of the calculations is not needed for OpenGL
     ds_p++->curline = curline;
+
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+    if (AllShadersAreOk)
+    {
+      curline->rw_angle1 = angle1;
+
+      angle1 -= viewangle;
+      angle2 -= viewangle;
+
+      tspan = angle1 + clipangle;
+      if (tspan > 2*clipangle)
+      {
+        tspan -= 2*clipangle;
+        angle1 = clipangle;
+      }
+
+      tspan = clipangle - angle2;
+      if (tspan > 2*clipangle)
+      {
+        tspan -= 2*clipangle;
+        angle2 = 0-clipangle;
+      }
+
+      curline->ScreenStart = viewangletox[(angle1+ANG90)>>ANGLETOFINESHIFT];
+      curline->ScreenStop = viewangletox[(angle2+ANG90)>>ANGLETOFINESHIFT];
+    }
+#endif // USE_ARB_FRAGMENT_PROGRAM
+
     gld_AddWall(curline);
 
     return;

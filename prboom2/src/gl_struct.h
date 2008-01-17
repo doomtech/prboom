@@ -54,6 +54,7 @@ extern boolean gl_arb_texture_compression;
 extern boolean gl_ext_framebuffer_object;
 extern boolean gl_ext_blend_color;
 extern int render_canusedetail;
+
 void gld_InitVertexData();
 void gld_CleanVertexData();
 void gld_UpdateSplitData(sector_t *sector);
@@ -108,5 +109,13 @@ boolean gld_clipper_SafeCheckRange(angle_t startAngle, angle_t endAngle);
 void gld_clipper_SafeAddClipRange(angle_t startangle, angle_t endangle);
 void gld_clipper_Clear(void);
 angle_t gld_FrustumAngle(void);
+
+//shaders
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+extern int gl_shaders;
+extern int gl_shaders_default;
+extern int AllShadersAreOk;
+void gld_CreateColormapsTextures(void);
+#endif
 
 #endif // _GL_STRUCT_H

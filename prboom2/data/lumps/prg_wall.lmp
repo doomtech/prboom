@@ -1,0 +1,55 @@
+//
+// Fragment shader for doom-like lighting on walls
+//
+// Copyright (c) 2007 by Andrey Budko
+//
+// See gl_shader.c for license information
+//
+
+uniform sampler2D tex;
+//uniform sampler2D texDetail;
+uniform sampler2D texColormap;
+//uniform sampler2D texData;
+
+uniform vec2 texSizes;
+uniform vec2 texelSizes;
+uniform vec2 halfTexelSizes;
+
+uniform float rgbaScale;
+uniform float rgbaBias;
+
+uniform float cmFixed;
+uniform float cmMinScaled;
+uniform float cmMaxScaled;
+
+uniform float Param1;
+uniform float Param2;
+
+float cm;
+vec2 texCoord;
+vec4 final;
+
+void DoFiltering();
+
+void main()
+{
+  texCoord = gl_TexCoord[0].st - halfTexelSizes;
+
+  if (cmFixed != -1.0)
+  {
+    cm = cmFixed;
+  }
+  else
+  {
+    cm = clamp(Param2 - gl_FragCoord.x * Param1, cmMinScaled, cmMaxScaled);
+  }
+
+  DoFiltering();
+
+  gl_FragColor = final * gl_Color;
+
+//  vec4 texel_detail = texture2D(texDetail, gl_TexCoord[0].st*(texSizes/vec2(18.0, 18.0)));
+//  texel_detail = texel_detail * vec4(Param5, Param5, Param5, 1.0);
+//  vec4 texel_detail = texture2D(texDetail, gl_TexCoord[1].st) * vec4(Param5, Param5, Param5, 1.0);
+//  gl_FragColor = gl_FragColor * texel_detail;// * vec4(2.0,2.0,2.0,2.0);
+}

@@ -632,6 +632,20 @@ static void R_ProjectSprite (mobj_t* thing, int lightlevel)
     vis->flip = flip;
     vis->scale = FixedDiv(projectiony, tz);
     vis->patch = lump;
+
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+    if (thing->flags & MF_SHADOW)
+      vis->colormap = NULL;             // shadow draw
+    else if (fixedcolormap)
+      vis->colormap = fixedcolormap;      // fixed map
+    else if (thing->frame & FF_FULLBRIGHT)
+      vis->colormap = fullcolormap;     // full bright  // killough 3/20/98
+    else
+    {      // diminished light
+      vis->colormap = R_ColourMap(lightlevel,xscale);
+    }
+#endif
+
     gld_AddSprite(vis);
 
     return;

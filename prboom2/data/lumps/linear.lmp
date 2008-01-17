@@ -1,0 +1,24 @@
+//
+// Fragment shader for bilinear filternig
+//
+// Copyright (c) 2007 by Roman Marchenko & Andrey Budko
+//
+
+void DoFiltering()
+{
+  float pixel_c  = rgbaBias + rgbaScale * texture2D(tex, texCoord).r;
+  float pixel_r  = rgbaBias + rgbaScale * texture2D(tex, texCoord.xy + vec2(texelSizes.x, 0)).r;
+  float pixel_b  = rgbaBias + rgbaScale * texture2D(tex, texCoord.xy + vec2(0, texelSizes.y)).r;
+  float pixel_rb = rgbaBias + rgbaScale * texture2D(tex, texCoord.xy + texelSizes).r;
+
+  vec4 texel_c  = texture2D(texColormap, vec2(pixel_c,  cm));
+  vec4 texel_r  = texture2D(texColormap, vec2(pixel_r,  cm));
+  vec4 texel_b  = texture2D(texColormap, vec2(pixel_b,  cm));
+  vec4 texel_rb = texture2D(texColormap, vec2(pixel_rb, cm));
+
+  vec2 lerpAmounts = fract(texCoord * texSizes);
+  final = mix(
+    mix(texel_c, texel_r,  lerpAmounts.x),
+    mix(texel_b, texel_rb, lerpAmounts.x),
+    lerpAmounts.y);
+}

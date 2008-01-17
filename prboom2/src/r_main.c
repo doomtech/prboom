@@ -238,6 +238,25 @@ angle_t R_PointToAngleEx(fixed_t x, fixed_t y)
   return old_result;
 }
 
+// killough 5/2/98: move from r_main.c, made static, simplified
+// e6y: move back from r_segs.c
+
+fixed_t R_PointToDist(fixed_t x, fixed_t y)
+{
+  fixed_t dx = D_abs(x - viewx);
+  fixed_t dy = D_abs(y - viewy);
+
+  if (dy > dx)
+    {
+      fixed_t t = dx;
+      dx = dy;
+      dy = t;
+    }
+
+  return FixedDiv(dx, finesine[(tantoangle[FixedDiv(dy,dx) >> DBITS]
+                                + ANG90) >> ANGLETOFINESHIFT]);
+}
+
 //
 // R_InitTextureMapping
 //

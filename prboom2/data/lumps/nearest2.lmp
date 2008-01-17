@@ -1,0 +1,14 @@
+//
+// Fragment shader for procedural lighting
+//
+// Copyright (c) 2007 by Andrey Budko
+//
+// See gl_shader.c for license information
+//
+
+void DoFiltering()
+{
+  vec2 pixel_c  = vec2(rgbaBias) + vec2(rgbaScale) * texture2D(tex, texCoord).rg;
+
+  final = vec4(texture2D(texColormap, vec2(pixel_c.r,  cm)).rgb, pixel_c.g);
+}

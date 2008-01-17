@@ -2,6 +2,13 @@
 #define PACKAGE "prboom-plus"
 #define VERSION "2.4.8.3"
 
+/* Define if you want to use FBO for some tricks in OpenGL */
+#define USE_FBO_TECHNIQUE
+
+/* Define if you want to use GLSL shaders in OpenGL
+ * This feature expects OpenGL 2.0 at least */
+#define USE_ARB_FRAGMENT_PROGRAM
+
 #ifdef DEBUG
 
 /* Define to enable internal range checking */

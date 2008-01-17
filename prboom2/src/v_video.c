@@ -462,10 +462,12 @@ void V_DrawNumPatch8(int x, int y, int scrn, int lump,
 // CPhipps - New function to set the palette to palette number pal.
 // Handles loading of PLAYPAL and calls I_SetPalette
 
+int current_pal;
 void V_SetPalette(int pal)
 {
   if (V_GetMode() == VID_MODEGL) {
 #ifdef GL_DOOM
+    current_pal = pal;
     gld_SetPalette(pal);
 #endif
   } else {

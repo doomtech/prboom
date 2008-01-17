@@ -39,6 +39,17 @@
 
 #define SMALLDELTA 0.001f
 
+#define isExtensionSupported(ext) strstr(extensions, ext)
+
+typedef enum
+{
+  RFL_NPOT_TEXTURE     = 1,
+  RFL_NOSTENCIL        = 2,
+  RFL_FRAGMENT_PROGRAM = 4,
+  RFL_GLSL             = 8,
+  RFL_OCCLUSION_QUERY  = 16,
+} GLRenderFlags;
+
 typedef enum
 {
   GLDT_UNREGISTERED,
@@ -53,6 +64,7 @@ typedef enum
   GLTEXTURE_HASHOLES  = 0x00000004,
   GLTEXTURE_SKY       = 0x00000008,
   GLTEXTURE_HIRES     = 0x00000010,
+  GLTEXTURE_INDEXED   = 0x00000020,
 } GLTexture_flag_t;
 
 typedef struct
@@ -64,6 +76,7 @@ typedef struct
   int realtexwidth, realtexheight;
   int buffer_width,buffer_height;
   int buffer_size;
+  int glShaderTexID;
   int glTexID[CR_LIMIT+MAXPLAYERS];
   
   //e6y: support for Boom colormaps
@@ -74,6 +87,7 @@ typedef struct
   GLint wrap_mode;//e6y
   unsigned int flags;//e6y
   float scalexfac, scaleyfac; //e6y: right/bottom UV coordinates for patch drawing
+  const lighttable_t *colormap;
 } GLTexture;
 
 typedef struct
@@ -167,6 +181,7 @@ typedef struct
   boolean shadow;
   boolean trans;
   mobj_t *thing;//e6y
+  const lighttable_t *colormap;
 } GLSprite;
 
 typedef enum
@@ -212,6 +227,8 @@ typedef struct
   int num_drawitems;
   int max_drawitems;
 } GLDrawInfo;
+
+extern unsigned int glflags;
 
 void gld_StaticLightAlpha(float light, float alpha);
 #define gld_StaticLight(light) gld_StaticLightAlpha(light, 1.0f)
@@ -303,5 +320,71 @@ extern char *gl_motionblur_linear_k;
 extern char *gl_motionblur_linear_b;
 
 extern int imageformats[];
+
+//USE_ARB_FRAGMENT_PROGRAM
+void gld_AddPatchToTexture(GLTexture *gltexture, unsigned char *buffer, const rpatch_t *patch, int originx, int originy, int cm, int paletted);
+void gld_AddFlatToTexture(GLTexture *gltexture, unsigned char *buffer, const unsigned char *flat, int paletted);
+
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+typedef struct GLShader_s
+{
+  char name[256];
+  GLhandleARB hShader;
+  GLhandleARB hVertProg;
+  GLhandleARB hFragProg;
+  
+  int texSizes_idx;
+  int texelSizes_idx;
+  int halfTexelSizes_idx;
+
+  int cmFixed_idx;
+  int cmMinScaled_idx;
+  int cmMaxScaled_idx;
+  int rgbaScale_idx;
+  int rgbaBias_idx;
+
+  int param1_idx;
+  int param2_idx;
+  int param3_idx;
+  int param4_idx;
+  int param5_idx;
+  int param6_idx;
+} GLShader;
+
+typedef struct GLShadersParams_s
+{
+  float projectiony_adapted;
+  float viewheight_adapted;
+  float viewpitch_adapted;
+  float rgbaScale;
+  float rgbaBias;
+  float cmCount;
+  float cmScale;
+  float cmBias;
+  float cmMaxBias;
+} GLShadersParams;
+
+extern GLShader *sh_wall;
+extern GLShader *sh_flat;
+extern GLShader *sh_sprite;
+extern GLShader *sh_filter;
+
+extern GLShader *active_shader;
+extern GLShadersParams shaders;
+
+void glsl_Init(void);
+void glsl_BindProgram(GLShader *shader);
+void glsl_UnbindProgram(void);
+void glsl_SetColormap(int type, void *item);
+int glsl_BindColormap(GLShader* shader, float cm);
+int glsl_BindTexture(GLTexture *gltexture, int type);
+int glsl_GetEnable(void);
+void glsl_SetEnable(int state);
+
+#else // USE_ARB_FRAGMENT_PROGRAM
+
+#define AllShadersAreOk (false)
+
+#endif // USE_ARB_FRAGMENT_PROGRAM
 
 #endif // _GL_INTERN_H

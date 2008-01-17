@@ -3232,7 +3232,11 @@ setup_menu_t gen_settings6[] = { // General Settings screen4
   {"Allow Hi-Res Patches"      ,S_YESNO|S_PRGWARN,m_null,G_X,G_Y+ 16*8, {"gl_patch_usehires"}, 0, 0, M_ChangeTextureUseHires},
   {"Override PWAD's graphics with Hi-Res" ,S_YESNO|S_PRGWARN,m_null,G_X,G_Y+ 17*8, {"gl_hires_override_pwads"}},
   {"Sector Light Mode"         ,S_CHOICE,m_null,G_X,G_Y+18*8, {"gl_lightmode"}, 0, 0, M_ChangeLightMode, gl_lightmodes},
-#endif
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+  {"Allow Shaders"             ,S_YESNO|S_PRGWARN,m_null,G_X,G_Y+ 19*8, {"gl_shaders"}, 0, 0, M_ChangeAllowShaders},
+#endif // USE_ARB_FRAGMENT_PROGRAM
+#endif // GL_DOOM
+
   {"<- PREV",S_SKIP|S_PREV,m_null,KB_PREV,KB_Y+20*8, {gen_settings5}},
   {"NEXT ->",S_SKIP|S_NEXT,m_null,KB_NEXT,KB_Y+20*8, {gen_settings7}},
   {0,S_SKIP|S_END,m_null}
@@ -4608,6 +4612,12 @@ boolean M_Responder (event_t* ev) {
   usegamma == 3 ? s_GAMMALVL3 :
   s_GAMMALVL4;
       V_SetPalette(0);
+
+#if defined(GL_DOOM) && defined(USE_ARB_FRAGMENT_PROGRAM)
+      if (V_GetMode() == VID_MODEGL && AllShadersAreOk)
+        gld_CreateColormapsTextures();
+#endif
+
       return true;
         }
       }
@@ -5903,6 +5913,9 @@ void M_Init(void)
   M_ChangeSpriteClip();
   M_ChangeAllowBoomColormaps();
   M_ChangeTextureUseHires();
+#ifdef USE_ARB_FRAGMENT_PROGRAM
+  M_ChangeAllowShaders();
+#endif // USE_ARB_FRAGMENT_PROGRAM
 #endif
   M_ChangeScreenMultipleFactor();
   M_ChangeInterlacedScanning();

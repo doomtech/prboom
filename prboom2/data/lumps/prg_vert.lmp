@@ -1,0 +1,14 @@
+//
+// Vertex shader for procedural lighting
+//
+// Copyright (c) 2007 by Andrey Budko
+//
+// See gl_shader.c for license information
+//
+
+void main()
+{
+  gl_FrontColor = gl_Color;
+  gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
+  gl_Position = ftransform();
+}
