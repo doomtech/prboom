@@ -1,0 +1,50 @@
+title: Windows Installation
+
+    <h1>Installation on Windows Systems</h1>
+
+    <p>This page guides you through the installation of PrBoom.</p>
+
+    <p>PrBoom should work with Windows 9x, Windows NT4.0 and
+    Windows 2000 or above.</p>
+
+    <p>PrBoom for Windows comes in two versions. The one version
+    has software rendering and is called <code>prboom.exe</code>,
+    the other one has OpenGl rendering and is called <code>
+    glboom.exe</code>.</p>
+
+    <p>
+    <a href="http://www.sourceforge.net/project/showfiles.php?group_id=3396">
+      Download
+    </a> the version you want to use and unzip it to the directory you want
+    it. For example <code>c:\prboom</code>. To unzip it use a program like
+    <a href="http://www.winzip.com">WinZip</a> or
+    <a href="http://www.rarsoft.com/">WinRAR</a>.</p>
+
+    <p>PrBoom uses the SDL library (&gt;=1.2.0), the SDL_mixer
+    (&gt;=1.2.0) library and the SDL_net (&gt;=1.2.0) library. The
+    dlls for them are included in the packages. If you want to look
+    for newer versions go to there homepages. SDL is at <a
+    href="http://www.libsdl.org"> http://www.libsdl.org</a>.
+    SDL_mixer is at <a
+    href="http://www.libsdl.org/projects/SDL_mixer/">
+    http://www.libsdl.org/projects/SDL_mixer/</a>. SDL_net is at <a
+    href="http://www.libsdl.org/projects/SDL_net/">
+    http://www.libsdl.org/projects/SDL_net/</a>.</p>
+
+    <h2>Frontend</h2>
+
+    <p> If you like to use a good frontend, then you can try out <a
+    href="http://kickme.to/theking">this one</a> from the King
+    himself.</p>
+
+    <h2><a id="timidity" name="timidity">Music</a></h2>
+
+    <p> The SDL_mixer library used by PrBoom supports software MIDI
+    music synthesis. If you want to hear the Doom music, you need a
+    set of Timidity instrument patches. Do a web search for
+    timidity patch sets, there are plenty around. Really good but
+    quite big are the <a
+    href="http://xml.cie.unam.mx/pub/Linux/lmws/eawpats/eawpats12.tar.bz2">
+    Eawpatches</a>.</p>
+
+    <p>These patch sets are a large download (&gt;5megs).</p>
