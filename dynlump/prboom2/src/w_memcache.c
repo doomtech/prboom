@@ -101,13 +101,13 @@ void W_DoneCache(void)
 {
 }
 
-/* W_CacheLumpNum
+/* W_CacheLumpNumWad
  * killough 4/25/98: simplified
  * CPhipps - modified for new lump locking scheme
  *           returns a const*
  */
 
-const void *W_CacheLumpNum(int lump)
+const void *W_CacheLumpNumWad(int lump)
 {
   const int locks = 1;
 #ifdef RANGECHECK
@@ -138,7 +138,7 @@ const void *W_CacheLumpNum(int lump)
 
 const void *W_LockLumpNum(int lump)
 {
-  return W_CacheLumpNum(lump);
+  return W_CacheLumpNumWad(lump);
 }
 
 /*

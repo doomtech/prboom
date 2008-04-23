@@ -70,7 +70,8 @@ typedef enum {
   source_auto_load, // lump auto-loaded by config file
   source_pwad,      // pwad file load
   source_lmp,       // lmp file load
-  source_net        // CPhipps
+  source_net,       // CPhipps
+  source_dyn        // dynamically-generated (jmtd)
 } wad_source_t;
 
 // CPhipps - changed wad init
@@ -128,6 +129,7 @@ int     W_LumpLength (int lump);
 void    W_ReadLump (int lump, void *dest);
 // CPhipps - modified for 'new' lump locking
 const void* W_CacheLumpNum (int lump);
+const void* W_CacheLumpNumWad (int lump); /* TODO: rename */
 const void* W_LockLumpNum(int lump);
 void    W_UnlockLumpNum(int lump);
 

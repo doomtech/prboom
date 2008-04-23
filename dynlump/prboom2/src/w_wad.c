@@ -55,6 +55,7 @@
 #endif
 #include "w_wad.h"
 #include "lprintf.h"
+#include "m_text.h"
 
 //
 // GLOBALS
@@ -420,6 +421,9 @@ void W_Init(void)
   W_CoalesceMarkedResource("C_START", "C_END", ns_colormaps);
   W_CoalesceMarkedResource("B_START", "B_END", ns_prboom);
 
+  // jmtd - dynamically-generated lumps
+  M_InitDynLump();
+
   // killough 1/31/98: initialize lump hash table
   W_HashLumps();
 
@@ -474,3 +478,26 @@ void W_ReadLump(int lump, void *dest)
     }
 }
 
+/*
+ * a wrapper fn, that calls the older W_CacheLumpNum (renamed to
+ * W_CacheLumpNumWad) or the dyn fn where appropriate.
+ */
+const void* W_CacheLumpNum(int lump) {
+
+#ifdef RANGECHECK
+  if ((unsigned)lump >= (unsigned)numlumps)
+    I_Error ("W_CacheLumpNum: %i >= numlumps",lump);
+#endif
+
+  switch(lumpinfo[lump].source) {
+    case source_dyn:
+      /* do our magic bit */
+      return W_CacheLumpNumDyn(lump);
+      break;
+
+    default:
+      /* hand off to the old W_CacheLumpNum */
+      return W_CacheLumpNumWad(lump);
+      break;
+  }
+}

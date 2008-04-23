@@ -50,6 +50,7 @@ COMMON_SRC = \
  f_wipe.h       p_maputl.c         r_plane.c        z_zone.h	\
  md5.c          md5.h              p_checksum.h     p_checksum.c \
  r_patch.c      r_patch.h          r_fps.c          r_fps.h \
+ m_text.c       m_text.h \
  r_filter.c     r_filter.h
 
 NET_CLIENT_SRC = d_client.c

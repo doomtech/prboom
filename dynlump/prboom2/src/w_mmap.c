@@ -194,7 +194,7 @@ void W_InitCache(void)
   }
 }
 
-const void* W_CacheLumpNum(int lump)
+const void* W_CacheLumpNumWad(int lump)
 {
   int wad_index = (int)(lumpinfo[lump].wadfile-wadfiles);
 #ifdef RANGECHECK
@@ -262,7 +262,7 @@ void W_DoneCache(void)
   free(mapped_wad);
 }
 
-const void* W_CacheLumpNum(int lump)
+const void* W_CacheLumpNumWad(int lump)
 {
 #ifdef RANGECHECK
   if ((unsigned)lump >= (unsigned)numlumps)
