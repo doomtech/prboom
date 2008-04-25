@@ -1,0 +1,56 @@
+this is an attempt to dynamically generate menu entries.
+
+the entries in doom2 IWAD are
+
+	New game
+		NEW GAME
+	Choose Skill Level
+		I'm too young to die.
+		Hey, not too rough.
+		Hurt me plenty.
+		Ultra-Violence.
+		Nightmare! (diff. font)
+	Load game
+	Save game
+	Options
+		End Game
+		Screen Size
+		Mouse sensitivity
+		Sound Volume
+		Sfx Volume
+		Music Volume
+	Quit Game
+
+(what about differences in IWAD versions and doom 1 etc.?)
+
+the entries we currently have in prboom.wad are:
+
+	frags about automap chat doom demos enemies
+	features general horizontal heads key messages mouse
+	multiplayer setup sound status vertical video
+	load weapons prboom
+
+
+
+The idea is we might be able to dynamically compose
+the required menu graphics by taking chunks of the patches for
+the existing menu entries and possibly composing them together,
+abusing the texture code.
+
+General
+	capital G: NEW GAME
+	e,n,r,l: Hurt me plenty.
+	a: New game
+
+Setup
+	S: Sound Volume
+	e,t,u,p: Hurt me plenty.
+Doom Compability
+	D: not present! lower case in "I'm too young to die"
+		or, Deimos Anomaly? or, Dead simple?
+
+			how big are the level texts/
+	o,m,i,t,y: I'm too young to die
+	C:
+	b:
+	a,l: ultra violence
