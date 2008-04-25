@@ -2,6 +2,7 @@ this is an attempt to dynamically generate menu entries.
 
 the entries in doom2 IWAD are
 
+doom2strings = """
 	New game
 		NEW GAME
 	Choose Skill Level
@@ -20,6 +21,7 @@ the entries in doom2 IWAD are
 		Sfx Volume
 		Music Volume
 	Quit Game
+"""
 
 (what about differences in IWAD versions and doom 1 etc.?)
 
@@ -54,3 +56,87 @@ Doom Compability
 	C:
 	b:
 	a,l: ultra violence
+
+a small python program later:
+
+orig_strings = doom2strings.replace(" ","_").split()
+>>> chars = {}
+>>> for string in orig_strings:
+...     for char in string:
+...             chars[char] = string
+
+pwad_strings = """frags about Automap Chat_Strings Doom_Compatibility Demos Features General horizontal heads_up_display Key_Bindings Messages mouse_options multiplayer player_setup Setup sound_options Status_Bar_/_HUD vertical video_options load_wad Weapons PrBoom""".split()
+
+>>> used = []
+>>> for pwad_string in pwad_strings:
+...      print "%s:" % pwad_string
+...      for char in pwad_string:
+...              if char in used:
+...                      continue
+...              used.append(char)
+...              if chars.has_key(char):
+...                      print "\t%s: %s" % (char, chars[char])
+...              else:
+...                      print "\t%s: missing" % char
+... 
+frags:
+	f: Sfx_Volume
+	r: Screen_Size
+	a: Quit_Game
+	g: Save_game
+	s: Music_Volume
+about:
+	b: missing
+	o: Music_Volume
+	u: Quit_Game
+	t: Quit_Game
+Automap:
+	A: NEW_GAME
+	m: Quit_Game
+	p: Options
+Chat_Strings:
+	C: Choose_Skill_Level
+	h: Nightmare!_(diff._font)
+	_: Quit_Game
+	S: Sfx_Volume
+	i: Quit_Game
+	n: Sound_Volume
+Doom_Compatibility:
+	D: missing
+	l: Music_Volume
+	y: Mouse_sensitivity
+Demos:
+	e: Quit_Game
+Features:
+	F: missing
+General:
+	G: Quit_Game
+horizontal:
+	z: Screen_Size
+heads_up_display:
+	d: Sound_Volume
+Key_Bindings:
+	K: missing
+	B: missing
+Messages:
+	M: Music_Volume
+mouse_options:
+multiplayer:
+player_setup:
+Setup:
+sound_options:
+Status_Bar_/_HUD:
+	/: missing
+	H: Hurt_me_plenty.
+	U: Ultra-Violence.
+vertical:
+	v: Mouse_sensitivity
+	c: Music_Volume
+video_options:
+load_wad:
+	w: New_game
+Weapons:
+	W: NEW_GAME
+PrBoom:
+	P: missing
+
